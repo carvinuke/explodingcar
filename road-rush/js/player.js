@@ -40,7 +40,7 @@ const PlayerProto = {
     this.breath = 0;   // idle breathing
     this.idle = 0;
     this.blinkSeed = rand(0, 3);
-    this.pw = { speed: 0, magnet: 0, invincible: 0 };
+    this.pw = { speed: 0, magnet: 0, invincible: 0, ghost: 0, shrink: 0 };
     this.leftCell = null;
     this.combo = 0;
     this.comboT = -9;
@@ -135,14 +135,18 @@ const PlayerProto = {
       this.y = lerp(k.fy, k.ty, e);
       this.z = Math.sin(Math.PI * k.t) * k.h;
       this.rot = k.spin * k.t;
+      if (k.jet) { // jetpack exhaust
+        for (let n = 0; n < 3; n++) FX.spawn('fire', this.x + rand(-5, 5), this.y + rand(-3, 3), this.z + 6, { vz: rand(-160, -60), g: -20, drag: 1, life: rand(0.2, 0.4), size: rand(4, 7), size2: 1 });
+        if (Math.random() < 0.4) FX.puff(this.x, this.y, this.z, '#8a8a90');
+      }
       if (k.t >= 1) {
         this.knock = null;
         this.z = 0;
         this.rot = 0;
         this.squash = 0.8;
-        FX.dust(this.x, this.y, 8);
+        FX.dust(this.x, this.y, k.jet ? 14 : 8);
         Sound.land();
-        if (Settings.gore) FX.bleed(this.x, this.y, 16);
+        if (Settings.gore && !k.jet) FX.bleed(this.x, this.y, 16);
         this.landed(true);
       }
     } else if (this.hop) {
@@ -205,7 +209,7 @@ const PlayerProto = {
     const row = this.rowObj();
     if (!row) return;
     if (row.type === 'river') {
-      const log = River.logAt(row, this.x);
+      const log = River.logAt(row, this.x) || (!Admin.god && Pets.turtleCatch(this, row));
       if (!log) { Game.kill('drown', { p: this }); return; }
       this.ride = log;
       if (log.id !== this.lastLog) {
@@ -244,6 +248,35 @@ const PlayerProto = {
     this.slideT -= dt;
     if (this.slideT <= 0 && this.id === 0) { this.slideT = 0.2; Ghost.mark(Game.time, this.x, this.y, 's'); }
     if (this.x < -0.25 * TILE || this.x > WORLD_W + 0.25 * TILE) Game.kill('swept', { p: this });
+  },
+
+  // Jetpack: blast off and land on safe ground about 5 rows ahead.
+  jetpack() {
+    if (!this.alive || this.abduct) return;
+    World.ensure(this.row + 14);
+    let target = this.row + 5;
+    for (let r = this.row + 5; r <= this.row + 10; r++) {
+      const R = World.rows.get(r);
+      if (R && R.type === 'grass') { target = r; break; }
+    }
+    let col = this.col;
+    for (let d = 0; d < COLS && World.isBlocked(col, target); d++) {
+      const c2 = this.col + (d % 2 ? -(d + 1) / 2 : d / 2);
+      if (c2 >= 0 && c2 < COLS && !World.isBlocked(c2, target)) col = c2;
+    }
+    this.hop = this.queue = null;
+    this.ride = null;
+    this.stun = 0;
+    this.knock = { fx: this.x, fy: this.y, tx: cellX(col), ty: target * TILE, t: 0, dur: 1.2, h: 3.2 * TILE, spin: 0, jet: true };
+    this.col = col;
+    this.row = target;
+    this.grace = Math.max(this.grace, 1.6);
+    this.facing = 'up';
+    Sound.whoosh(1, 0);
+    Sound.powerup();
+    FX.text(this.x, this.y + 30, 'BLAST OFF!', '#ff7a1a', 20);
+    if (this.id === 0) Ghost.mark(Game.time, cellX(col), target * TILE, 'k');
+    Game.onPlayerMove(this);
   },
 
   // Caught by a tornado: spun up into the funnel and dropped a row or two away.

@@ -35,6 +35,7 @@ const UI = {
     // HUD power-up chips
     this.chips = {};
     for (const k in POWERUPS) {
+      if (POWERUPS[k].instant) continue; // used up the moment you grab it: no HUD chip
       const def = POWERUPS[k], url = Draw.iconURL(k);
       const el = document.createElement('div');
       el.className = 'pw hidden';
@@ -300,7 +301,7 @@ const UI = {
     Draw.shadow(g, 0, 0, 30, 24, 0.9);
     Draw.player(g, { facing: 'down', squash: 0, z: 0, rot: 0, flap: 0, char: 0 }, 0, skin, hat);
     if (tab === 'pets' && id !== 'none') {
-      const pet = { type: id, face: -1, z: id === 'drone' ? 30 : 0, blink: 0 };
+      const pet = { type: id, face: -1, z: ['drone', 'pigeon', 'parrot'].includes(id) ? 26 : 0, blink: 0 };
       g.save();
       g.translate(22, 4);
       Draw.shadow(g, 0, 0, 20, 14, 0.7);

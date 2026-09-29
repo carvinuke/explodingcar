@@ -318,9 +318,11 @@ const Game = {
       if (!row) continue;
       if (row.type === 'rail') {
         const R = row.rail;
+        if (p.pw.ghost > 0) continue; // ghosts don't get hit by trains
         if (Math.abs(row.y - p.y) > 0.5 * TILE || R.state !== 'train' || R.speed * fz < 25) continue;
         const [a, b] = Rail.extent(R);
-        if (p.x < a - 0.2 * TILE || p.x > b + 0.2 * TILE) continue;
+        const tm = p.pw.shrink > 0 ? 0.05 * TILE : 0.2 * TILE;
+        if (p.x < a - tm || p.x > b + tm) continue;
         if (p.invincible() || p.grace > 0) continue;
         if (p.shield) { // the shield can't stop a train, but it can throw you clear
           p.shield--; // shields stack: one breaks per hit
@@ -335,9 +337,11 @@ const Game = {
       }
       if (row.type !== 'road') continue;
       for (const v of row.lane.vehicles) {
-        if (Math.abs((v.drunk ? v.y : row.y) - p.y) > 0.58 * TILE) continue; // drunk drivers weave between lanes
+        if (p.pw.ghost > 0 && !v.wreck) continue; // ghost: cars drive straight through you
+        const small = p.pw.shrink > 0;
+        if (Math.abs((v.drunk ? v.y : row.y) - p.y) > (small ? 0.42 : 0.58) * TILE) continue; // drunk drivers weave between lanes
         if (v.abducted || v.z > 30 || v.animal) continue;
-        if (Math.abs(v.x - p.x) > v.len / 2 - 2 + 0.24 * TILE) continue;
+        if (Math.abs(v.x - p.x) > v.len / 2 - 2 + (small ? 0.08 : 0.24) * TILE) continue;
         if (v.wreck) { // a sliding wreck shoves you aside instead of killing you
           if (!v.bumped && !p.knock && Math.abs(v.slide) * fz > 40) {
             v.bumped = true;

@@ -363,7 +363,7 @@ const Renderer = {
       case 'deer': Draw.shadow(c, o.x, o.y, 0.9 * TILE, 0.5 * TILE, 0.6 * o.alpha); break;
       case 'weed': Draw.shadow(c, o.x, o.y, o.r * 2.4, o.r * 1.8, 0.5); break;
       case 'medic': Draw.shadow(c, o.x, o.y, 0.45 * TILE, 0.35 * TILE, 0.6); break;
-      case 'pet': Draw.shadow(c, o.x, o.y, (o.type === 'drone' ? 0.4 : 0.55) * TILE, 0.4 * TILE, o.type === 'drone' ? 0.35 : 0.6); break;
+      case 'pet': Draw.shadow(c, o.x, o.y, (o.z > 10 ? 0.4 : 0.55) * TILE, 0.4 * TILE, o.z > 10 ? 0.35 : 0.6); break;
       case 'event': if (o.shadow) Draw.shadow(c, o.x, o.y, o.shadow[0], o.shadow[1], 0.8); break;
       case 'player': {
         if (o.flat || o.sink || o.ride) break;
@@ -472,6 +472,16 @@ const Renderer = {
       if (Math.random() < 0.3) FX.spawn('glow', p.x + rand(-14, 14), p.y + rand(-8, 8), rand(5, 30), { vz: 30, life: 0.5, size: 2.5, size2: 0.5, color: `hsl(${rand(360)},100%,75%)` });
     }
     if (p.grace > 0 && ((time * 18) | 0) % 2) c.globalAlpha = 0.4;
+    if (p.pw.ghost > 0) { // see-through, with a cold glow
+      c.globalAlpha = p.pw.ghost < 1 && ((time * 10) | 0) % 2 ? 0.7 : 0.4;
+      c.save();
+      c.globalCompositeOperation = 'lighter';
+      c.fillStyle = 'rgba(150,230,255,0.25)';
+      c.beginPath(); c.arc(0, P(0, p.z + 14), 22, 0, 6.2832); c.fill();
+      c.restore();
+    }
+    const tiny = p.pw.shrink > 0 ? (p.pw.shrink < 0.4 ? lerp(1, 0.5, p.pw.shrink / 0.4) : 0.5) : 1;
+    if (tiny < 1) c.scale(tiny, tiny);
     if (p.sink) c.globalAlpha = 1 - p.sink;
     if (p.ride) c.translate(0, P(0, 7));
     const sk = p.skin();

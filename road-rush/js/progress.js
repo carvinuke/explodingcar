@@ -83,6 +83,10 @@ const PETS = {
   cat:   { name: 'Cat', price: 400, perk: 'Blocks one hit per run (nine lives)' },
   minij: { name: 'Mini Big J', price: 250, perk: 'Glares at seagulls so they leave you alone' },
   drone: { name: 'Drone', price: 500, perk: 'Lights up the night and pulls in coins' },
+  pigeon: { name: 'Pigeon', price: 180, perk: 'Drops a coin near you every few seconds' },
+  parrot: { name: 'Parrot', price: 300, perk: 'Squawks a warning before trains and reckless drivers arrive' },
+  turtle: { name: 'Turtle', price: 450, perk: 'Surfaces under you if you fall in the water (then needs a rest)' },
+  twister: { name: 'Mini Tornado', price: 600, perk: 'A little whirlwind that vacuums up every coin nearby' },
 };
 
 const SHOP_TABS = { skins: SKINS, hats: HATS, trails: TRAILS, pets: PETS };

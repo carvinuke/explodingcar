@@ -138,6 +138,15 @@ Rare events that happen every minute or two:
   - *Mini Big J:* glares at seagulls so they won't dive at you.
   - *Drone:* hovers overhead, lights up the road at night and pulls in nearby
     coins.
+  - *Pigeon:* drops a coin near you every few seconds.
+  - *Parrot:* squawks a warning before trains and reckless drivers arrive.
+  - *Turtle:* surfaces under you if you fall in the water, then needs 12
+    seconds' rest.
+  - *Mini Tornado:* vacuums up every coin nearby.
+- **More power-ups:** Jetpack (blast off and land on safe ground about 5 rows
+  ahead), Ghost (cars and trains pass straight through you for 4 seconds),
+  Shrink (a tiny chicken with a tiny hitbox for 7 seconds) and Horn (every car
+  nearby slams on its brakes, even speeders).
 - **Trophies:** 24 achievements, such as surviving three explosions in one run,
   a close call with a train, getting trampled by a deer, or getting picked up
   by a tornado and living. Three of them unlock skins you can't buy: the Crash
