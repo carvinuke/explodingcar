@@ -52,43 +52,23 @@
         </div>
       </div>
 
-      <div class="actions play-row">
-        <button id="btn-play" class="btn-yellow btn-big">PLAY</button>
-        <button id="btn-daily" class="btn-daily"><b>DAILY CHALLENGE</b><span><span id="daily-date"></span> &middot; <span id="daily-best"></span></span></button>
+      <button id="btn-play" class="btn-yellow btn-big play-main">PLAY</button>
+
+      <div class="modes" role="group" aria-label="Other modes">
+        <button id="btn-daily" class="mode-btn m-daily" data-hint="Same road for everyone today"><b>Daily</b><em id="daily-best"></em></button>
+        <button id="btn-hardcore" class="mode-btn m-hardcore" data-hint="Faster traffic, no power-ups, double coins"><b>Hardcore</b><em id="best-hardcore"></em></button>
+        <button id="btn-time" class="mode-btn m-time" data-hint="90 seconds. Every coin adds a second"><b>Time Attack</b><em id="best-time"></em></button>
+        <button id="btn-versus" class="mode-btn m-versus" data-hint="WASD vs arrow keys (or 2 controllers). Last chicken standing"><b>2 Players</b><em id="vs-record"></em></button>
+      </div>
+      <p id="mode-hint" class="mode-hint" aria-live="polite">&nbsp;</p>
+
+      <div class="menu-row">
+        <button id="btn-shop" class="btn-plate small">Shop</button>
+        <button id="btn-trophies" class="btn-plate small">Trophies <span id="trophy-count" class="count"></span></button>
+        <button id="btn-settings" class="btn-plate small">Settings</button>
       </div>
 
-      <div class="modes" role="group" aria-label="More modes">
-        <button id="btn-hardcore" class="mode-sign m-hardcore"><b>HARDCORE</b><span>Faster traffic, no power-ups, double coins</span><em id="best-hardcore"></em></button>
-        <button id="btn-time" class="mode-sign m-time"><b>TIME ATTACK</b><span>90 seconds. Coins add time</span><em id="best-time"></em></button>
-        <button id="btn-versus" class="mode-sign m-versus"><b>2 PLAYERS</b><span>WASD vs arrow keys. Last chicken standing</span><em id="vs-record"></em></button>
-      </div>
-
-      <div class="actions">
-        <button id="btn-shop" class="btn-plate">Shop</button>
-        <button id="btn-trophies" class="btn-plate">Trophies <span id="trophy-count" class="count"></span></button>
-        <button id="btn-settings" class="btn-plate">Settings</button>
-      </div>
-
-      <div class="work-sign">
-        <div class="work-inner">
-          <p class="work-title">ROAD WORK: MISSIONS</p>
-          <ul id="title-missions" class="missions"></ul>
-        </div>
-      </div>
-
-      <div class="service-sign">
-        <div class="service-inner">
-          <p class="service-title">POWER-UPS</p>
-          <ul id="legend" class="legend"></ul>
-        </div>
-      </div>
-
-      <div class="title-foot">
-        <p class="controls kb"><kbd id="kb-up">W</kbd><kbd id="kb-left">A</kbd><kbd id="kb-down">S</kbd><kbd id="kb-right">D</kbd> or <kbd>&uarr;</kbd><kbd>&larr;</kbd><kbd>&darr;</kbd><kbd>&rarr;</kbd> to move &middot; controllers work too</p>
-        <p class="controls touch">Tap to hop, swipe to move</p>
-        <p class="meta">Best <b id="title-best">0</b> &middot; Coins <b id="title-coins">0</b></p>
-        <span id="gore-badge" class="gore-badge hidden">GRAPHIC MODE ON</span>
-      </div>
+      <p class="meta">Best <b id="title-best">0</b> &middot; <span class="coin-ico"></span> <b id="title-coins">0</b><span id="gore-badge" class="gore-badge hidden">GRAPHIC</span></p>
     </div>
   </div>
 
