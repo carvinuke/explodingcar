@@ -11,6 +11,7 @@ const Game = {
   coins: 0,
   best: Store.get('best', 0),
   bank: Store.get('coins', 0),
+  runs: Store.get('runs', 0),
   danger: { y: -7 * TILE, active: false },
   deathT: 0,
   overT: 0,
@@ -50,6 +51,8 @@ const Game = {
     Sound.click();
     if (this.state !== 'title') this.reset();
     this.state = 'playing';
+    this.runs = Store.get('runs', 0) + 1;
+    Store.set('runs', this.runs);
     UI.startRun();
   },
 
@@ -71,6 +74,10 @@ const Game = {
       ArrowLeft: [-1, 0], KeyA: [-1, 0], ArrowRight: [1, 0], KeyD: [1, 0],
     };
     addEventListener('keydown', e => {
+      if (UI.modal) { // settings / warning dialogs own the keyboard while open
+        if (e.code === 'Escape') { e.preventDefault(); UI.closeModal(); }
+        return;
+      }
       const mv = MOVES[e.code];
       const confirm = e.code === 'Space' || e.code === 'Enter';
       if (mv || e.code === 'Space') e.preventDefault();
@@ -135,19 +142,37 @@ const Game = {
     Sound.coin();
   },
 
-  onCrash(x, y) {
+  onCrash(x, y, violent) {
     const p = Player;
     const dist = Math.hypot(p.x - x, p.y - y) / TILE;
-    const near = clamp(1 - dist / 12, 0, 1);
-    Cam.addTrauma(0.3 + 0.65 * near);
-    Cam.punch += 0.03 + 0.05 * near;
-    FX.flashScreen(0.18 + 0.4 * near);
-    FX.text(x, y + 20, 'CRASH!', '#ffcf40', 24);
-    Sound.explosion(0.4 + 0.6 * near, Vehicles.pan(x));
+    const near = clamp(1 - dist / (violent ? 16 : 12), 0, 1);
+    Cam.addTrauma(violent ? 0.55 + 0.45 * near : 0.3 + 0.65 * near);
+    Cam.punch += violent ? 0.06 + 0.07 * near : 0.03 + 0.05 * near;
+    FX.flashScreen(violent ? 0.45 + 0.4 * near : 0.18 + 0.4 * near);
+    FX.text(x, y + 20, 'CRASH!', '#ffcf40', violent ? 30 : 24);
+    Sound.explosion(violent ? Math.min(1, 0.6 + 0.5 * near) : 0.4 + 0.6 * near, Vehicles.pan(x), violent);
     if (this.state === 'playing') {
-      if (dist < 7) this.slowmo(0.3, 0.35);
-      p.blast(x, y);
+      if (dist < (violent ? 9 : 7)) this.slowmo(violent ? 0.22 : 0.3, violent ? 0.55 : 0.35);
+      p.blast(x, y, violent ? 1.35 : 1);
     }
+  },
+
+  // Graphic mode: a wreck's fuel tank explodes a moment after the crash.
+  onSecondary(v) {
+    const dist = Math.hypot(Player.x - v.x, Player.y - v.y) / TILE;
+    const near = clamp(1 - dist / 14, 0, 1);
+    FX.secondaryBlast(v.x, v.y, [v.base, '#2a2a2e']);
+    Cam.addTrauma(0.25 + 0.35 * near);
+    Cam.punch += 0.03;
+    FX.flashScreen(0.2 + 0.25 * near);
+    Sound.explosion(0.35 + 0.4 * near, Vehicles.pan(v.x));
+    if (this.state === 'playing' && dist < 2) Player.blast(v.x, v.y, 0.8);
+  },
+
+  onWreckLand(v) {
+    const near = clamp(1 - Math.hypot(Player.x - v.x, Player.y - v.y) / TILE / 12, 0, 1);
+    Cam.addTrauma(0.12 + 0.2 * near);
+    Sound.clang(0.5 + 0.5 * near, Vehicles.pan(v.x));
   },
 
   slowmo(scale, dur) {
@@ -194,20 +219,29 @@ const Game = {
       Cam.punch += 0.04;
       return;
     }
-    this.kill(`Hit by ${VEHICLE_TYPES[v.type].name}`, row.lane.dir);
+    this.kill(`Hit by ${VEHICLE_TYPES[v.type].name}`, row.lane.dir, v);
   },
 
-  kill(cause, pushDir) {
+  kill(cause, pushDir, vehicle = null) {
     if (!Player.alive) return;
-    Player.die(pushDir);
+    const gore = Settings.gore && vehicle;
+    Player.die(pushDir, gore);
     this.state = 'dying';
     this.deathT = 0;
-    this.cause = cause;
+    this.cause = gore ? `Flattened by ${VEHICLE_TYPES[vehicle.type].name}` : cause;
     Sound.hit();
-    Cam.addTrauma(0.7);
-    Cam.punch += 0.08;
-    FX.flashScreen(0.35, '255,90,90');
-    FX.feathers(Player.x, Player.y);
+    Cam.addTrauma(gore ? 0.85 : 0.7);
+    Cam.punch += gore ? 0.1 : 0.08;
+    if (gore) {
+      vehicle.bloody = true;
+      vehicle.bloodT = 2.6;
+      FX.roadkill(Player.x, Player.y, pushDir);
+      FX.flashScreen(0.5, '200,20,30');
+      Sound.splat();
+    } else {
+      FX.flashScreen(0.35, '255,90,90');
+      FX.feathers(Player.x, Player.y);
+    }
     this.slowmo(0.25, 0.9);
     this.updateScore();
     this.newBest = this.score > this.best;
@@ -223,7 +257,10 @@ const Game = {
     this.state = 'gameover';
     this.overT = 0;
     Sound.gameOver();
-    UI.showGameOver({ cause: this.cause, score: this.score, best: this.best, newBest: this.newBest, coins: this.coins, bank: this.bank });
+    UI.showGameOver({
+      cause: this.cause, score: this.score, best: this.best, newBest: this.newBest,
+      coins: this.coins, bank: this.bank, rows: Player.maxRow, run: this.runs,
+    });
   },
 
   // The creeping danger line: dawdle too long and it catches you.

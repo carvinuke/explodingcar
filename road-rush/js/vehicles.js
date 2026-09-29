@@ -43,6 +43,8 @@ const Vehicles = {
       wreck: false, bounced: false, reckless: false, dead: false,
       rot: 0, rotV: 0, slide: 0, wreckT: 0, alpha: 1,
       side: 0, horned: false, bumped: false, fireAcc: 0, smokeAcc: 0,
+      z: 0, vz: 0, flipV: 0, settle: null, gore: false, secondary: 0,
+      bloody: false, bloodT: 0, trackAcc: 0,
     };
   },
 
@@ -101,6 +103,12 @@ const Vehicles = {
       v.speed = approach(v.speed, target, (target > v.speed ? 180 : 750) * dt);
       v.x += dir * v.speed * fz * dt;
 
+      if (v.bloodT > 0) { // bloody tyre tracks behind the car that hit the chick
+        v.bloodT -= dt;
+        v.trackAcc += v.speed * fz * dt;
+        for (; v.trackAcc > 9; v.trackAcc -= 9) FX.track(v.x - dir * v.len * 0.32, v.y, Math.min(1, v.bloodT / 2.5));
+      }
+
       if (lead && !v.reckless) { // careful drivers never overlap the car ahead
         const maxU = lead.x * dir - lead.len / 2 - 4 - v.len / 2;
         if (v.x * dir > maxU) {
@@ -139,18 +147,50 @@ const Vehicles = {
     v.slide *= Math.exp(-2.6 * dt);
     v.rot += v.rotV * fz * dt;
     v.rotV *= Math.exp(-3.5 * dt);
+
+    // airborne wreck (graphic mode): flips, lands, bounces, settles
+    if (v.z > 0 || v.vz > 0) {
+      v.vz -= 1100 * dt;
+      v.z += v.vz * dt;
+      v.rot += v.flipV * dt;
+      if (v.z <= 0) {
+        v.z = 0;
+        if (v.vz < -180) {
+          v.vz = -v.vz * 0.3;
+          v.flipV *= 0.4;
+          FX.sparks(v.x, v.y, 4, 16, ['#fff3b0', '#ffd166', '#ffffff'], 280);
+          FX.dust(v.x, v.y, 10);
+          Game.onWreckLand(v);
+        } else {
+          v.vz = 0;
+          v.flipV = 0;
+          v.rotV = 0;
+          v.settle = Math.round(v.rot / Math.PI) * Math.PI + rand(-0.25, 0.25);
+        }
+      }
+    } else if (v.settle !== null) {
+      v.rot = damp(v.rot, v.settle, 6, dt);
+    }
+
+    if (v.secondary && v.wreckT >= v.secondary) { // fuel tank goes up
+      v.secondary = 0;
+      v.vz = Math.max(v.vz, 170);
+      v.rotV += rand(-3, 3);
+      Game.onSecondary(v);
+    }
+
     if (!v.bounced) {
-      const top = 4 + VEHICLE_TYPES[v.type].h * TILE;
-      if (v.wreckT < 3.2) {
-        v.fireAcc += dt * 26;
+      const top = 4 + VEHICLE_TYPES[v.type].h * TILE + v.z;
+      if (v.wreckT < (v.gore ? 7 : 3.2)) {
+        v.fireAcc += dt * (v.gore ? 40 : 26);
         for (; v.fireAcc > 1; v.fireAcc--) FX.wreckFire(v.x + rand(-0.3, 0.3) * v.len, v.y, top);
       }
-      if (v.wreckT < 6) {
-        v.smokeAcc += dt * 9;
-        for (; v.smokeAcc > 1; v.smokeAcc--) FX.wreckSmoke(v.x + rand(-0.25, 0.25) * v.len, v.y, top + 6);
+      if (v.wreckT < (v.gore ? 10 : 6)) {
+        v.smokeAcc += dt * (v.gore ? 12 : 9);
+        for (; v.smokeAcc > 1; v.smokeAcc--) FX.wreckSmoke(v.x + rand(-0.25, 0.25) * v.len, v.y, top + 6, v.gore);
       }
     }
-    const life = v.bounced ? 3.5 : 7;
+    const life = v.bounced ? 3.5 : v.gore ? 11 : 7;
     if (v.wreckT > life - 1) v.alpha = clamp(life - v.wreckT, 0, 1);
     if (v.wreckT > life) v.dead = true;
   },
@@ -205,8 +245,23 @@ const Vehicles = {
     a.speed = b.speed = 0;
     a.x -= dir * 4;
     b.x += dir * 4;
-    FX.carCrash(cx, row.y, [a.base, b.base]);
-    Game.onCrash(cx, row.y);
+
+    const violent = Settings.gore;
+    if (violent) {
+      a.gore = b.gore = true;
+      b.slide *= 1.4;
+      a.vz = rand(320, 400);           // the rear car gets launched and flips
+      a.flipV = s * rand(8, 11);
+      b.vz = rand(140, 220);
+      b.flipV = -s * rand(2, 4);
+      a.settle = b.settle = null;
+      a.secondary = rand(0.3, 0.45);   // then both fuel tanks go up
+      b.secondary = rand(0.6, 0.9);
+      FX.carCrashViolent(cx, row.y, [a.base, b.base]);
+    } else {
+      FX.carCrash(cx, row.y, [a.base, b.base]);
+    }
+    Game.onCrash(cx, row.y, violent);
   },
 
   // Shield hit: the car is knocked back and spins out.

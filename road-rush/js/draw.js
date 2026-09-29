@@ -133,6 +133,18 @@ const Draw = (() => {
       c.fillRect(cx - 2, P(-hy - 0.5, 6.5), 4, 3 * GZ);
     }
 
+    // graphic mode: the car that ran the chick over keeps the evidence
+    if (v.bloody) {
+      c.fillStyle = '#8f0a17';
+      c.fillRect(fx - 10, P(-hy, z0 + 11), 10, 8 * GZ);
+      c.fillRect(fx - 16, P(-hy, z0 + 7), 5, 3 * GZ);
+      c.fillRect(fx - 7, P(-hy, z0 + 3), 2, 5 * GZ);
+      c.fillRect(fx - 3, P(-hy, z0 + 4), 2, 7 * GZ);
+      c.fillRect(fx - 7, P(hy - 5, zt), 7, 6 * GY);
+      c.fillRect(fx - 14, P(-hy + 9, zt), 4, 3 * GY);
+      c.fillRect(fx - 20, P(2, zt), 3, 2 * GY);
+    }
+
     // lights
     c.fillStyle = pal.lit ? '#fff5c2' : '#3a3a3a';
     c.fillRect(fx - 4, P(-hy, zt - 2), 4, 5 * GZ);
@@ -237,9 +249,38 @@ const Draw = (() => {
   }
 
   // ---- Player (a chunky little chick) ---------------------------------------
+  // Graphic mode: what's left after a car goes over it.
+  function pancake(c) {
+    box(c, -15, 15, -12, 12, 0, 2.5, '#ffe066', '#d9a400');
+    c.fillStyle = '#9e0b1a';
+    c.fillRect(-9, P(6, 2.5), 11, 7 * GY);
+    c.fillRect(4, P(-2, 2.5), 7, 5 * GY);
+    c.fillRect(-14, P(-4, 2.5), 5, 4 * GY);
+    c.fillStyle = '#ff6b6b';
+    c.fillRect(-3, P(11, 2.5), 7, 3 * GY);
+    c.fillStyle = '#ff8c1a';
+    c.fillRect(11, P(2, 2.5), 6, 4 * GY);
+    c.strokeStyle = '#1d1d1f';
+    c.lineWidth = 1.4;
+    for (const ex of [2, 8]) {
+      const ey = P(6, 2.5);
+      c.beginPath();
+      c.moveTo(ex - 2, ey - 2); c.lineTo(ex + 2, ey + 2);
+      c.moveTo(ex + 2, ey - 2); c.lineTo(ex - 2, ey + 2);
+      c.stroke();
+    }
+  }
+
+  const CHICK = { top: '#fff1a8', front: '#ffd23f', wingTop: '#ffe066', wingFront: '#f2b705', combTop: '#ff6b6b', combFront: '#e04848' };
+
   function player(c, p, time) {
+    if (p.flat) { pancake(c); return; }
     const W = 11, D = 10, H = 22, lift = 3;
     const sq = p.squash;
+    // soot after a violent blast
+    const soot = p.char > 0 ? Math.min(1, p.char / 1.5) * 0.8 : 0;
+    const col = soot ? {} : CHICK;
+    if (soot) for (const k in CHICK) col[k] = mix(CHICK[k], '#2a2522', soot);
     const hw = W * (1 + sq * 0.18), h = H * (1 - sq * 0.22);
     c.save();
     c.translate(0, P(0, p.z));
@@ -254,16 +295,16 @@ const Draw = (() => {
     c.fillRect(-7, P(-D + 2, lift), 4, lift * GZ + 1);
     c.fillRect(3, P(-D + 2, lift), 4, lift * GZ + 1);
     // body
-    box(c, -hw, hw, -D, D, lift, lift + h, '#fff1a8', '#ffd23f');
+    box(c, -hw, hw, -D, D, lift, lift + h, col.top, col.front);
     c.fillStyle = 'rgba(214,150,0,0.22)';
     c.fillRect(-hw, P(-D, lift + 5), hw * 2, 5 * GZ);
     // wings
     const wz = lift + h * 0.35 + (p.flap || 0) * 6;
-    box(c, -hw - 3, -hw, -5, 5, wz, wz + 8, '#ffe066', '#f2b705');
-    box(c, hw, hw + 3, -5, 5, wz, wz + 8, '#ffe066', '#f2b705');
+    box(c, -hw - 3, -hw, -5, 5, wz, wz + 8, col.wingTop, col.wingFront);
+    box(c, hw, hw + 3, -5, 5, wz, wz + 8, col.wingTop, col.wingFront);
     // comb
     const top = lift + h;
-    box(c, -3, 3, -2, 4, top, top + 5, '#ff6b6b', '#e04848');
+    box(c, -3, 3, -2, 4, top, top + 5, col.combTop, col.combFront);
     // face
     const ez = top - 6;
     const eye = ex => {

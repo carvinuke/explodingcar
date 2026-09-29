@@ -77,6 +77,7 @@ const Renderer = {
       if (row) this.ground(c, row);
     }
     FX.drawDecals(c);
+    FX.drawPools(c);
 
     // gather drawables, far to near
     const list = this.list;
@@ -168,12 +169,17 @@ const Renderer = {
 
   shadowOf(c, o) {
     switch (o.kind) {
-      case 'vehicle': Draw.shadow(c, o.x + 3, o.y, o.len * 1.15, 0.95 * TILE, 0.9 * o.alpha); break;
+      case 'vehicle': {
+        const s = 1 - Math.min(0.5, o.z / 160);
+        Draw.shadow(c, o.x + 3, o.y, o.len * 1.15 * s, 0.95 * TILE * s, 0.9 * o.alpha * s);
+        break;
+      }
       case 'tree': Draw.shadow(c, o.x, o.y, o.size * 2.8, o.size * 2.5, 0.85); break;
       case 'bush': case 'rock': Draw.shadow(c, o.x, o.y, 0.8 * TILE, 0.7 * TILE, 0.7); break;
       case 'lamp': case 'sign': Draw.shadow(c, o.x, o.y, 0.35 * TILE, 0.3 * TILE, 0.6); break;
       case 'item': Draw.shadow(c, o.x, o.y, 0.5 * TILE, 0.4 * TILE, 0.45); break;
       case 'player': {
+        if (Player.flat) break;
         const s = 1 - Math.min(0.6, Player.z / 70);
         Draw.shadow(c, o.x, o.y, 0.75 * TILE * s, 0.62 * TILE * s, 0.9);
         break;
@@ -187,6 +193,7 @@ const Renderer = {
     switch (o.kind) {
       case 'vehicle':
         if (o.alpha < 1) c.globalAlpha = o.alpha;
+        if (o.z) c.translate(0, P(0, o.z));
         if (o.rot) c.rotate(o.rot);
         c.save();
         if (o.dir < 0) c.scale(-1, 1);
@@ -381,6 +388,7 @@ const Renderer = {
         c.restore();
       }
     }
+    FX.drawLens(c, W, H);
     FX.drawFlash(c, W, H);
   },
 

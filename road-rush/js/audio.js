@@ -129,7 +129,7 @@ const Sound = (() => {
       }
     },
 
-    explosion(vol, pan) {
+    explosion(vol, pan, big = false) {
       if (!ok()) return;
       noise('lowpass', 5000, 110, 1.7, 0.95 * vol, { q: 0.6, pan, attack: 0.003 });  // roar
       tone('sine', 130, 30, 1.0, 0.9 * vol, 0, pan);                                 // boom
@@ -140,6 +140,26 @@ const Sound = (() => {
       for (let i = 0; i < 6; i++) {                                                     // crackle
         noise('bandpass', rand(1500, 4200), 0, 0.05, 0.18 * vol, { q: 5, delay: 0.25 + Math.random() * 0.9, pan });
       }
+      if (big) {
+        tone('sine', 62, 18, 2.2, 0.9 * vol);                                           // deep second boom
+        noise('lowpass', 420, 50, 3.2, 0.7 * vol, { q: 0.5, attack: 0.05 });            // long rumble
+        for (let i = 0; i < 14; i++) {                                                  // falling debris
+          noise('bandpass', rand(700, 3000), 0, 0.07, 0.22 * vol, { q: 6, delay: 0.5 + Math.random() * 2, pan: pan + rand(-0.4, 0.4) });
+        }
+      }
+    },
+
+    splat() {
+      if (!ok()) return;
+      noise('bandpass', 900, 180, 0.28, 0.6, { q: 1.2 });
+      tone('sine', 150, 40, 0.22, 0.35);
+      for (const d of [0.04, 0.11, 0.2]) noise('bandpass', rand(300, 600), 0, 0.08, 0.25, { q: 6, delay: d });
+    },
+
+    clang(vol, pan) {
+      if (!ok()) return;
+      tone('square', 140, 60, 0.22, 0.12 * vol, 0, pan);
+      noise('lowpass', 1600, 200, 0.2, 0.35 * vol, { pan });
     },
 
     shieldBreak() {

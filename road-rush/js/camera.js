@@ -39,7 +39,7 @@ const Cam = {
 
     this.trauma = Math.max(0, this.trauma - realDt * 1.2);
     this.t += realDt;
-    const s = this.trauma * this.trauma;
+    const s = Settings.shake ? this.trauma * this.trauma : 0;
     this.sx = 18 * s * wobble(this.t * 31);
     this.sy = 18 * s * wobble(this.t * 27 + 40);
     this.rot = 0.04 * s * wobble(this.t * 23 + 90);

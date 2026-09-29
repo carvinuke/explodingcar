@@ -22,6 +22,7 @@ is an optional Google Font, and the game falls back to the system font without i
 | Pause | `P` / `Esc` | Pause button |
 | Mute | `M` | Speaker button |
 | Start / play again | `Space` / `Enter` | Button |
+| Close a dialog | `Esc` | Tap outside it |
 
 ## How it plays
 
@@ -57,15 +58,42 @@ is an optional Google Font, and the game falls back to the system font without i
 - **Time of day.** The light shifts from day to dusk to night as you travel,
   with glowing street lamps and headlights at night.
 
+## Settings
+
+Open **Settings** from the title screen, the pause screen or the game-over
+report. Your choices are saved in the browser.
+
+- **Sound:** turns all sound effects on or off. `M` does the same.
+- **Screen shake:** turns off camera shake for crashes and hits.
+- **Graphic mode:** off by default. Turning it on shows a warning you have to
+  confirm first. Turning it off takes effect immediately. When it's on:
+  - Getting run over flattens the chick with cartoon blood. Blood sprays and
+    splats across the road, chunks fly, blood hits the screen, and the car
+    that hit you is bloody and leaves red tyre tracks.
+  - Car crashes get far more violent: a bigger blast with a wider knockback
+    radius, the rear car launched into the air and flipped, both fuel tanks
+    exploding a moment later, wheels, panels and glass flying (some on fire),
+    a burning fuel spill, a black smoke column and longer fires. If you're
+    caught in the blast the chick gets scorched black for a few seconds.
+
+## Look
+
+The interface borrows from real road signage. The title is a green highway
+guide sign with an exit tab, the score is a guide-sign plate, best is a
+speed-limit plate, power-ups are listed on a blue "services" sign, pause is a
+road-closed barricade and game over is a traffic incident report. The UI font
+is Overpass, which is based on the Highway Gothic lettering used on US road
+signs.
+
 ## Code layout
 
 Plain scripts that share a few global objects, loaded in order by `index.html`:
 
 | File | System |
 | --- | --- |
-| `js/util.js` | Constants, math/color helpers, projection `P(y, z)`, safe storage |
+| `js/util.js` | Constants, math/color helpers, projection `P(y, z)`, safe storage, `Settings` |
 | `js/audio.js` | `Sound`: every sound effect synthesized with WebAudio, plus mute |
-| `js/effects.js` | `FX`: pooled particles, explosions, scorch marks, floating text, flashes |
+| `js/effects.js` | `FX`: pooled particles, explosions, scorch and blood decals, fuel fires, lens splatter, floating text, flashes |
 | `js/draw.js` | `Draw`: 2.5D box primitives and sprites for vehicles, scenery, player, items, icons |
 | `js/world.js` | `World`: endless row generation, biomes, obstacles, guaranteed path |
 | `js/vehicles.js` | `Vehicles`: types, spawning, lane following, crashes, crash director |
@@ -73,12 +101,14 @@ Plain scripts that share a few global objects, loaded in order by `index.html`:
 | `js/powerups.js` | `Items` + `Powers`: coins, pickups and active power-up timers |
 | `js/camera.js` | `Cam`: smooth follow, trauma shake, zoom punch |
 | `js/renderer.js` | `Renderer`: frame composition, depth sorting, lighting, overlays |
-| `js/ui.js` | `UI`: HUD, power-up tray, title / pause / game-over screens |
+| `js/ui.js` | `UI`: HUD, power-up tray, title / pause / game-over screens, settings and graphic-mode warning |
 | `js/game.js` | `Game`: state machine, main loop, input, scoring, collisions |
 
 Handy tuning knobs:
 - difficulty curve: `difficulty()` in `util.js`
 - lane speeds and gaps: `nextSegment()` and `makeRoad()` in `world.js`
 - crash frequency: the end of `Vehicles.director()`
-- blast radii: `Player.blast()`
+- blast radii: `Player.blast()` (graphic mode passes a wider `scale`)
+- graphic-mode effects: `FX.roadkill()`, `FX.carCrashViolent()` and the
+  `violent` branch of `Vehicles.crash()`
 - power-up durations and spawn weights: `POWERUPS`

@@ -73,3 +73,18 @@ const Store = {
     try { localStorage.setItem('roadrush.' + key, JSON.stringify(value)); } catch (e) { /* ignore */ }
   },
 };
+
+// Player settings. Graphic mode is opt-in and always starts off.
+const Settings = {
+  gore: false,
+  shake: true,
+  load() {
+    const s = Store.get('settings', {}) || {};
+    this.gore = s.gore === true;
+    this.shake = s.shake !== false;
+  },
+  save() { Store.set('settings', { gore: this.gore, shake: this.shake }); },
+};
+Settings.load();
+
+const UI_FONT = "Overpass, 'Arial Narrow', Arial, system-ui, sans-serif";

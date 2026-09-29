@@ -25,6 +25,8 @@ const Player = {
     this.maxRow = 0;
     this.trail = [];
     this.trailT = 0;
+    this.char = 0;    // soot from a violent blast (graphic mode)
+    this.flat = false; // run over in graphic mode
   },
 
   input(dx, dy) {
@@ -52,7 +54,12 @@ const Player = {
 
   update(dt, time) {
     if (this.rag) { this.updateRagdoll(dt); return; }
+    if (this.flat) return;
     if (this.grace > 0) this.grace -= dt;
+    if (this.char > 0) {
+      this.char -= dt;
+      if (Math.random() < dt * 7) FX.puff(this.x, this.y, this.z + 26);
+    }
 
     if (this.knock) {
       const k = this.knock;
@@ -111,12 +118,17 @@ const Player = {
   },
 
   // Explosion nearby: distance decides knockback and stun.
-  blast(ex, ey) {
+  // `scale` widens the danger zone for bigger blasts.
+  blast(ex, ey, scale = 1) {
     if (!this.alive) return;
     const dx = (this.x - ex) / TILE, dy = (this.y - ey) / TILE;
-    const dist = Math.hypot(dx, dy);
+    const dist = Math.hypot(dx, dy) / scale;
     if (dist > 4.6) return;
     if (Powers.invincible > 0) { FX.text(this.x, this.y, 'IMMUNE', '#e2b8ff', 15); return; }
+    if (Settings.gore && dist < 3.1) {
+      this.char = 3.5;
+      FX.scorch(this.x, this.y);
+    }
     let cells, stun;
     if (dist < 1.6) { cells = 2; stun = 1.7; }
     else if (dist < 3.1) { cells = 1; stun = 1.0; }
@@ -157,11 +169,21 @@ const Player = {
     Sound.stun();
   },
 
-  die(pushDir) {
+  // `flatten` (graphic mode): squashed where it stood instead of tumbling away.
+  die(pushDir, flatten = false) {
     this.alive = false;
     this.hop = this.knock = this.queue = null;
     this.stun = 0;
     this.flap = 0;
+    this.char = 0;
+    if (flatten) {
+      this.flat = true;
+      this.z = 0;
+      this.rot = 0;
+      this.x += pushDir * 6;
+      this.trail.length = 0;
+      return;
+    }
     this.rag = { vx: pushDir * rand(240, 320), vy: rand(-30, 30), vz: 330, rotV: pushDir * 13, bounces: 0 };
   },
 

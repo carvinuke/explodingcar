@@ -3,11 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<meta name="theme-color" content="#1b2433">
+<meta name="theme-color" content="#1e2126">
 <title>Road Rush</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Overpass:wght@600;700;800;900&family=Overpass+Mono:wght@400;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -15,17 +15,15 @@
   <canvas id="view"></canvas>
 
   <div id="hud" class="hidden">
-    <div class="hud-block hud-l">
-      <div class="lbl">SCORE</div>
-      <div id="score" class="num">0</div>
-      <div class="coins"><span class="coin-ico"></span><span id="coins">0</span></div>
+    <div class="hud-l">
+      <div class="plate guide"><span class="plate-lbl">SCORE</span><b id="score">0</b></div>
+      <div class="plate coinplate"><span class="coin-ico"></span><b id="coins">0</b></div>
     </div>
-    <div class="hud-block hud-r">
-      <div class="lbl">BEST</div>
-      <div id="best" class="num">0</div>
+    <div class="hud-r">
+      <div class="plate limit"><span class="plate-lbl">BEST</span><b id="best">0</b></div>
       <div class="hud-btns">
         <button id="btn-pause" class="icon-btn" aria-label="Pause">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1.5" fill="currentColor"/><rect x="14" y="5" width="4" height="14" rx="1.5" fill="currentColor"/></svg>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="4" height="14" fill="currentColor"/><rect x="14" y="5" width="4" height="14" fill="currentColor"/></svg>
         </button>
         <button id="btn-mute" class="icon-btn" aria-label="Mute"></button>
       </div>
@@ -34,38 +32,112 @@
   </div>
 
   <div id="screen-title" class="screen">
-    <div class="title-panel">
-      <h1 class="logo"><span>ROAD</span><span>RUSH</span></h1>
-      <p class="tag">Cross. Dodge. Survive.</p>
-      <button id="btn-play" class="btn-primary">PLAY</button>
-      <p class="controls kb"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> <span>/</span> <kbd>&uarr;</kbd><kbd>&larr;</kbd><kbd>&darr;</kbd><kbd>&rarr;</kbd> to move</p>
-      <p class="controls touch">Tap to hop &middot; swipe to move</p>
-      <ul id="legend" class="legend"></ul>
-      <p class="meta">Best <b id="title-best">0</b> &middot; Coins <b id="title-coins">0</b></p>
-      <p class="hint">Watch for reckless drivers <span class="warn">!</span> &mdash; crashes explode and knock you back.</p>
+    <div class="title-stack">
+      <div class="guide-sign">
+        <div class="exit-tab"><span>EXIT 1</span></div>
+        <div class="guide-inner">
+          <div class="guide-text">
+            <h1 class="logo">Road Rush</h1>
+            <p class="tag">Cross. Dodge. Survive.</p>
+          </div>
+          <svg class="sign-arrow" viewBox="0 0 48 64" aria-hidden="true"><path d="M24 3 45 27H31v34H17V27H3z" fill="currentColor"/></svg>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button id="btn-play" class="btn-yellow btn-big">PLAY</button>
+        <button id="btn-settings" class="btn-plate">Settings</button>
+      </div>
+
+      <div class="service-sign">
+        <div class="service-inner">
+          <p class="service-title">POWER-UPS</p>
+          <ul id="legend" class="legend"></ul>
+        </div>
+      </div>
+
+      <div class="ahead">
+        <div class="diamond" aria-hidden="true"><span>!</span></div>
+        <p>Reckless drivers ahead. When two cars crash they explode and can knock you back.</p>
+      </div>
+
+      <div class="title-foot">
+        <p class="controls kb"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or <kbd>&uarr;</kbd><kbd>&larr;</kbd><kbd>&darr;</kbd><kbd>&rarr;</kbd> to move</p>
+        <p class="controls touch">Tap to hop, swipe to move</p>
+        <p class="meta">Best <b id="title-best">0</b> &middot; Coins <b id="title-coins">0</b></p>
+        <span id="gore-badge" class="gore-badge hidden">GRAPHIC MODE ON</span>
+      </div>
     </div>
   </div>
 
   <div id="screen-pause" class="screen hidden">
-    <div class="card">
-      <h2>Paused</h2>
-      <button id="btn-resume" class="btn-primary">RESUME</button>
-      <p class="hint">P / Esc to resume &middot; M to mute</p>
+    <div class="barricade-card">
+      <div class="barricade" aria-hidden="true"></div>
+      <div class="barricade-body">
+        <h2>PAUSED</h2>
+        <div class="actions">
+          <button id="btn-resume" class="btn-yellow">RESUME</button>
+          <button id="btn-pause-settings" class="btn-plate">Settings</button>
+        </div>
+        <p class="hint">P or Esc to resume &middot; M to mute</p>
+      </div>
     </div>
   </div>
 
   <div id="screen-over" class="screen hidden">
-    <div class="card over">
+    <div class="report">
+      <div class="report-head"><span>TRAFFIC INCIDENT REPORT</span><span id="report-no">No. 00001</span></div>
       <h2>Game Over</h2>
-      <p id="over-cause" class="cause"></p>
-      <div class="stats">
-        <div><span>Score</span><b id="over-score">0</b></div>
-        <div><span>Best</span><b id="over-best">0</b></div>
+      <dl class="fields">
+        <div><dt>Cause</dt><dd id="over-cause"></dd></div>
+        <div><dt>Distance</dt><dd id="over-rows"></dd></div>
+        <div><dt>Score</dt><dd id="over-score">0</dd></div>
+        <div><dt>Best</dt><dd id="over-best">0</dd></div>
+        <div><dt>Coins</dt><dd id="over-coins"></dd></div>
+      </dl>
+      <div id="over-new" class="stamp hidden">NEW RECORD</div>
+      <div class="actions">
+        <button id="btn-again" class="btn-yellow">PLAY AGAIN</button>
+        <button id="btn-over-settings" class="btn-plate">Settings</button>
       </div>
-      <div id="over-new" class="badge hidden">NEW BEST!</div>
-      <p id="over-coins" class="over-coins"></p>
-      <button id="btn-again" class="btn-primary">PLAY AGAIN</button>
       <p class="hint">or press Space</p>
+    </div>
+  </div>
+
+  <div id="screen-settings" class="screen modal hidden" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+    <div class="reg-sign">
+      <div class="reg-inner">
+        <h2 id="settings-title">SETTINGS</h2>
+        <div class="set-row">
+          <div><b id="lbl-sound">Sound</b><span>Sound effects</span></div>
+          <button id="set-sound" class="toggle" role="switch" aria-checked="true" aria-labelledby="lbl-sound"><i></i></button>
+        </div>
+        <div class="set-row">
+          <div><b id="lbl-shake">Screen shake</b><span>Camera shake on crashes and hits</span></div>
+          <button id="set-shake" class="toggle" role="switch" aria-checked="true" aria-labelledby="lbl-shake"><i></i></button>
+        </div>
+        <div class="set-row gore">
+          <div><b id="lbl-gore">Graphic mode</b><span>Cartoon blood when the chick gets run over, and much more violent car crashes</span></div>
+          <button id="set-gore" class="toggle" role="switch" aria-checked="false" aria-labelledby="lbl-gore"><i></i></button>
+        </div>
+        <button id="btn-settings-done" class="btn-yellow">DONE</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="screen-warning" class="screen modal hidden" role="alertdialog" aria-modal="true" aria-labelledby="warn-title" aria-describedby="warn-body">
+    <div class="warn-card">
+      <div class="warn-inner">
+        <div class="warn-head">
+          <div class="diamond big" aria-hidden="true"><span>!</span></div>
+          <h2 id="warn-title">Graphic content</h2>
+        </div>
+        <p id="warn-body">Graphic mode shows cartoon blood and gore when the chick gets run over, and turns car crashes into much bigger, more violent explosions with flying parts and fire. It stays on until you turn it off in Settings.</p>
+        <div class="actions">
+          <button id="btn-warn-cancel" class="btn-plate">Keep it off</button>
+          <button id="btn-warn-ok" class="btn-red">Turn on graphic mode</button>
+        </div>
+      </div>
     </div>
   </div>
 </div>
