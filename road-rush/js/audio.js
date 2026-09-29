@@ -292,25 +292,6 @@ const Sound = (() => {
       for (const [f, d] of [[220, 0], [330, 0.2], [440, 0.4]]) tone('sine', f, f * 1.01, 1.6, 0.06, d);
     },
 
-    bossHorn() {
-      if (!ok()) return;
-      for (const d of [0, 0.5]) for (const f of [110, 138]) tone('sawtooth', f, f * 0.97, 0.45, 0.1, d);
-      noise('lowpass', 300, 60, 1.2, 0.4);
-    },
-
-    rumble(vol) {
-      if (!ok()) return;
-      noise('lowpass', 180, 60, 0.6, 0.35 * vol, { attack: 0.05 });
-      tone('sawtooth', 55, 50, 0.5, 0.05 * vol);
-    },
-
-    switchClick() {
-      if (!ok()) return;
-      tone('square', 600, 0, 0.05, 0.1);
-      tone('square', 900, 0, 0.08, 0.1, 0.06);
-      tone('sine', 1320, 0, 0.3, 0.1, 0.12);
-    },
-
     gameOver() {
       if (!ok()) return;
       [523, 440, 349, 262].forEach((f, i) => tone('triangle', f, 0, 0.24, 0.14, 0.16 * i));

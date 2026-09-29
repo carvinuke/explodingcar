@@ -332,6 +332,9 @@ const Renderer = {
       c.restore();
     }
     if (p.stun > 0 && p.alive) Draw.stars(c, time, p.z + 36);
+    if (Game.state === 'playing' && p.maxRow === 0 && p.row === 0 && !p.hop && Game.time > 0.6) {
+      Draw.hint(c, time, matchMedia('(hover: none)').matches);
+    }
   },
 
   dimOutside(c) {

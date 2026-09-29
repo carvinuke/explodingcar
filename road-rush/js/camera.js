@@ -29,7 +29,7 @@ const Cam = {
 
     // Vertical: trail the player; the creeping danger line pushes from below.
     let ty = Player.y + 0.5 * TILE;
-    if (Game.danger.active && Game.state === 'playing' && !Events.boss) {
+    if (Game.danger.active && Game.state === 'playing') {
       ty = Math.max(ty, Game.danger.y + (R.H * (1 - R.ANCHOR)) / (R.base * this.zoom * GY) - TILE);
     }
     this.y = damp(this.y, ty, 4, dt);

@@ -4,7 +4,7 @@
 
 An endless "cross the road" arcade game for the browser. Hop across roads,
 railroad tracks and rivers, grab coins and power-ups, and keep an eye out for
-reckless drivers, freight trains, rare secret events and a giant bulldozer.
+reckless drivers, freight trains and rare secret events.
 
 **Play it:** https://carvinuke.github.io/explodingcar/road-rush/
 
@@ -29,7 +29,9 @@ is an optional Google Font; without it the game falls back to a system font.
 
 - **Endless world.** Grass, roads, railroads and rivers are generated ahead of
   you and dropped behind you. A random-walk "safe column" guarantees a path
-  through the trees and rocks.
+  through the trees and rocks. Railroads and rivers are occasional: never next
+  to each other, and each needs a long stretch before it can appear again.
+  Grass strips vary from one-row breathers to wide meadows.
 - **Traffic:** small cars, sedans, sports cars, pickups, vans, buses and tanker
   trucks. Normal drivers brake for the car ahead. Traffic gets faster and
   denser, and roads widen from 1–2 lanes to 5.
@@ -63,19 +65,11 @@ Rare events that happen every minute or two:
 - **The moon is too close** and **Gravity glitch:** low gravity with floaty hops.
 - **Miniature world:** everything shrinks into a tiny tilt-shift view.
 
-## Boss: the Giant Bulldozer
-
-Around row 70, and every 140 rows after that, a giant bulldozer starts chasing
-you and plows through traffic. Stay ahead of it and step on the three TNT
-switches to arm a demolition zone, then cross it so the bulldozer drives over
-the charges. You can also lure it onto the tracks in front of a train, or into
-a river. Beating it is worth 500 points and 50 coins.
-
 ## Progression
 
 - **Skin shop:** spend coins on the Hard Hat Chick, Duck, Frog and Raccoon.
 - **Missions:** three goals at a time, like crossing lanes, riding logs,
-  surviving crashes or beating the boss, each paying coins.
+  surviving crashes or reaching a row, each paying coins.
 - **Daily challenge:** the same layout for everyone each day (by UTC date),
   with its own best score.
 - **Ghost:** a faint "BEST" ghost replays your best run alongside you.
@@ -94,8 +88,7 @@ report. Your choices are saved in the browser.
     spreading pool of blood, with body parts flying and blood on the screen.
     Every car that drives through the pool leaves red tyre tracks. Trains
     obliterate you and leave a trail down the track. Piranhas turn the river
-    red. The giant chicken and the bulldozer squash you flat, and the goose
-    tears you apart.
+    red. The giant chicken squashes you flat and the goose tears you apart.
   - Crashes get far more violent: bigger blasts with a wider knockback, flipping
     wrecks, fuel tanks exploding afterwards, nearby cars wrecked by the blast,
     burning debris raining down, and scorched, bleeding chicks.
@@ -125,7 +118,7 @@ Plain scripts that share a few global objects, loaded in order by `index.html`:
 | `js/player.js` | `Player`: hops, log riding, knockback, stun, abduction, deaths |
 | `js/powerups.js` | `Items` + `Powers`: coins, pickups and power-up timers |
 | `js/progress.js` | `SKINS` + `Shop`, `Missions`, `Ghost` |
-| `js/events.js` | `Events`: secret events, and `Boss`: the Giant Bulldozer |
+| `js/events.js` | `Events`: secret events |
 | `js/camera.js` | `Cam`: follow, shake, zoom |
 | `js/renderer.js` | `Renderer`: frame composition, depth sorting, lighting, overlays |
 | `js/ui.js` | `UI`: HUD, toasts, screens, shop, missions, settings |
@@ -133,8 +126,7 @@ Plain scripts that share a few global objects, loaded in order by `index.html`:
 
 Handy tuning knobs:
 - difficulty curve: `difficulty()` in `util.js`
-- what gets generated: `nextSegment()` in `world.js`
+- what gets generated and how far apart: `nextSegment()` in `world.js`
 - crash frequency: the end of `Vehicles.director()`
 - secret event timing and weights: `EVENT_DEFS` and `Events.end()` in `events.js`
-- boss timing: `Events.nextBossRow` in `events.js`
 - skin prices: `SKINS` in `progress.js`

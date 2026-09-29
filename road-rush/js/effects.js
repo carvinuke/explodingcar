@@ -830,7 +830,7 @@ const FX = (() => {
     lensSplat(randInt(12, 16));
   }
 
-  // Crushed by something enormous (giant chicken, bulldozer).
+  // Crushed by something enormous (the giant chicken).
   function crushed(x, y, skin) {
     spray(x, y, 2, 1, 120);
     spray(x, y, 2, -1, 120);

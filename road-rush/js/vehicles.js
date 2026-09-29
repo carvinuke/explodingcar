@@ -350,7 +350,7 @@ const Vehicles = {
     return n;
   },
 
-  // Something big (meteor, giant, bulldozer, laser) destroys a car outright.
+  // Something big (meteor, giant, goose, laser) destroys a car outright.
   smash(v, fromX, power = 1) {
     this.toss(v, fromX, power);
     if (Settings.gore) FX.carCrashViolent(v.x, v.y, [v.base, '#2a2a2e']);

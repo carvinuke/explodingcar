@@ -10,7 +10,6 @@ const CAUSES = {
   meteor: g => (g ? 'Vaporized by a meteor' : 'Hit by a meteor'),
   giant: g => (g ? 'Squashed flat by a giant chicken' : 'Stepped on by a giant chicken'),
   goose: g => (g ? 'Torn apart by the giant goose' : 'Caught by the giant goose'),
-  bulldozer: g => (g ? 'Ground into the road by the bulldozer' : 'Run over by the bulldozer'),
 };
 
 const Game = {
@@ -166,6 +165,7 @@ const Game = {
     this.lastMoveT = this.time;
     if (Player.row > Player.maxRow) {
       Player.maxRow = Player.row;
+      Missions.max('distance', Player.maxRow);
       const row = World.rows.get(Player.row);
       if (row && row.type === 'road') {
         Missions.add('lanes');
@@ -213,7 +213,7 @@ const Game = {
     const p = Player;
     const dist = Math.hypot(p.x - x, p.y - y) / TILE;
     const near = clamp(1 - dist / (violent ? 16 : 12), 0, 1);
-    const repeat = this.time - this.lastBoom < 0.25; // many at once (bulldozer, meteor): keep it bearable
+    const repeat = this.time - this.lastBoom < 0.25; // many at once (meteor, giant): keep it bearable
     this.lastBoom = this.time;
     Cam.addTrauma((violent ? 0.55 + 0.45 * near : 0.3 + 0.65 * near) * (repeat ? 0.4 : 1));
     Cam.punch += (violent ? 0.06 + 0.07 * near : 0.03 + 0.05 * near) * (repeat ? 0.3 : 1);
@@ -338,7 +338,7 @@ const Game = {
       if (gore) {
         Sound.splat();
         if (source === 'train') { FX.trainRoadkill(p.x, p.y, dir, skin); if (opts.rail) opts.rail.bloody = true; }
-        else if (source === 'giant' || source === 'bulldozer') FX.crushed(p.x, p.y, skin);
+        else if (source === 'giant') FX.crushed(p.x, p.y, skin);
         else if (source === 'meteor') { FX.trainRoadkill(p.x, p.y, chance(0.5) ? 1 : -1, skin); FX.scorch(p.x, p.y); }
         else if (source !== 'danger') FX.roadkill(p.x, p.y, dir || (chance(0.5) ? 1 : -1), skin);
         if (v) { v.bloody = true; v.bloodT = 2.6; }
@@ -377,7 +377,7 @@ const Game = {
 
   // The creeping danger line: dawdle too long and it catches you.
   updateDanger(dt) {
-    if (!this.danger.active || Events.boss) return;
+    if (!this.danger.active) return;
     const d = difficulty(Player.maxRow);
     this.danger.y += TILE * (0.3 + 0.45 * d) * dt;
     this.danger.y = Math.max(this.danger.y, (Player.maxRow - 7) * TILE);
@@ -385,7 +385,7 @@ const Game = {
   },
 
   dangerProximity() {
-    if (!this.danger.active || this.state !== 'playing' || Events.boss) return 0;
+    if (!this.danger.active || this.state !== 'playing') return 0;
     return clamp(1 - (Player.y - this.danger.y) / (4 * TILE), 0, 1);
   },
 
@@ -431,7 +431,7 @@ const Game = {
     Cam.update(dt, realDt);
 
     World.ensure(Math.ceil(Renderer.yTop / TILE) + 14);
-    World.cull(Math.floor(Math.min(Renderer.yBot, this.danger.y, Events.boss ? Events.boss.y : Infinity) / TILE) - 4);
+    World.cull(Math.floor(Math.min(Renderer.yBot, this.danger.y) / TILE) - 4);
 
     if (this.state === 'dying') {
       this.deathT += realDt;

@@ -26,7 +26,6 @@ const UI = {
     this.btnMute = $('btn-mute');
     this.canvas = $('view');
     this.combo = $('combo');
-    this.bossBar = $('boss-bar');
     this.toasts = $('toasts');
 
     // power-up legend on the title screen + HUD chips
@@ -270,14 +269,6 @@ const UI = {
   eventToast(name, sub) { this.toast('t-event', name, sub, 3600); },
   weatherToast(type) { const [t, s] = WEATHER_SIGNS[type]; this.toast('t-weather', t, s); },
   missionDone(m) { this.toast('t-mission', `MISSION COMPLETE  +${m.reward}`, Missions.text(m)); },
-  bossToast(stage, how) {
-    if (stage === 'start') this.toast('t-boss', 'BOSS: GIANT BULLDOZER', 'Stay ahead of it and hit the 3 TNT switches', 4200);
-    else if (stage === 'armed') this.toast('t-boss', 'CHARGES ARMED', 'Cross the striped zone and let it follow you in', 3800);
-    else {
-      const msg = how === 'train' ? 'Flattened by a train' : how === 'river' ? 'It sank in the river' : 'Blown sky high';
-      this.toast('t-mission', 'BULLDOZER DESTROYED  +500', `${msg} · +50 coins`, 3800);
-    }
-  },
 
   // ---- Screens ----------------------------------------------------------------
   show(id, on) { this.$(id).classList.toggle('hidden', !on); },
@@ -322,7 +313,6 @@ const UI = {
     this.renderMissions(this.$('over-missions'), true);
     this.show('screen-over', true);
     this.show('powers', false);
-    this.show('boss-bar', false);
     setTimeout(() => this.$('btn-again').focus({ preventScroll: true }), 50);
   },
 
@@ -343,11 +333,6 @@ const UI = {
     const comboOn = Game.combo > 1 && Game.time - Game.comboT < 3 && Game.state === 'playing';
     this.combo.classList.toggle('hidden', !comboOn);
     if (comboOn) this.combo.firstElementChild.textContent = 'x' + Game.combo;
-
-    const b = Events.boss;
-    const bossOn = !!b && b.phase !== 'dead' && Game.state === 'playing';
-    this.show('boss-bar', bossOn);
-    if (bossOn) this.bossBar.lastElementChild.textContent = b.zone ? 'Charges armed: lead it into the striped zone' : `TNT switches ${b.pressed}/3`;
 
     this.show('powers', Game.state === 'playing' || Game.state === 'paused');
     for (const k in this.chips) {

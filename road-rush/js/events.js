@@ -1,5 +1,5 @@
 'use strict';
-// Secret events (rare, short, weird) and the Giant Bulldozer mini-boss.
+// Secret events: rare, short and weird.
 
 const EVENT_DEFS = {
   ufo:     { name: 'UFO SIGHTING', sub: 'Stay out of the beam', weight: 1, dur: 0 },
@@ -433,239 +433,6 @@ function drawGoose(c, e, time) {
   c.fillRect(15, P(-4, 50), 2, 2);
 }
 
-// ---- Giant Bulldozer boss --------------------------------------------------
-const Boss = {
-  start() {
-    const d = difficulty(Player.maxRow);
-    const b = Events.boss = {
-      x: Player.x, y: Player.y - 7 * TILE, speed: TILE * (1.35 + 0.5 * d), t: 0, phase: 'chase',
-      switches: [], pressed: 0, zone: null, bloody: false, smokeT: 0, rumbleT: 0, deadT: 0,
-      z: 0, vz: 0, rot: 0, rotV: 0, sink: 0,
-    };
-    World.ensure(Player.row + 30);
-    for (const off of [5, 11, 17]) this.placeSwitch(b, Player.row + off);
-    Game.danger.active = false;
-    UI.bossToast('start');
-    Sound.bossHorn();
-  },
-
-  placeSwitch(b, fromRow) {
-    for (let r = fromRow; r < fromRow + 10; r++) {
-      const row = World.rows.get(r);
-      if (!row || row.type !== 'grass' || b.switches.some(s => s.row === r)) continue;
-      const free = [];
-      for (let c = 1; c < COLS - 1; c++) if (!row.blocked[c]) free.push(c);
-      if (!free.length) continue;
-      const col = pick(free);
-      b.switches.push({ row: r, col, x: cellX(col), y: r * TILE, pressed: false, t: 0 });
-      return;
-    }
-  },
-
-  update(dt) {
-    const b = Events.boss;
-    b.t += dt;
-    if (b.phase === 'dead') {
-      b.deadT += dt;
-      if (b.sink) {
-        b.sink = Math.min(1, b.sink + dt * 0.6);
-        if (Math.random() < dt * 20) FX.bubbles(b.x + rand(-TILE, TILE), b.y);
-      } else {
-        b.vz -= 1100 * Events.gravity * dt;
-        b.z = Math.max(0, b.z + b.vz * dt);
-        b.rot += b.rotV * dt;
-        if (b.z === 0) { b.vz = 0; b.rotV *= 0.9; }
-        if (Math.random() < dt * 30) FX.wreckFire(b.x + rand(-1.2, 1.2) * TILE, b.y, 40 + b.z);
-        if (Math.random() < dt * 12) FX.wreckSmoke(b.x + rand(-TILE, TILE), b.y, 60 + b.z, true);
-      }
-      if (b.deadT > 4.5) {
-        Events.boss = null;
-        Events.nextBossRow = Player.maxRow + 140;
-        Game.danger.y = Math.max(Game.danger.y, Player.y - 7 * TILE);
-        Game.danger.active = true;
-      }
-      return;
-    }
-
-    // chase: grind forward toward the player, never too far behind
-    const ty = Player.y - 0.4 * TILE;
-    if (b.y < ty) b.y = Math.min(ty, b.y + b.speed * Game.trafficFactor() * dt);
-    if (b.y < Player.y - 8 * TILE) b.y = Player.y - 8 * TILE;
-    b.x = damp(b.x, clamp(Player.x, 1.5 * TILE, WORLD_W - 1.5 * TILE), 1.2, dt);
-
-    b.smokeT -= dt;
-    if (b.smokeT <= 0) { b.smokeT = 0.12; FX.puff(b.x + 27, b.y - 3, 86, '#26262a'); }
-    b.rumbleT -= dt;
-    if (b.rumbleT <= 0) {
-      b.rumbleT = 0.6;
-      const near = clamp(1 - Math.abs(Player.y - b.y) / (10 * TILE), 0, 1);
-      Sound.rumble(0.3 + 0.5 * near);
-      Cam.addTrauma(0.05 * near);
-    }
-
-    smashCars(b.x, b.y, 1.6 * TILE, 1.0 * TILE, 1.5);
-    flattenAt(b.x, b.y, 1.6 * TILE, 1.0 * TILE);
-
-    if (vulnerable() && Math.abs(Player.x - b.x) < 1.5 * TILE && Player.y - b.y < 0.9 * TILE && Player.y - b.y > -1.0 * TILE && Player.z < 40) {
-      b.bloody = Settings.gore;
-      Game.kill('bulldozer');
-    }
-
-    // detonator switches
-    for (const s of b.switches) {
-      s.t += dt;
-      if (!s.pressed && isPlaying() && Player.row === s.row && Math.abs(Player.x - s.x) < 0.5 * TILE && !Player.hop) {
-        s.pressed = true;
-        b.pressed++;
-        Sound.switchClick();
-        FX.sparks(s.x, s.y, 12, 16, ['#ffd23f', '#ffffff'], 220);
-        FX.text(s.x, s.y + 20, `SWITCH ${b.pressed}/3`, '#ffd23f', 18);
-      }
-    }
-    // a switch left behind moves up ahead of you
-    for (let i = b.switches.length - 1; i >= 0; i--) {
-      const s = b.switches[i];
-      if (!s.pressed && s.row < Player.row - 2) {
-        b.switches.splice(i, 1);
-        this.placeSwitch(b, Player.row + 5);
-      }
-    }
-    if (!b.zone && b.pressed >= 3) {
-      const row = findRow(r => r.type === 'road', Player.row + 2, Player.row + 12) || World.rows.get(Player.row + 4);
-      b.zone = { row: row.i, y: row.y };
-      UI.bossToast('armed');
-      Sound.switchClick();
-    }
-
-    // what it drives into
-    const here = World.rows.get(Math.round(b.y / TILE));
-    if (here && here.type === 'river' && Math.abs(here.y - b.y) < 0.3 * TILE) return this.defeat(b, 'river');
-    for (const row of World.rows.values()) {
-      if (row.type !== 'rail' || row.rail.state !== 'train' || Math.abs(row.y - b.y) > 0.9 * TILE) continue;
-      const [a, c] = Rail.extent(row.rail);
-      if (b.x + 1.5 * TILE > a && b.x - 1.5 * TILE < c) return this.defeat(b, 'train');
-    }
-    if (b.zone && b.y >= b.zone.y - 0.3 * TILE) this.defeat(b, 'tnt');
-  },
-
-  defeat(b, how) {
-    b.phase = 'dead';
-    b.deadT = 0;
-    const gore = Settings.gore;
-    const y = b.zone && how === 'tnt' ? b.zone.y : b.y;
-    if (how === 'river') {
-      b.sink = 0.01;
-      FX.splash(b.x, b.y, 60);
-      FX.splash(b.x - TILE, b.y, 30);
-      FX.splash(b.x + TILE, b.y, 30);
-      Sound.splash(1);
-    } else {
-      b.vz = 520;
-      b.rotV = (chance(0.5) ? 1 : -1) * 3;
-      FX.tankerBlast(b.x, y, ['#ffc21a', '#3a3a3f', '#b9bec6'], gore);
-      for (let k = -2; k <= 2; k++) if (k) FX.carCrash(b.x + k * 1.6 * TILE, y, ['#ffc21a', '#3a3a3f']);
-      Vehicles.blastVehicles(b.x, y, 3 * TILE);
-      Game.onCrash(b.x, y, true, 1.5, 'tanker');
-    }
-    Game.coins += 50;
-    Game.addBonus(500);
-    FX.text(b.x, b.y + 60, 'BULLDOZER DESTROYED! +500', '#ffd23f', 22);
-    UI.bossToast('defeated', how);
-    Missions.add('boss');
-  },
-
-  drawables(b, list) {
-    list.push({
-      kind: 'event', key: b.y - 0.8 * TILE, x: b.x, y: b.y, shadow: [3.6 * TILE, 2 * TILE],
-      draw: (c, time) => this.draw(c, b, time),
-    });
-    for (const s of b.switches) {
-      list.push({ kind: 'event', key: s.y - 8, x: s.x, y: s.y, shadow: [0.6 * TILE, 0.5 * TILE], draw: (c, time) => this.drawSwitch(c, s, time) });
-    }
-    if (b.zone && b.phase !== 'dead') {
-      for (let col = 0; col < COLS; col += 2) {
-        list.push({ kind: 'event', key: b.zone.y - 6, x: cellX(col), y: b.zone.y + 12, draw: c => this.drawTnt(c) });
-      }
-    }
-  },
-
-  draw(c, b, time) {
-    if (b.sink) { c.globalAlpha = 1 - b.sink; c.translate(0, P(0, -b.sink * 40)); }
-    if (b.z) c.translate(0, P(0, b.z));
-    if (b.rot) c.rotate(b.rot);
-    const W2 = 1.35 * TILE, D2 = 0.72 * TILE;
-    const dead = b.phase === 'dead';
-    const yel = dead ? '#4a3f2a' : '#ffc21a', yelD = dead ? '#302a1c' : '#e0a100';
-    // blade (far side), then treads, body, cab
-    box(c, -W2 - 10, W2 + 10, D2, D2 + 10, 0, 36, dead ? '#333' : '#c3c8cf', dead ? '#222' : '#8a9099');
-    c.fillStyle = dead ? '#222' : '#1d1d1f';
-    for (let x = -W2 - 10; x < W2 + 10; x += 16) c.fillRect(x, P(D2 + 10, 36), 8, 4);
-    if (b.bloody) {
-      c.fillStyle = '#8f0a17';
-      c.fillRect(-20, P(D2 + 10, 36), 34, 6);
-      c.fillRect(-8, P(D2 + 10, 34), 4, 10);
-    }
-    box(c, -W2 - 6, -W2 + 16, -D2, D2, 0, 16, '#2b2b2f', '#1b1b1e');
-    box(c, W2 - 16, W2 + 6, -D2, D2, 0, 16, '#2b2b2f', '#1b1b1e');
-    c.fillStyle = '#3d3d42';
-    const off = (time * 30) % 8;
-    for (let x = -W2 - 6 + off; x < -W2 + 16; x += 8) c.fillRect(x, P(-D2, 14), 3, 12 * GZ);
-    for (let x = W2 - 16 + off; x < W2 + 6; x += 8) c.fillRect(x, P(-D2, 14), 3, 12 * GZ);
-    box(c, -W2 + 12, W2 - 12, -D2 + 4, D2 - 4, 14, 40, yel, yelD);
-    c.fillStyle = dead ? '#222' : '#1d1d1f';
-    for (let x = -W2 + 14; x < W2 - 14; x += 14) c.fillRect(x, P(-D2 + 4, 22), 7, 5 * GZ);
-    box(c, -20, 20, -D2 + 6, 6, 40, 72, dead ? '#3a3226' : '#ffd84d', yelD);
-    c.fillStyle = dead ? '#111' : '#27354d';
-    c.fillRect(-16, P(-D2 + 6, 68), 32, 20 * GZ);
-    box(c, 24, 30, -6, 0, 40, 86, '#3a3a3f', '#2a2a2e');
-    if (!dead) {
-      c.globalCompositeOperation = 'lighter';
-      c.fillStyle = Math.sin(time * 12) > 0 ? 'rgba(255,150,30,0.9)' : 'rgba(255,150,30,0.25)';
-      c.beginPath(); c.arc(0, P(0, 78), 5, 0, 6.2832); c.fill();
-      c.globalCompositeOperation = 'source-over';
-    }
-    c.globalAlpha = 1;
-  },
-
-  drawSwitch(c, s, time) {
-    const pulse = 0.5 + 0.5 * Math.sin(time * 6 + s.x);
-    if (!s.pressed) {
-      c.strokeStyle = `rgba(255,210,63,${0.5 + 0.4 * pulse})`;
-      c.lineWidth = 2.5;
-      c.beginPath(); c.ellipse(0, P(0, 5), 18 + pulse * 4, (18 + pulse * 4) * GY, 0, 0, 6.2832); c.stroke();
-    }
-    box(c, -9, 9, -7, 7, 4, 14, '#c8102e', '#8f0a1f');
-    c.fillStyle = '#fff';
-    c.font = `900 5px ${UI_FONT}`;
-    c.textAlign = 'center';
-    c.fillText('TNT', 0, P(-7, 8));
-    const hz = s.pressed ? 16 : 28;
-    box(c, -1.5, 1.5, -1.5, 1.5, 14, hz, '#9aa0a8', '#6d737c');
-    box(c, -8, 8, -2, 2, hz, hz + 3, '#2a2a2e', '#1b1b1e');
-    c.fillStyle = s.pressed ? '#3ddc84' : (pulse > 0.5 ? '#ff3b3b' : '#6a1a1a');
-    c.fillRect(5, P(-7, 12), 3, 3);
-    if (!s.pressed) { // bouncing arrow
-      const ay = P(0, 52 + Math.abs(Math.sin(time * 4)) * 8);
-      c.fillStyle = '#ffd23f';
-      c.beginPath(); c.moveTo(-8, ay - 6); c.lineTo(8, ay - 6); c.lineTo(0, ay + 4); c.closePath(); c.fill();
-      c.strokeStyle = '#1d1d1f';
-      c.lineWidth = 1.5;
-      c.stroke();
-    }
-  },
-
-  drawTnt(c) {
-    box(c, -8, 8, -6, 6, 0, 13, '#c8102e', '#8f0a1f');
-    c.fillStyle = '#fff';
-    c.font = `900 5px ${UI_FONT}`;
-    c.textAlign = 'center';
-    c.fillText('TNT', 0, P(-6, 5));
-    c.strokeStyle = '#1d1d1f';
-    c.lineWidth = 1;
-    c.beginPath(); c.moveTo(0, P(0, 13)); c.lineTo(4, P(0, 19)); c.stroke();
-  },
-};
-
 const Events = {
   active: null,
   cd: 45,
@@ -675,8 +442,6 @@ const Events = {
   moonAmt: 0,
   lowAmt: 0,
   miniAmt: 0,
-  boss: null,
-  nextBossRow: 70,
 
   reset() {
     if (this.active) this.end(true);
@@ -685,8 +450,6 @@ const Events = {
     this.gravity = 1;
     this.reverse = false;
     this.moonAmt = this.lowAmt = this.miniAmt = 0;
-    this.boss = null;
-    this.nextBossRow = randInt(65, 85);
   },
 
   update(dt) {
@@ -700,12 +463,10 @@ const Events = {
       const H = HANDLERS[a.type];
       if (H.update) H.update(a, dt);
       if ((a.dur && a.t >= a.dur) || a.done) this.end();
-    } else if (Game.state === 'playing' && !this.boss) {
+    } else if (Game.state === 'playing') {
       this.cd -= dt;
       if (this.cd <= 0) this.startRandom();
     }
-    if (Game.state === 'playing' && Player.alive && !this.boss && !this.active && Player.maxRow >= this.nextBossRow) Boss.start();
-    if (this.boss) Boss.update(dt);
   },
 
   startRandom() {
@@ -741,26 +502,11 @@ const Events = {
   drawables(list) {
     const a = this.active;
     if (a && HANDLERS[a.type].drawables) HANDLERS[a.type].drawables(a, list);
-    if (this.boss) Boss.drawables(this.boss, list);
   },
 
   drawGround(c, time) {
     const a = this.active;
     if (a && HANDLERS[a.type].ground) HANDLERS[a.type].ground(c, a, time);
-    const b = this.boss;
-    if (b && b.zone && b.phase !== 'dead') { // demolition zone hazard stripes
-      const y0 = P(b.zone.y + TILE / 2, 0), h = TILE * GY;
-      const x0 = Renderer.x0 - TILE, x1 = Renderer.x1 + TILE;
-      c.fillStyle = `rgba(255,210,63,${0.25 + 0.15 * Math.sin(time * 8)})`;
-      c.fillRect(x0, y0, x1 - x0, h);
-      c.fillStyle = 'rgba(20,20,22,0.55)';
-      for (let x = Math.floor(x0 / 24) * 24; x < x1; x += 24) {
-        c.beginPath();
-        c.moveTo(x, y0 + h); c.lineTo(x + 12, y0 + h); c.lineTo(x + 24, y0); c.lineTo(x + 12, y0);
-        c.closePath();
-        c.fill();
-      }
-    }
   },
 
   drawSky(c, time) {
