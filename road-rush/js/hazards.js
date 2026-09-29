@@ -8,7 +8,7 @@ const River = {
   ids: 0,
 
   makeLog(R, y) {
-    return { kind: 'log', id: ++this.ids, len: rand(R.lenMin, R.lenMax), x: 0, y, bob: rand(6.28), dir: R.dir };
+    return { kind: 'log', id: ++this.ids, len: rand(R.lenMin, R.lenMax), x: 0, y, bob: rand(6.28), dir: R.dir, style: R.style };
   },
 
   randGap(R) { return rand(R.gapMin, R.gapMax); },
@@ -85,7 +85,7 @@ const Rail = {
 
     if (R.state === 'idle') {
       R.t -= dt;
-      if (R.t <= 0) { R.state = 'warn'; R.t = 2.3; R.bell = 0; }
+      if (R.t <= 0) { R.state = 'warn'; R.t = R.tram ? 1.9 : 2.3; R.bell = 0; }
       return;
     }
 
@@ -94,8 +94,9 @@ const Rail = {
     if (R.bell <= 0) {
       R.bell = 0.42;
       if (this.visible(row) && Game.state !== 'gameover') {
-        const near = clamp(1 - Math.abs(row.y - Player.y) / (10 * TILE), 0.15, 1);
-        Sound.bell(0.6 * near);
+        const near = clamp(1 - Math.abs(row.y - Cam.y) / (10 * TILE), 0.15, 1);
+        if (R.tram) Sound.tramBell(0.5 * near);
+        else Sound.bell(0.6 * near);
       }
     }
 
@@ -109,25 +110,33 @@ const Rail = {
     R.x += R.dir * R.speed * fz * dt;
     if (!R.horned && this.visible(row) && R.x > Renderer.x0 - 8 * TILE && R.x < Renderer.x1 + 8 * TILE) {
       R.horned = true;
-      Sound.trainHorn(Vehicles.pan(R.x), clamp(1 - Math.abs(row.y - Player.y) / (12 * TILE), 0.2, 1));
+      const near = clamp(1 - Math.abs(row.y - Cam.y) / (12 * TILE), 0.2, 1);
+      if (R.tram) Sound.tramBell(near, true);
+      else Sound.trainHorn(Vehicles.pan(R.x), near);
     }
     if (R.stalled) {
       const s = R.stalled;
       const reached = R.dir > 0 ? R.x >= s.x - s.len / 2 : R.x <= s.x + s.len / 2;
       if (reached) this.hitStalled(row);
     }
-    // near miss: the player stepped off these tracks just before the train came through
-    const rec = Game.leftCell;
-    if (rec && !rec.used && rec.row === row.i && Game.time - rec.t < 0.9) {
-      const [a, b] = this.extent(R);
-      const cx = cellX(rec.col);
-      if (cx > a && cx < b) { rec.used = true; Game.nearMiss(2); }
+    // near miss: a player stepped off these tracks just before the train came through
+    for (const p of Game.players) {
+      const rec = p.leftCell;
+      if (rec && !rec.used && rec.row === row.i && Game.time - rec.t < 0.9) {
+        const [a, b] = this.extent(R);
+        const cx = cellX(rec.col);
+        if (cx > a && cx < b) {
+          rec.used = true;
+          Game.nearMiss(2, p);
+          if (p.id === 0) { Stats.add('trainDodges'); Trophies.add('trainDodge'); }
+        }
+      }
     }
     const rear = R.x - R.dir * R.len;
     const xEnd = R.dir > 0 ? WORLD_W + World.laneMargin + TILE : -World.laneMargin - TILE;
     if ((R.dir > 0 && rear > xEnd) || (R.dir < 0 && rear < xEnd)) {
       R.state = 'idle';
-      R.t = rand(8, 16) - 3 * d; // trains are an occasional scare, not a conveyor belt
+      R.t = (R.tram ? rand(6, 12) : rand(8, 16)) - 3 * d; // trains are an occasional scare, not a conveyor belt
       R.cars = null;
       R.horned = false;
     }
@@ -136,10 +145,19 @@ const Rail = {
   startTrain(row, d) {
     const R = row.rail;
     R.state = 'train';
-    R.speed = (820 + 300 * d) * rand(0.9, 1.1);
-    const cars = [{ type: 'loco', len: 2.5 * TILE, color: pick(['#c8102e', '#1d4f91', '#2f6f4f', '#e0a100']) }];
-    for (let n = randInt(3, 6 + Math.round(d * 3)); n > 0; n--) {
-      cars.push({ type: pick(['box', 'box', 'tank', 'hopper']), len: 2.1 * TILE, color: pick(['#8b3a2b', '#5d6b73', '#2d4b6b', '#7a6a3a', '#3f5f4a']) });
+    let cars;
+    if (R.tram) { // city trams: short, slower, but they still don't stop
+      R.speed = (400 + 180 * d) * rand(0.9, 1.1);
+      const color = pick(['#d62839', '#1d6fb8', '#2e8b57', '#f2a900']);
+      cars = [{ type: 'tram', len: 2.2 * TILE, color, front: true }];
+      for (let n = randInt(1, 2); n > 0; n--) cars.push({ type: 'tram', len: 2.2 * TILE, color });
+      cars[cars.length - 1].back = true;
+    } else {
+      R.speed = (820 + 300 * d) * rand(0.9, 1.1);
+      cars = [{ type: 'loco', len: 2.5 * TILE, color: pick(['#c8102e', '#1d4f91', '#2f6f4f', '#e0a100']) }];
+      for (let n = randInt(3, 6 + Math.round(d * 3)); n > 0; n--) {
+        cars.push({ type: pick(['box', 'box', 'tank', 'hopper']), len: 2.1 * TILE, color: pick(['#8b3a2b', '#5d6b73', '#2d4b6b', '#7a6a3a', '#3f5f4a']) });
+      }
     }
     let off = 0;
     for (const c of cars) {
@@ -148,7 +166,7 @@ const Rail = {
       c.dir = R.dir;
       c.y = row.y;
       c.rail = R;
-      off += c.len + 0.22 * TILE;
+      off += c.len + (R.tram ? 0.1 : 0.22) * TILE;
     }
     R.len = off;
     R.cars = cars;
@@ -192,5 +210,59 @@ const Rail = {
       if (cx > a - 0.2 * TILE && cx < b + 0.2 * TILE) return true;
     }
     return false;
+  },
+};
+
+// Road work: an excavator parked at the edge of the row swings its bucket
+// across the cells beside it. It beeps and marks the cells first.
+const Work = {
+  update(dt) {
+    for (const row of World.rows.values()) {
+      if (row.type !== 'work') continue;
+      for (const o of row.objs) if (o.kind === 'excavator') this.updateDigger(o, row, dt);
+    }
+  },
+
+  // x range [from, to] the bucket sweeps, in the direction it swings
+  span(o) {
+    const a = (o.reach[0] - 0.4) * TILE, b = (o.reach[1] + 1.4) * TILE;
+    return o.side > 0 ? [a, b] : [b, a];
+  },
+
+  updateDigger(o, row, dt) {
+    o.t -= dt;
+    const visible = Rail.visible(row);
+    if (o.state === 'idle') {
+      if (o.t <= 0) { o.state = 'warn'; o.t = 1.1; o.beep = 0; }
+    } else if (o.state === 'warn') {
+      o.beep -= dt;
+      if (o.beep <= 0) { o.beep = 0.3; if (visible) Sound.beep(Vehicles.pan(o.x)); }
+      if (o.t <= 0) { o.state = 'swing'; o.t = 0.5; o.hit = []; if (visible) Sound.whoosh(0.9, Vehicles.pan(o.x)); }
+    } else if (o.state === 'swing') {
+      const [a, b] = this.span(o);
+      const k = 1 - Math.max(0, o.t) / 0.5;
+      o.bx = lerp(a, b, easeOutQuad(k));
+      for (const p of Game.players) {
+        if (!p.alive || o.hit.includes(p) || p.abduct || p.z > 30) continue;
+        if (Math.abs(p.y - row.y) > 0.5 * TILE || Math.abs(p.x - o.bx) > 0.6 * TILE) continue;
+        o.hit.push(p);
+        if (p.invincible() || p.grace > 0) continue;
+        if (p.shield) { p.shield = false; p.grace = 1.2; FX.shieldBreak(p.x, p.y); Sound.shieldBreak(); continue; }
+        Sound.clang(0.9, Vehicles.pan(p.x));
+        Cam.addTrauma(0.35);
+        FX.text(p.x, p.y + 12, 'WHACK!', '#ffb000', 18);
+        if (Settings.gore) FX.whack(p.x, p.y, o.side);
+        p.knockback(o.side, 0, 2, 0.9);
+        if (p.id === 0) Trophies.add('whacked');
+      }
+      if (o.t <= 0) { o.state = 'return'; o.t = 1.0; }
+    } else if (o.state === 'return') {
+      if (o.t <= 0) { o.state = 'idle'; o.t = rand(2.2, 4.5); }
+    }
+  },
+
+  // Cells an excavator is about to sweep (for the warning stripes).
+  warned(o) {
+    return o.state === 'warn' ? o.reach : null;
   },
 };

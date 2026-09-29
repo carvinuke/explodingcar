@@ -3,8 +3,10 @@
 *Cross. Dodge. Survive.*
 
 An endless "cross the road" arcade game for the browser. Hop across roads,
-railroad tracks and rivers, grab coins and power-ups, and keep an eye out for
-reckless drivers, freight trains and rare secret events.
+railroad tracks, rivers and road work through the countryside, the city, the
+desert and a snowy mountain pass, from morning into the night. Grab coins and
+power-ups, and keep an eye out for reckless drivers, trains, wildlife and rare
+secret events.
 
 **Play it:** https://carvinuke.github.io/explodingcar/road-rush/
 
@@ -18,20 +20,60 @@ is an optional Google Font; without it the game falls back to a system font.
 
 | Action | Keyboard | Touch |
 | --- | --- | --- |
-| Move | `W A S D` / arrow keys | Swipe |
+| Move | `W A S D` (rebindable) / arrow keys | Swipe |
 | Hop forward | `W` / `↑` | Tap |
 | Pause | `P` / `Esc` | Pause button |
+| Skip the replay | Any key | Tap |
 | Mute | `M` | Speaker button |
 | Start / play again | `Space` / `Enter` | Button |
 | Close a dialog | `Esc` | Tap outside it |
 
+Game controllers work too: d-pad or left stick to move, A to hop forward or
+confirm, B to close a dialog, Start to pause. In two-player mode the first
+controller is player one and the second is player two; on a keyboard player one
+uses `W A S D` and player two the arrow keys.
+
+## Modes
+
+- **Endless:** the classic run.
+- **Daily challenge:** the same road for everyone each day (by UTC date).
+- **Hardcore:** starts further up the difficulty curve, with faster and denser
+  traffic, a faster danger line, no power-ups, and double coins.
+- **Time attack:** get as far as you can in 90 seconds. The clock starts on your
+  first hop and every coin adds a second.
+- **2 players:** two chickens on one road. The camera follows both; fall too far
+  behind and the danger line gets you. Last chicken standing wins, and the
+  match score carries over between rematches.
+
 ## The road
 
-- **Endless world.** Grass, roads, railroads and rivers are generated ahead of
-  you and dropped behind you. A random-walk "safe column" guarantees a path
-  through the trees and rocks. Railroads and rivers are occasional: never next
-  to each other, and each needs a long stretch before it can appear again.
-  Grass strips vary from one-row breathers to wide meadows.
+- **Endless world.** Ground, roads, railroads, rivers and road work are
+  generated ahead of you and dropped behind you. A random-walk "safe column"
+  guarantees a path through the scenery, pits and road-work gear. Railroads and
+  rivers are occasional: never next to each other, and each needs a long
+  stretch before it can appear again.
+- **Biomes.** The first 80 rows are countryside, then every 90 rows the world
+  changes, with a green "Entering…" sign at the border:
+  - *Countryside:* trees and meadows; cows wander onto the road and stop
+    traffic, and deer bolt across it.
+  - *City:* sidewalks, hydrants, benches and tall buildings; more lanes, taxis
+    and buses, trams instead of freight trains, canals with rafts, and lots of
+    road work.
+  - *Desert:* sand, cacti and mesas, tumbleweeds, long freight trains, no
+    rivers, and dust storms that hide the road ahead.
+  - *Mountain pass:* snow all the time, pines, snowmen and deer; ice floes on
+    the rivers; and ice patches that keep you sliding until you hit grip or
+    something solid.
+- **Day and night.** A full day lasts about three minutes. At night the road
+  goes dark and only lights cut through it: headlights, street lamps, train
+  lamps, fires, lit windows and a small glow around you. Tail lights and
+  signals glow on top.
+- **Road work.** Cones and barriers block cells, open pits swallow you, and an
+  excavator beeps, marks the cells with hazard stripes, then swings its bucket
+  across them and knocks you sideways (maybe into a pit).
+- **Emergency services.** After a crash, an ambulance or fire truck races in
+  with sirens, pulls up alongside and the fire truck hoses the fire out. They
+  don't stop for chickens.
 - **Traffic:** small cars, sedans, sports cars, pickups, vans, buses and tanker
   trucks. Normal drivers brake for the car ahead. Traffic gets faster and
   denser, and roads widen from 1–2 lanes to 5.
@@ -42,7 +84,7 @@ is an optional Google Font; without it the game falls back to a system font.
 - **Railroads.** Crossing signals flash and a bell rings, then a fast freight
   train comes through. A yellow RR sign at the screen edge shows which side
   it's coming from. Sometimes a car has stalled on the tracks.
-- **Rivers.** Ride the drifting logs across. Missing a log, or riding one off
+- **Rivers.** Ride the drifting logs (ice floes in the mountains, rafts in the city) across. Missing a log, or riding one off
   the edge, ends the run.
 - **Weather.** Rain makes cars brake late and occasionally skid into each
   other. Snow slows traffic and whitens the ground.
@@ -67,7 +109,16 @@ Rare events that happen every minute or two:
 
 ## Progression
 
-- **Skin shop:** spend coins on the Hard Hat Chick, Duck, Frog and Raccoon.
+- **Shop:** spend coins on skins (Hard Hat Chick, Duck, Frog, Raccoon), hats
+  (party hat, sunglasses, traffic cone, cowboy hat, top hat, crown) and hop
+  trails (sparkles, bubbles, confetti, fire, rainbow).
+- **Trophies:** 24 achievements, such as surviving three explosions in one run,
+  a close call with a train, or getting trampled by a deer. Four of them unlock
+  skins you can't buy: the Crash Test Dummy, Penguin, Zombie Chick and Golden
+  Chick.
+- **Stats:** lifetime totals in the trophy room: runs, time played, rows,
+  coins, wrecks, close calls, trains dodged, best scores per mode and deaths by
+  cause.
 - **Missions:** three goals at a time, like crossing lanes, riding logs,
   surviving crashes or reaching a row, each paying coins.
 - **Daily challenge:** the same layout for everyone each day (by UTC date),
@@ -81,12 +132,20 @@ Open **Settings** from the title screen, the pause screen or the game-over
 report. Your choices are saved in the browser.
 
 - **Sound** (also `M`) and **Screen shake**.
-- **Ghost of best run.**
+- **Reduced motion:** no shake, zoom punches or blur, softer flashes. It's on by
+  default if your system asks for reduced motion.
+- **Colorblind-friendly:** warnings use shapes and stripes, not just red: a
+  striped danger line, triangle and "P" badges for speeders and police, and
+  crosshairs on meteor targets.
+- **Ghost of best run** and **Death replay** (a slow-motion instant replay of
+  how you died, which any key or tap skips).
+- **Controls:** rebind the four movement keys.
 - **Graphic mode:** off by default. Turning it on shows a warning you have to
   confirm first. When it's on:
   - Every death gets cartoon gore. Getting run over flattens the chick in a
     spreading pool of blood, with body parts flying and blood on the screen.
-    Every car that drives through the pool leaves red tyre tracks. Trains
+    Every car that drives through the pool leaves red tyre tracks, and an
+    ambulance arrives so the paramedics can cover you with a sheet. Trains
     obliterate you and leave a trail down the track. Piranhas turn the river
     red. The giant chicken squashes you flat and the goose tears you apart.
   - Crashes get far more violent: bigger blasts with a wider knockback, flipping
@@ -112,21 +171,30 @@ Plain scripts that share a few global objects, loaded in order by `index.html`:
 | `js/audio.js` | `Sound`: every sound effect and weather loop synthesized with WebAudio |
 | `js/effects.js` | `FX`: pooled particles, explosions, blood and scorch decals, fire, water, weather, flashes |
 | `js/draw.js` | `Draw`: 2.5D box sprites for vehicles, trains, logs, scenery, skins and icons |
-| `js/world.js` | `World`: endless row generation (grass, road, rail, river), biomes, weather zones |
-| `js/vehicles.js` | `Vehicles`: types, lanes, braking, skids, crashes, blasts, crash director |
-| `js/hazards.js` | `River` (logs) and `Rail` (signals, trains, stalled cars) |
-| `js/player.js` | `Player`: hops, log riding, knockback, stun, abduction, deaths |
+| `js/world.js` | `World`: endless row generation (ground, road, rail, river, road work), biomes, weather |
+| `js/vehicles.js` | `Vehicles`: types, lanes, braking, skids, crashes, blasts, responders, crash director |
+| `js/hazards.js` | `River` (logs), `Rail` (signals, trains, trams, stalled cars), `Work` (excavators) |
+| `js/animals.js` | `Animals`: cows, deer, tumbleweeds, paramedics |
+| `js/player.js` | `Player` / `Player2`: hops, ice, log riding, knockback, stun, abduction, deaths |
 | `js/powerups.js` | `Items` + `Powers`: coins, pickups and power-up timers |
-| `js/progress.js` | `SKINS` + `Shop`, `Missions`, `Ghost` |
+| `js/progress.js` | `SKINS`, `HATS`, `TRAILS` + `Shop`, `Missions`, `Ghost` |
+| `js/trophies.js` | `Stats` and `Trophies` |
 | `js/events.js` | `Events`: secret events |
-| `js/camera.js` | `Cam`: follow, shake, zoom |
-| `js/renderer.js` | `Renderer`: frame composition, depth sorting, lighting, overlays |
-| `js/ui.js` | `UI`: HUD, toasts, screens, shop, missions, settings |
-| `js/game.js` | `Game`: state, modes, loop, input, scoring, deaths, weather |
+| `js/camera.js` | `Cam`: follow (one or two players), shake, zoom |
+| `js/lighting.js` | `Lighting`: day and night, darkness layer and lights |
+| `js/renderer.js` | `Renderer`: frame composition, depth sorting, overlays |
+| `js/replay.js` | `Replay`: records the last seconds and plays the death back |
+| `js/input.js` | `Input`: keyboard bindings, touch and game controllers |
+| `js/ui.js` | `UI`: HUD, toasts, screens, shop, trophy room, missions, settings |
+| `js/game.js` | `Game`: state, modes, loop, scoring, deaths, weather and biomes |
 
 Handy tuning knobs:
 - difficulty curve: `difficulty()` in `util.js`
 - what gets generated and how far apart: `nextSegment()` in `world.js`
+- biome length and order: `FIRST_ZONE`, `ZONE_LEN` and `ZONES` in `world.js`
+- length of a day: `CYCLE` in `lighting.js`
+- mode rules: `MODES` in `game.js`
 - crash frequency: the end of `Vehicles.director()`
 - secret event timing and weights: `EVENT_DEFS` and `Events.end()` in `events.js`
-- skin prices: `SKINS` in `progress.js`
+- prices: `SKINS`, `HATS` and `TRAILS` in `progress.js`
+- trophies: `TROPHIES` in `trophies.js`

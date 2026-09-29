@@ -292,6 +292,63 @@ const Sound = (() => {
       for (const [f, d] of [[220, 0], [330, 0.2], [440, 0.4]]) tone('sine', f, f * 1.01, 1.6, 0.06, d);
     },
 
+    // ambulance: slow two-tone wail; fire truck: lower, with an air horn blast
+    wail(pan, fire) {
+      if (!ok()) return;
+      const [a, b] = fire ? [520, 700] : [960, 760];
+      tone('sawtooth', a, b, 0.5, 0.035, 0, pan);
+      tone('sine', a, b, 0.5, 0.05, 0, pan);
+      if (fire && Math.random() < 0.25) { tone('sawtooth', 180, 170, 0.5, 0.06, 0.55, pan); tone('square', 240, 230, 0.5, 0.04, 0.55, pan); }
+    },
+
+    honk2(pan) { // an annoyed driver stuck behind a cow
+      if (!ok()) return;
+      tone('square', 330, 0, 0.12, 0.04, 0, pan);
+      tone('square', 415, 0, 0.12, 0.035, 0, pan);
+    },
+
+    moo(hurt) {
+      if (!ok()) return;
+      const t = hurt ? 1.3 : 1;
+      tone('sawtooth', 150 * t, 110 * t, 0.7, 0.05);
+      tone('sine', 150 * t, 105 * t, 0.7, 0.08);
+      noise('bandpass', 500, 300, 0.6, 0.04, { q: 2 });
+    },
+
+    beep(pan) { // excavator backing up
+      if (!ok()) return;
+      tone('square', 1100, 0, 0.14, 0.035, 0, pan);
+    },
+
+    tramBell(vol, ding) {
+      if (!ok()) return;
+      tone('triangle', 1318, 0, 0.35, 0.1 * vol);
+      tone('sine', 2637, 0, 0.25, 0.04 * vol);
+      if (ding) { tone('triangle', 1318, 0, 0.35, 0.1 * vol, 0.22); tone('sine', 2637, 0, 0.25, 0.04 * vol, 0.22); }
+    },
+
+    slide() {
+      if (!ok()) return;
+      noise('highpass', 3000, 5000, 0.18, 0.08, { attack: 0.02 });
+    },
+
+    trophy() {
+      if (!ok()) return;
+      [784, 988, 1175, 1568].forEach((f, i) => tone('triangle', f, 0, 0.18, 0.13, i * 0.08));
+      tone('sine', 1568, 2093, 0.4, 0.06, 0.34);
+    },
+
+    tick(urgent) {
+      if (!ok()) return;
+      tone('square', urgent ? 1320 : 880, 0, 0.05, 0.05);
+    },
+
+    whistleEnd() { // time's up
+      if (!ok()) return;
+      tone('square', 1760, 1740, 0.5, 0.06);
+      tone('square', 1320, 1300, 0.5, 0.05, 0.05);
+    },
+
     gameOver() {
       if (!ok()) return;
       [523, 440, 349, 262].forEach((f, i) => tone('triangle', f, 0, 0.24, 0.14, 0.16 * i));

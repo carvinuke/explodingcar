@@ -24,9 +24,13 @@ const Items = {
   populateRow(row) {
     if (row.type === 'river') return; // nothing floats
     const free = [];
-    for (let c = 0; c < COLS; c++) if (row.type !== 'grass' || !row.blocked[c]) free.push(c);
+    for (let c = 0; c < COLS; c++) {
+      if ((row.type === 'grass' || row.type === 'work') && row.blocked[c]) continue;
+      if (row.type === 'work' && row.pit[c]) continue;
+      free.push(c);
+    }
     if (!free.length) return;
-    if (row.i > 8 && Gen.chance(0.05)) {
+    if (row.i > 8 && World.powerups && Gen.chance(0.05)) {
       this.add(Gen.weighted(Object.keys(POWERUPS).map(k => [k, POWERUPS[k].weight])), Gen.pick(free), row.i);
       return;
     }
@@ -45,52 +49,59 @@ const Items = {
   },
 
   update(dt, p) {
-    const magnet = Powers.magnet > 0;
+    const magnet = p.pw.magnet > 0;
     for (let i = this.list.length - 1; i >= 0; i--) {
       const it = this.list[i];
       const dx = p.x - it.x, dy = p.y - it.y;
       const dist = Math.hypot(dx, dy);
-      if (magnet && dist < MAGNET_RANGE) {
+      if (magnet && dist < MAGNET_RANGE && (!it.pulled || it.pulled === p)) {
         const step = Math.min(dist, (it.pulled ? 560 : 280) * dt);
-        it.pulled = true;
+        it.pulled = p;
         if (dist > 0) { it.x += (dx / dist) * step; it.y += (dy / dist) * step; }
       }
       if (dist < 0.55 * TILE && p.alive && p.z < 24) {
         this.list.splice(i, 1);
-        if (it.type === 'coin') Game.addCoin(it);
-        else Powers.grant(it.type, it);
+        if (it.type === 'coin') Game.addCoin(it, p);
+        else Powers.grant(it.type, it, p);
       }
     }
   },
 };
 
+// Freeze is shared (it stops all traffic); the others belong to whoever grabbed them.
 const Powers = {
-  speed: 0,
-  magnet: 0,
   freeze: 0,
-  invincible: 0,
   frost: 0, // 0..1 eased freeze amount
+  seen: new Set(), // power-up types grabbed this run (player one)
 
   reset() {
-    this.speed = this.magnet = this.freeze = this.invincible = 0;
+    this.freeze = 0;
     this.frost = 0;
+    this.seen = new Set();
   },
 
-  grant(type, it) {
+  grant(type, it, p = Player) {
     const def = POWERUPS[type];
-    if (type === 'shield') Player.shield = true;
-    else this[type] = def.dur;
-    if (type === 'freeze') { FX.ice(it.x, it.y); Sound.freeze(); }
+    if (type === 'shield') p.shield = true;
+    else if (type === 'freeze') { this.freeze = def.dur; FX.ice(it.x, it.y); Sound.freeze(); }
+    else p.pw[type] = def.dur;
     Sound.powerup();
     FX.pickup(it.x, it.y, def.color);
     FX.text(it.x, it.y + 14, def.name.toUpperCase() + '!', def.color, 19);
     Cam.punch += 0.05;
-    Game.addBonus(50);
-    Missions.add('powerups');
+    Game.addBonus(50, p);
+    if (p.id === 0) {
+      Missions.add('powerups');
+      this.seen.add(type);
+      Trophies.max('powerTypes', this.seen.size);
+    }
   },
 
+  // Seconds left on a power-up for the HUD (player one).
+  left(type) { return type === 'freeze' ? this.freeze : Player.pw[type] || 0; },
+
   update(dt) {
-    for (const k of ['speed', 'magnet', 'freeze', 'invincible']) if (this[k] > 0) this[k] = Math.max(0, this[k] - dt);
+    if (this.freeze > 0) this.freeze = Math.max(0, this.freeze - dt);
     this.frost = approach(this.frost, this.freeze > 0 ? 1 : 0, dt * 3);
   },
 
