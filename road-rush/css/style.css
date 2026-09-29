@@ -475,25 +475,6 @@ kbd {
 .warn-head h2 { margin: 0; font-size: 26px; font-weight: 900; letter-spacing: 0.04em; text-transform: uppercase; }
 .warn-inner p { margin: 0; font-size: 16px; font-weight: 600; line-height: 1.4; }
 
-/* ---- Daily challenge button (purple plate) ------------------------------------ */
-.btn-daily {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
-  border: 0;
-  border-radius: 8px;
-  padding: 11px 18px 9px;
-  cursor: pointer;
-  color: var(--sign-white);
-  background: var(--sign-purple);
-  box-shadow: inset 0 0 0 3px var(--sign-purple), inset 0 0 0 5px var(--sign-white), 0 5px 0 #3a2566, 0 12px 22px rgba(0, 0, 0, 0.3);
-  transition: transform 0.1s ease;
-}
-.btn-daily b { font-size: 18px; font-weight: 900; letter-spacing: 0.08em; }
-.btn-daily > span { font-size: 13px; font-weight: 700; opacity: 0.9; }
-.btn-daily:hover { transform: translateY(-2px); }
-.btn-daily:active { transform: translateY(4px); }
 
 .btn-yellow.small, .btn-plate.small { font-size: 14px; padding: 9px 12px 7px; }
 .btn-yellow:disabled, .btn-plate:disabled { opacity: 0.55; cursor: default; transform: none; }
@@ -517,16 +498,6 @@ kbd {
 .missions.paper .m-bar i { background: var(--form-ink); }
 
 /* ---- HUD extras ------------------------------------------------------------- */
-.plate.daily-badge {
-  min-width: 0;
-  padding: 5px 9px 3px;
-  font-size: 12px;
-  font-weight: 900;
-  letter-spacing: 0.14em;
-  background: var(--sign-purple);
-  color: var(--sign-white);
-  box-shadow: inset 0 0 0 2px var(--sign-purple), inset 0 0 0 3.5px var(--sign-white), 0 3px 0 rgba(0, 0, 0, 0.3);
-}
 .plate.combo {
   min-width: 0;
   padding: 6px 10px 4px;
@@ -608,7 +579,7 @@ kbd {
 /* ---- Title menu: PLAY, a row of modes, and a small row of extras ------------------- */
 .title-stack { width: min(460px, 100%); gap: 14px; }
 .play-main { width: 100%; }
-.modes { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.modes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .mode-btn {
   display: flex;
   flex-direction: column;
@@ -629,7 +600,6 @@ kbd {
 .mode-btn em:empty { display: none; }
 .mode-btn:hover { transform: translateY(-2px); }
 .mode-btn:active { transform: translateY(3px); }
-.m-daily { background: var(--sign-purple); color: var(--sign-white); box-shadow: inset 0 0 0 2px var(--sign-purple), inset 0 0 0 4px var(--sign-white), 0 4px 0 #3b2470; }
 .m-hardcore { background: var(--ink); color: #ff5a6e; box-shadow: inset 0 0 0 2px var(--ink), inset 0 0 0 4px var(--sign-red), 0 4px 0 #000; }
 .m-hardcore em { color: var(--sign-white); }
 .m-time { background: var(--sign-white); color: var(--ink); box-shadow: inset 0 0 0 2px var(--sign-white), inset 0 0 0 4px var(--ink), 0 4px 0 #9a9a94; }
@@ -766,6 +736,21 @@ kbd {
   #screen-over { justify-content: flex-start; padding-left: max(5vw, 32px); background: linear-gradient(90deg, rgba(14, 16, 20, 0.55), rgba(14, 16, 20, 0.05) 60%); }
 }
 
+/* ---- Levels -------------------------------------------------------------------- */
+.xp-block { margin: 12px 20px 0; padding: 9px 12px 8px; border-radius: 6px; background: #eef3fb; box-shadow: inset 0 0 0 1.5px var(--form-line); color: var(--ink); }
+.xp-top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.xp-top b { font-size: 15px; font-weight: 900; letter-spacing: 0.1em; color: var(--form-ink); }
+.xp-top span { font: 700 14px var(--font-mono); color: var(--form-ink); }
+.xp-bar { height: 8px; margin-top: 6px; border-radius: 4px; background: rgba(31, 58, 102, 0.15); overflow: hidden; }
+.xp-bar i { display: block; height: 100%; width: 0; border-radius: 4px; background: linear-gradient(90deg, #3a86ff, #7b5cff); transition: width 0.9s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.xp-rewards { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.xp-rewards li { font: 700 13px var(--font-mono); color: #7a4b00; }
+.xp-rewards li.next { color: var(--ink-soft); font-weight: 400; }
+.lvl { display: inline-flex; align-items: center; gap: 6px; margin-right: 6px; }
+.lvl b { padding: 3px 7px 1px; border-radius: 4px; background: #7b5cff; color: #fff; font-size: 12px; letter-spacing: 0.08em; }
+.lvl-bar { display: inline-block; width: 54px; height: 6px; border-radius: 3px; background: rgba(255, 255, 255, 0.25); overflow: hidden; }
+.lvl-bar i { display: block; height: 100%; background: #b9a8ff; }
+
 /* ---- Toasts --------------------------------------------------------------------- */
 .t-zone { background: var(--sign-green); color: var(--sign-white); box-shadow: inset 0 0 0 2px var(--sign-green), inset 0 0 0 4px var(--sign-white), 0 6px 18px rgba(0, 0, 0, 0.35); }
 .t-trophy { background: var(--sign-blue); color: var(--sign-white); box-shadow: inset 0 0 0 2px var(--sign-blue), inset 0 0 0 4px var(--sign-yellow), 0 6px 18px rgba(0, 0, 0, 0.35); }
@@ -786,7 +771,6 @@ kbd {
   .toasts { top: calc(max(14px, env(safe-area-inset-top)) + 150px); }
   .toast b { font-size: 15px; }
   .timer { top: calc(max(14px, env(safe-area-inset-top)) + 82px); }
-  .modes { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .keys { grid-template-columns: minmax(0, 1fr); }
 }
 

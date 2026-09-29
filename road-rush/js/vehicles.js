@@ -39,15 +39,96 @@ const Vehicles = {
   reset() {
     this.directorT = rand(6, 9);
     this.sirenT = 0;
+    this.drunkT = rand(4, 8);
+    this.warnedDrunk = false;
+  },
+
+  // Night only: a drunk driver weaves along a lane near the player and
+  // swerves into the next lane now and then.
+  drunkDirector(dt) {
+    if (!Lighting.isNight || Game.state !== 'playing') return;
+    this.drunkT -= dt;
+    if (this.drunkT > 0) return;
+    this.drunkT = rand(8, 14);
+    const lead = Game.leader();
+    const rows = [];
+    for (let r = lead.row + 1; r <= lead.row + 6; r++) {
+      const row = World.rows.get(r);
+      if (row && row.type === 'road' && !row.flood && !row.lane.pending) rows.push(row);
+    }
+    if (!rows.length) { this.drunkT = 2; return; }
+    const row = pick(rows), L = row.lane;
+    const v = this.spawnAtEdge(row, pick(['sedan', 'pickup', 'small', 'sedan']));
+    if (!v) { this.drunkT = 2; return; }
+    v.drunk = { t: rand(6), next: rand(1.2, 2.4), from: 0, to: 0, k: 1 };
+    v.desired = v.speed = L.speed * 1.2 + 30;
+    v.dark = chance(0.5);
+    if (!this.warnedDrunk) {
+      this.warnedDrunk = true;
+      UI.toast('t-weather', 'DRUNK DRIVERS OUT', 'Swerving cars can change lanes without warning', 3600);
+    }
+  },
+
+  // Put a vehicle just outside the view in a gap in traffic (or null if there's no room).
+  spawnAtEdge(row, type) {
+    const L = row.lane, vs = L.vehicles, dir = L.dir, len = VEHICLE_TYPES[type].len * TILE;
+    const edge = dir > 0 ? Renderer.x0 - 1.2 * TILE - len / 2 : Renderer.x1 + 1.2 * TILE + len / 2;
+    for (let k = 0; k < 8; k++) {
+      const x = edge - dir * k * 1.5 * TILE, u = x * dir;
+      const clear = vs.every(v => {
+        const vu = v.x * dir;
+        return vu - v.len / 2 > u + len / 2 + 1.5 * TILE || vu + v.len / 2 < u - len / 2 - 1.2 * TILE;
+      });
+      if (!clear) continue;
+      const v = this.make(L, type, row.y);
+      v.x = x;
+      vs.push(v);
+      return v;
+    }
+    return null;
+  },
+
+  // Weaving, speeding up and slowing down, and lurching into the next lane.
+  updateDrunk(v, row, dt) {
+    const d = v.drunk;
+    d.t += dt;
+    if (d.k < 1) { // mid lane change
+      d.k = Math.min(1, d.k + dt / 0.6);
+      v.y = lerp(d.from, d.to, easeOutQuad(d.k));
+    } else {
+      v.y = row.y + Math.sin(d.t * 2.6) * 5; // weaving inside the lane
+    }
+    v.rot = Math.sin(d.t * 2.6 + 0.8) * 0.07;
+    if (Renderer.inViewX(v.x) && chance(dt * 0.3)) FX.text(v.x, v.y + 22, 'HIC!', '#ffd6a0', 13);
+    d.next -= dt;
+    if (d.next > 0 || d.k < 1) return false;
+    d.next = rand(1.4, 2.8);
+    const opts = [World.rows.get(row.i - 1), World.rows.get(row.i + 1)].filter(r => r && r.type === 'road' && r.lane.dir === row.lane.dir && !r.flood);
+    if (!opts.length) return false;
+    const to = pick(opts), L2 = to.lane, dir = L2.dir, u = v.x * dir;
+    const room = L2.vehicles.every(w => {
+      const wu = w.x * dir;
+      if (wu > u) return wu - w.len / 2 > u + v.len / 2 + 0.6 * TILE; // car ahead
+      return u - v.len / 2 - (wu + w.len / 2) > Math.max(0.8 * TILE, w.speed * 0.45); // car behind can still stop
+    });
+    if (!room) return false;
+    const vs = row.lane.vehicles;
+    vs.splice(vs.indexOf(v), 1);
+    L2.vehicles.push(v);
+    d.from = v.y;
+    d.to = to.y;
+    d.k = 0;
+    if (Renderer.inViewX(v.x)) Sound.screech(this.pan(v.x));
+    return true; // it left this lane
   },
 
   // Spawn weights per lane; faster, bigger and more dangerous vehicles show up
   // as it gets harder. Each biome has its own mix.
   weightsFor(d, zone = 'country') {
-    const city = zone === 'city', desert = zone === 'desert', snow = zone === 'snow';
+    const city = zone === 'city', desert = zone === 'desert', snow = zone === 'snow', beach = zone === 'beach';
     return [
       ['small', city ? 2.5 : 3], ['sedan', 3], ['taxi', city ? 2.2 : 0],
-      ['pickup', desert ? 3.2 : snow ? 2.4 : 1.8], ['van', city ? 2 : 1.4],
+      ['pickup', desert ? 3.2 : snow ? 2.4 : 1.8], ['van', city ? 2 : beach ? 2.6 : 1.4],
       ['sports', d > 0.08 ? (0.5 + d * 1.5) * (snow ? 0.4 : 1) : 0],
       ['bus', (d > 0.2 ? 0.4 + d * 1.2 : 0.15) * (city ? 2 : 1)],
       ['tanker', d > 0.2 ? (0.2 + d * 0.5) * (desert ? 2.2 : city ? 0.5 : 1) : 0],
@@ -67,6 +148,8 @@ const Vehicles = {
       side: 0, horned: false, bumped: false, fireAcc: 0, smokeAcc: 0,
       z: 0, vz: 0, flipV: 0, settle: null, gore: false, secondary: 0,
       bloody: false, bloodT: 0, trackAcc: 0, abducted: 0, panic: 0, dousing: 0, doused: false,
+      dark: !T.responder && !T.animal && type !== 'police' && chance(0.18), // no headlights (you only notice at night)
+      drunk: null,
     };
   },
 
@@ -145,8 +228,9 @@ const Vehicles = {
       const v = vs[i];
       if (v.wreck) { this.updateWreck(v, dt, lfz); continue; }
       if (v.abducted || v.animal) continue; // held by the UFO beam / a cow minding its own business
+      if (v.drunk && this.updateDrunk(v, row, dt)) { i--; continue; }
       const lead = i > 0 ? vs[i - 1] : null;
-      let target = v.desired;
+      let target = v.drunk ? v.desired * (0.8 + 0.35 * Math.sin(v.drunk.t * 1.1)) : v.desired;
       let hard = false;
 
       if (v.panic > 0) { // slammed the brakes for a deer
@@ -228,6 +312,7 @@ const Vehicles = {
             Math.abs(v.x - cellX(rec.col)) < v.len / 2 + 0.1 * TILE) {
           rec.used = true;
           Game.nearMiss(1, p);
+          if (v.drunk && p.id === 0) Trophies.add('drunkClose');
         }
       }
 

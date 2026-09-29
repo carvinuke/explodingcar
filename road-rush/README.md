@@ -4,7 +4,7 @@
 
 An endless "cross the road" arcade game for the browser. Hop across roads,
 railroad tracks, rivers and road work through the countryside, the city, the
-desert and a snowy mountain pass, from morning into the night. Grab coins and
+desert, a snowy mountain pass and the beach, from morning into the night. Grab coins and
 power-ups, and keep an eye out for reckless drivers, trains, wildlife and rare
 secret events.
 
@@ -36,7 +36,6 @@ uses `W A S D` and player two the arrow keys.
 ## Modes
 
 - **Endless:** the classic run (the big PLAY button). The other modes sit in a row under it; hover or focus one to see what it does.
-- **Daily challenge:** the same road for everyone each day (by UTC date).
 - **Hardcore:** starts further up the difficulty curve, with faster and denser
   traffic, a faster danger line, no power-ups, and double coins.
 - **Time attack:** get as far as you can in 90 seconds. The clock starts on your
@@ -64,10 +63,16 @@ uses `W A S D` and player two the arrow keys.
   - *Mountain pass:* snow all the time, pines, snowmen and deer; ice floes on
     the rivers; and ice patches that keep you sliding until you hit grip or
     something solid.
+  - *Beach:* sand and boardwalks, umbrellas, deck chairs, sandcastles and
+    palms; lots of water crossed on lines of surfboards; and seagulls that
+    swoop down to snatch coins off the ground or dive at you to steal up to 3
+    of yours. A dashed ring shows where a diving gull will land, so move.
 - **Day and night.** A full day lasts about three minutes. At night the road
   goes dark and only lights cut through it: headlights, street lamps, train
   lamps, fires, lit windows and a small glow around you. Tail lights and
-  signals glow on top.
+  signals glow on top. At night some cars drive with no headlights (you only
+  see their red tail lights), and drunk drivers weave along the lanes and
+  lurch into the next lane without warning.
 - **Road work.** Cones and barriers block cells, open pits swallow you, and an
   excavator beeps, marks the cells with hazard stripes, then swings its bucket
   across them and knocks you sideways (maybe into a pit).
@@ -88,6 +93,13 @@ uses `W A S D` and player two the arrow keys.
   the edge, ends the run.
 - **Weather.** Rain makes cars brake late and occasionally skid into each
   other. Snow slows traffic and whitens the ground.
+- **Thunderstorms.** In heavy rain, lightning picks a cell (often right in
+  front of a car, or near you), marks it with a glowing ring and a bolt icon
+  for about a second, then strikes. It wrecks cars and kills chickens.
+- **Tornadoes.** In rain or dust storms (not in the city or the mountains) a
+  twister wanders across the road ahead. It sucks up cars, spins them around
+  and flings them down as burning wrecks. If it catches you, you're carried
+  off and dropped a row or two away, which might be in a river.
 - **Close calls.** Hop out of a lane just before a car tears through it (or
   just behind one) for bonus points. Chain them within 3 seconds for a
   multiplier.
@@ -109,20 +121,24 @@ Rare events that happen every minute or two:
 
 ## Progression
 
-- **Shop:** spend coins on skins (Hard Hat Chick, Duck, Frog, Raccoon), hats
+- **Levels and XP:** every run earns XP (rows, coins, close calls, events
+  survived and new trophies; Hardcore pays 1.5x). Each level pays coins, and
+  some unlock skins: Silver Chick (level 3), Robo Chick (5), Neon Chick (8),
+  Diamond Chick (12), Golden Chicken (16) and a Phoenix that's always on fire
+  (20). The report shows the XP you earned and your progress.
+- **Shop:** spend coins on skins (Hard Hat Chick, Duck, Frog, Raccoon, and
+  Big J, a grey body under a round helmet with a very unimpressed red face), hats
   (party hat, sunglasses, traffic cone, cowboy hat, top hat, crown) and hop
   trails (sparkles, bubbles, confetti, fire, rainbow).
 - **Trophies:** 24 achievements, such as surviving three explosions in one run,
-  a close call with a train, or getting trampled by a deer. Four of them unlock
-  skins you can't buy: the Crash Test Dummy, Penguin, Zombie Chick and Golden
-  Chick.
+  a close call with a train, getting trampled by a deer, or getting picked up
+  by a tornado and living. Three of them unlock skins you can't buy: the Crash
+  Test Dummy, Penguin and Zombie Chick.
 - **Stats:** lifetime totals in the trophy room: runs, time played, rows,
   coins, wrecks, close calls, trains dodged, best scores per mode and deaths by
   cause.
 - **Missions:** three goals at a time, like crossing lanes, riding logs,
   surviving crashes or reaching a row, each paying coins.
-- **Daily challenge:** the same layout for everyone each day (by UTC date),
-  with its own best score.
 - **Ghost:** a faint "BEST" ghost replays your best run alongside you.
   You can turn it off in Settings.
 
@@ -174,12 +190,13 @@ Plain scripts that share a few global objects, loaded in order by `index.html`:
 | `js/world.js` | `World`: endless row generation (ground, road, rail, river, road work), biomes, weather |
 | `js/vehicles.js` | `Vehicles`: types, lanes, braking, skids, crashes, blasts, responders, crash director |
 | `js/hazards.js` | `River` (logs), `Rail` (signals, trains, trams, stalled cars), `Work` (excavators) |
-| `js/animals.js` | `Animals`: cows, deer, tumbleweeds, paramedics |
+| `js/animals.js` | `Animals`: cows, deer, tumbleweeds, seagulls, paramedics |
 | `js/player.js` | `Player` / `Player2`: hops, ice, log riding, knockback, stun, abduction, deaths |
 | `js/powerups.js` | `Items` + `Powers`: coins, pickups and power-up timers |
 | `js/progress.js` | `SKINS`, `HATS`, `TRAILS` + `Shop`, `Missions`, `Ghost` |
-| `js/trophies.js` | `Stats` and `Trophies` |
+| `js/trophies.js` | `Stats`, `Trophies` and `Levels` |
 | `js/events.js` | `Events`: secret events |
+| `js/storms.js` | `Storms`: lightning and tornadoes |
 | `js/camera.js` | `Cam`: follow (one or two players), shake, zoom |
 | `js/lighting.js` | `Lighting`: day and night, darkness layer and lights |
 | `js/renderer.js` | `Renderer`: frame composition, depth sorting, overlays |
@@ -198,3 +215,4 @@ Handy tuning knobs:
 - secret event timing and weights: `EVENT_DEFS` and `Events.end()` in `events.js`
 - prices: `SKINS`, `HATS` and `TRAILS` in `progress.js`
 - trophies: `TROPHIES` in `trophies.js`
+- XP per level and level skins: `Levels.cost()` and `LEVEL_SKINS` in `trophies.js`

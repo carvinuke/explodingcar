@@ -3,7 +3,7 @@
 // construction work, streamed in ahead of the player and dropped once they
 // fall behind. The world passes through biomes (countryside, city, desert,
 // mountain pass), each with its own ground, scenery, hazards and weather.
-// Layout uses the seeded `Gen` so the daily challenge is identical for everyone.
+// Layout uses the seeded `Gen`, so one seed always builds the same road.
 
 // Countryside palettes rotate every ~48 rows for a gentle change of scenery.
 const COUNTRY = [
@@ -37,6 +37,13 @@ const ZONES = {
     pal: { grass: ['#ead29b', '#e4ca91'], edge: '#b8925a', tree: ['#5f9e4a', '#437a35', '#76b35c', '#548f41'],
            bush: ['#a79a5c', '#857a45', '#b8ab6a', '#958a52'], flowers: ['#c9a36a'] },
   },
+  beach: {
+    name: 'THE BEACH', sub: 'Surfboards on the water. Guard your coins from the gulls',
+    weather: [['clear', 5], ['rain', 2]], work: 0.3, rail: 0.6, river: 1.9, lanes: 0,
+    bg: '#e9d49a',
+    pal: { grass: ['#f2dfa7', '#eed99c'], edge: '#cdb277', tree: ['#3fa34d', '#2e7f3a', '#52b85e', '#38914a'],
+           bush: ['#6dae55', '#548d42', '#7fc063', '#619f4b'], flowers: ['#f7f0dc'] },
+  },
   snow: {
     name: 'THE MOUNTAIN PASS', sub: 'Ice patches: you will slide',
     weather: [['snow', 1]], work: 0.2, rail: 1.1, river: 1.2, lanes: 0,
@@ -67,7 +74,7 @@ const World = {
     // so they don't depend on how far ahead rows have been generated
     const r = mulberry32(seed ^ 0x5bd1e995);
     this.zoneSeq = [];
-    const others = ['city', 'desert', 'snow'];
+    const others = ['city', 'desert', 'snow', 'beach'];
     for (let lap = 0; lap < 12; lap++) {
       const o = others.slice();
       for (let k = o.length - 1; k > 0; k--) { const j = Math.floor(r() * (k + 1)); [o[k], o[j]] = [o[j], o[k]]; }
@@ -256,7 +263,7 @@ const World = {
     const zone = this.zoneAt(i);
     const river = {
       dir,
-      style: zone === 'snow' ? 'floe' : zone === 'city' ? 'raft' : 'log',
+      style: zone === 'snow' ? 'floe' : zone === 'city' ? 'raft' : zone === 'beach' ? 'surf' : 'log',
       speed: (32 + 55 * d) * Gen.rand(0.8, 1.3),
       gapMin: lerp(1.0, 1.6, d) * TILE,
       gapMax: lerp(2.6, 3.4, d) * TILE,
@@ -319,6 +326,7 @@ const World = {
     const zone = this.zoneAt(i);
     const biome = this.palette(i, zone);
     const row = { i, y: i * TILE, type: 'grass', blocked: new Array(COLS).fill(false), objs: [], flat: [], biome, zone };
+    if (zone === 'beach') row.boardwalk = Gen.chance(0.35);
 
     // A random-walk column that is never blocked guarantees a path forward:
     // each row keeps both the previous and the new path column clear.
@@ -345,6 +353,10 @@ const World = {
         if (far === 1) { if (Gen.chance(0.12)) row.objs.push(this.decor(Gen.pick(['hydrant', 'bin', 'mailbox']), col, row)); }
         else if (far === 2) { if (Gen.chance(0.25)) row.objs.push(this.decor('planter', col, row)); }
         else if (far >= 3 && (col < 0 ? col === -3 || col === -6 : col === COLS + 2 || col === COLS + 5)) row.objs.push(this.decor('building', col, row));
+      } else if (zone === 'beach') {
+        if (far === 1) { if (Gen.chance(0.2)) row.objs.push(this.decor('umbrella', col, row)); }
+        else if (far === 3 && Gen.chance(0.08)) row.objs.push(this.decor('lifeguard', col, row));
+        else if (Gen.chance(0.2 + far * 0.05)) row.objs.push(this.decor(Gen.weighted([['palm', 4], ['umbrella', 2], ['chair', 1]]), col, row));
       } else if (far === 1) {
         if (Gen.chance(0.15)) row.objs.push(this.decor(zone === 'desert' ? 'deadbush' : 'bush', col, row));
       } else if (Gen.chance(0.22 + far * 0.07)) {
@@ -387,6 +399,9 @@ const World = {
       kind = Gen.weighted([['planter', 3], ['hydrant', 2], ['bin', 2], ['mailbox', 1], ['bench', 1.5], ['lamp', 1]]);
     } else if (z === 'desert') {
       kind = Gen.weighted([['cactus', 5], ['rock', 3], ['deadbush', 2], ['skull', 0.6]]);
+    } else if (z === 'beach') {
+      kind = row.boardwalk ? Gen.weighted([['bench', 2], ['bin', 1.5], ['lamp', 1]])
+        : Gen.weighted([['umbrella', 4], ['chair', 2.5], ['sandcastle', 2], ['palm', 2]]);
     } else {
       kind = Gen.weighted([['tree', 6], ['rock', 2], ['snowman', 0.7]]);
     }
@@ -424,6 +439,11 @@ const World = {
       o.w = Gen.rand(1.5, 2.4) * TILE;
     } else if (kind === 'rock') {
       o.zone = row.zone;
+    } else if (kind === 'umbrella' || kind === 'chair') {
+      o.color = Gen.pick(['#e63946', '#ffb703', '#2a9d8f', '#3a86ff', '#ff6fa5']);
+    } else if (kind === 'palm') {
+      o.h = Gen.rand(40, 58);
+      o.lean = Gen.rand(-6, 6);
     }
     return o;
   },

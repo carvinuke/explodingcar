@@ -336,7 +336,7 @@ const Draw = (() => {
     }
 
     // lights: headlights and indicators up front, tail lights behind
-    const hl = pal.lit ? '#fff7d1' : '#3a3a3a';
+    const hl = pal.lit && !v.dark ? '#fff7d1' : v.dark && pal.lit ? '#7d7a6c' : '#3a3a3a';
     c.fillStyle = hl;
     c.fillRect(fx - 4, P(-hy, zt - 2), 4, 4 * GZ);
     c.fillRect(fx - 3.5, P(hy - 2.5, zt), 3.5, 4.5 * GY);
@@ -509,6 +509,7 @@ const Draw = (() => {
     }
     const soot = p.char > 0 ? Math.min(1, p.char / 1.5) * 0.8 : 0;
     const sk = palette(base, soot);
+    if (sk.kind === 'bigj') { bigJ(c, p, time, sk, hat, soot); return; }
     const frog = sk.kind === 'frog', coon = sk.kind === 'raccoon', bird = sk.kind === 'bird';
     const W = frog ? 13 : 11, D = 10, H = frog ? 16 : coon ? 19 : 22, lift = 3;
     const sq = p.squash + (p.breath || 0);
@@ -523,6 +524,12 @@ const Draw = (() => {
       c.translate(0, pv);
       c.rotate(p.rot);
       c.translate(0, -pv);
+    }
+    if (sk.glow) { // aura for the fancy level skins
+      c.globalCompositeOperation = 'lighter';
+      c.fillStyle = sk.glow;
+      c.beginPath(); c.arc(0, P(0, lift + h * 0.55), 19 + Math.sin(time * 3) * 1.5, 0, 6.2832); c.fill();
+      c.globalCompositeOperation = 'source-over';
     }
     // outline
     c.fillStyle = 'rgba(30,22,10,0.4)';
@@ -580,6 +587,12 @@ const Draw = (() => {
         c.fillRect(a, P(-5, wz + 2), 3, 2 * GZ);
       }
     }
+    if (sk.antenna) { // robot antenna with a blinking tip
+      c.fillStyle = '#56616f';
+      c.fillRect(-0.8, P(0, top + 10), 1.6, 10 * GZ);
+      c.fillStyle = Math.sin(time * 5) > 0 ? '#ff3b3b' : '#7a1c1c';
+      c.beginPath(); c.arc(0, P(0, top + 11), 2.2, 0, 6.2832); c.fill();
+    }
     // comb (three lobes)
     if (sk.comb) {
       box(c, -4, -1, -1, 3, top, top + 3.5, sk.comb[0], sk.comb[1]);
@@ -616,7 +629,7 @@ const Draw = (() => {
     // face
     const ez = top - 6;
     const eye = ex => {
-      c.fillStyle = '#1d1d1f';
+      c.fillStyle = sk.eyeColor || '#1d1d1f';
       if (blink) { c.fillRect(ex, P(-D, ez - 2), 3.5, 1.2); return; }
       c.fillRect(ex, P(-D, ez), 3.5, 4.5 * GZ);
       c.fillStyle = '#fff';
@@ -661,6 +674,83 @@ const Draw = (() => {
       c.fillRect(4.5, P(-D, ez - 2), 1.5, 1.5);
     }
     if (hat) drawHat(c, hat, hw, D, top + (frog ? 4 : 0), p.facing, ez);
+    c.restore();
+  }
+
+  // Big J: a grey body under a round helmet with a red, very unimpressed face.
+  function bigJ(c, p, time, sk, hat, soot) {
+    const sq = p.squash + (p.breath || 0), lift = 3;
+    const blink = ((time + (p.blinkSeed || 0)) % 3.3) < 0.12;
+    const G = sk.top, GF = sk.front, dark = shade(GF, -0.25);
+    const red = soot ? mix('#ff1a1a', '#2a2522', soot) : '#ff1a1a', ink = '#1d1b3a';
+    c.save();
+    c.translate(0, P(0, p.z));
+    if (p.rot) {
+      const pv = P(0, 16);
+      c.translate(0, pv);
+      c.rotate(p.rot);
+      c.translate(0, -pv);
+    }
+    // legs and body
+    for (const fx of [-6, 3]) {
+      box(c, fx, fx + 3.5, -2, 2, 0, lift + 2, sk.feet, dark);
+      c.fillStyle = dark;
+      c.fillRect(fx - 1, P(-4, 0.8), 5.5, 1.6);
+    }
+    const bh = 12 * (1 - sq * 0.2);
+    c.fillStyle = 'rgba(20,20,24,0.35)';
+    c.fillRect(-9.2, P(6, lift + bh) - 1.2, 18.4, P(-6, lift) - P(6, lift + bh) + 2.4);
+    box(c, -8, 8, -6, 6, lift, lift + bh, G, GF);
+    const flap = (p.flap || 0) * 4;
+    box(c, -11, -8, -3, 3, lift + 3 + flap, lift + 9 + flap, G, GF); // arms
+    box(c, 8, 11, -3, 3, lift + 3 + flap, lift + 9 + flap, G, GF);
+    // helmet head
+    const R = 12 * (1 + sq * 0.12), hz = lift + bh + 11;
+    const s = p.facing === 'right' ? 1 : p.facing === 'left' ? -1 : 0;
+    const cx = 0, cy = P(-3, hz);
+    c.fillStyle = '#80838c'; // side tabs and the top tab
+    c.fillRect(cx - R - 3.2, cy - 3.5, 4.5, 7);
+    c.fillRect(cx + R - 1.3, cy - 3.5, 4.5, 7);
+    c.fillRect(cx - 6, cy - R - 3.2, 12, 5);
+    c.fillStyle = 'rgba(20,20,24,0.35)';
+    c.beginPath(); c.arc(cx, cy, R + 1.2, 0, 6.2832); c.fill();
+    c.fillStyle = '#7d808a';
+    c.beginPath(); c.arc(cx, cy, R, 0, 6.2832); c.fill();
+    c.fillStyle = '#979aa3';
+    c.beginPath(); c.arc(cx, cy, R - 1.4, 0, 6.2832); c.fill();
+    c.fillStyle = '#6c6f78';
+    c.beginPath(); c.arc(cx, cy, R - 2.6, 0, 6.2832); c.fill();
+    if (p.facing === 'up') { // the back of the helmet
+      c.fillStyle = '#8a8d96';
+      c.beginPath(); c.arc(cx, cy, R - 3.2, 0, 6.2832); c.fill();
+      c.fillStyle = 'rgba(0,0,0,0.12)';
+      c.fillRect(cx - 0.6, cy - R + 3.5, 1.2, 2 * R - 7);
+    } else {
+      const fx = cx + s * 2.2;
+      c.fillStyle = red;
+      c.beginPath(); c.arc(fx, cy, R - 3.2, 0, 6.2832); c.fill();
+      c.fillStyle = 'rgba(255,255,255,0.12)';
+      c.beginPath(); c.arc(fx - 3, cy - 3, 3, 0, 6.2832); c.fill();
+      c.strokeStyle = ink;
+      c.fillStyle = ink;
+      c.lineWidth = 1.3;
+      c.lineCap = 'round';
+      c.beginPath(); // the V
+      c.moveTo(fx - 2.3, cy - 6.2); c.lineTo(fx, cy - 2.6); c.lineTo(fx + 2.3, cy - 6.2);
+      c.stroke();
+      if (blink) {
+        c.fillRect(fx - 3.2, cy, 2.2, 0.8);
+        c.fillRect(fx + 1, cy, 2.2, 0.8);
+      } else {
+        c.fillRect(fx - 2.9, cy - 0.9, 1.7, 1.7);
+        c.fillRect(fx + 1.2, cy - 0.9, 1.7, 1.7);
+      }
+      c.beginPath(); // frown
+      c.arc(fx, cy + 6.4, 3.4, Math.PI * 1.18, Math.PI * 1.82);
+      c.stroke();
+      c.lineCap = 'butt';
+    }
+    if (hat) drawHat(c, hat, 9, 6, hz + R / GZ - 1, p.facing, hz);
     c.restore();
   }
 
@@ -1007,6 +1097,22 @@ const Draw = (() => {
       c.fillRect(-L / 2 - 2, P(-hy, 0), L + 4, 2);
       return;
     }
+    if (l.style === 'surf') { // a line of surfboards, nose to tail
+      const cols = ['#ff6fa5', '#ffd23f', '#34c6ea', '#7ed957', '#ff8a3d', '#ffffff'];
+      const n = Math.max(1, Math.round(L / 34)), w = L / n;
+      for (let k = 0; k < n; k++) {
+        const x0 = -L / 2 + k * w + 1, col = cols[(l.id + k) % cols.length];
+        c.fillStyle = shade(col, -0.25);
+        roundRect(c, x0, P(hy - 4, 3) , w - 2, (2 * hy - 8) * GY + 3, 7);
+        c.fillStyle = col;
+        roundRect(c, x0, P(hy - 4, 4), w - 2, (2 * hy - 8) * GY, 7);
+        c.fillStyle = 'rgba(0,0,0,0.25)';
+        c.fillRect(x0 + 3, P(0, 4) - 0.5, w - 8, 1.2);
+      }
+      c.fillStyle = 'rgba(255,255,255,0.4)';
+      c.fillRect(-L / 2 - 2, P(-hy, 0), L + 4, 2);
+      return;
+    }
     if (l.style === 'raft') { // wooden raft
       box(c, -L / 2, L / 2, -hy, hy, -3, 6, '#c9985f', '#946a3b');
       c.fillStyle = 'rgba(70,45,20,0.4)';
@@ -1203,6 +1309,79 @@ const Draw = (() => {
     }
   }
 
+
+  // ---- Beach -------------------------------------------------------------------
+  function umbrella(c, o) {
+    box(c, -1.2, 1.2, -1.2, 1.2, 0, 34, '#e8e4da', '#c9c4b8');
+    const cy = P(0, 36);
+    c.fillStyle = 'rgba(20,20,24,0.35)';
+    c.beginPath(); c.ellipse(0, cy + 1, 21, 9, 0, Math.PI, 0); c.fill();
+    for (let k = 0; k < 6; k++) { // striped canopy
+      c.fillStyle = k % 2 ? '#fbfbf6' : o.color;
+      c.beginPath();
+      c.moveTo(0, cy - 8);
+      c.ellipse(0, cy, 20, 8, 0, Math.PI + (k / 6) * Math.PI, Math.PI + ((k + 1) / 6) * Math.PI);
+      c.closePath();
+      c.fill();
+    }
+    c.fillStyle = shade(o.color, -0.3);
+    c.fillRect(-20, cy - 0.5, 40, 1.5);
+  }
+
+  function chair(c, o) {
+    for (const x of [-9, 7]) box(c, x, x + 2, -8, 6, 0, 5, '#b8bec8', '#8d949e');
+    box(c, -10, 10, -8, 2, 5, 7, o.color, shade(o.color, -0.25));
+    box(c, -10, 10, 2, 5, 7, 18, o.color, shade(o.color, -0.25));
+    c.fillStyle = 'rgba(255,255,255,0.45)';
+    for (let x = -8; x < 10; x += 5) c.fillRect(x, P(2, 7), 2, 10 * GY);
+  }
+
+  function sandcastle(c) {
+    const S = '#e2c27f', SF = '#c4a05c';
+    box(c, -12, 12, -9, 9, 0, 8, S, SF);
+    box(c, -8, 8, -6, 6, 8, 16, S, SF);
+    for (const x of [-12, 8]) box(c, x, x + 4, -9, -5, 8, 14, S, SF);
+    box(c, -3, 3, -3, 3, 16, 22, S, SF);
+    c.fillStyle = '#7a5a2a';
+    c.fillRect(-2, P(-6, 13), 4, 5 * GZ);
+    c.fillStyle = '#e63946';
+    c.fillRect(0, P(0, 30), 5, 3);
+    c.fillStyle = '#6b4a2a';
+    c.fillRect(-0.4, P(0, 30), 0.8, 8 * GZ);
+  }
+
+  function palm(c, o) {
+    const h = o.h, lean = o.lean;
+    for (let k = 0; k < 7; k++) { // segmented trunk, leaning
+      const z0 = (k / 7) * h, x = (lean * k) / 7;
+      box(c, x - 3, x + 3, -3, 3, z0, z0 + h / 7 + 0.5, k % 2 ? '#a57a4d' : '#b88a58', '#8a6238');
+    }
+    const tx = lean, tz = h;
+    c.fillStyle = '#2e8b3e';
+    for (let k = 0; k < 6; k++) { // fronds
+      const a = (k / 6) * Math.PI * 2 + 0.3;
+      const ex = tx + Math.cos(a) * 22, ey = P(Math.sin(a) * 12, tz - 7);
+      c.beginPath();
+      c.moveTo(tx, P(0, tz + 2));
+      c.quadraticCurveTo(tx + Math.cos(a) * 12, P(Math.sin(a) * 6, tz + 6), ex, ey);
+      c.quadraticCurveTo(tx + Math.cos(a) * 12, P(Math.sin(a) * 6, tz), tx, P(0, tz - 1));
+      c.fill();
+    }
+    c.fillStyle = '#6b4a2a';
+    for (const [dx, dz] of [[-2, -1], [2, -2], [0, -3]]) { c.beginPath(); c.arc(tx + dx, P(0, tz + dz), 2.2, 0, 6.2832); c.fill(); }
+  }
+
+  function lifeguard(c) {
+    for (const [x, y] of [[-10, -8], [8, -8], [-10, 6], [8, 6]]) box(c, x, x + 2, y, y + 2, 0, 30, '#f7f7f2', '#d6d6d0');
+    box(c, -13, 13, -11, 11, 30, 33, '#c9985f', '#946a3b');
+    box(c, -11, 11, -2, 9, 33, 48, '#e63946', '#b82832');
+    box(c, -13, 13, -12, 12, 48, 51, '#f7f7f2', '#d6d6d0');
+    c.fillStyle = '#f7f7f2';
+    c.font = `900 5px ${UI_FONT}`;
+    c.textAlign = 'center';
+    c.fillText('LIFEGUARD', 0, P(-2, 42));
+  }
+
   // ---- Road work -----------------------------------------------------------------
   function pit(c, x, y) {
     const hw = TILE / 2 - 3, yt = P(y + TILE / 2 - 4, 0), h = (TILE - 8) * GY;
@@ -1311,7 +1490,7 @@ const Draw = (() => {
 
   // Green guide sign where a new biome starts.
   function welcome(c, o) {
-    const name = { country: 'COUNTRYSIDE', city: 'CITY LIMITS', desert: 'DESERT', snow: 'MOUNTAIN PASS' }[o.zone];
+    const name = { country: 'COUNTRYSIDE', city: 'CITY LIMITS', desert: 'DESERT', snow: 'MOUNTAIN PASS', beach: 'THE BEACH' }[o.zone];
     c.translate(o.side * 18, 0);
     for (const x of [-26, 24]) box(c, x, x + 2.5, -2, 2, 0, 44, '#a5abb5', '#7c828c');
     const y0 = P(-3, 76), y1 = P(-3, 42);
@@ -1445,6 +1624,32 @@ const Draw = (() => {
     c.fillRect(1, P(-3.5, top + 5), 1.5, 1.5);
   }
 
+  // Seagull (flying, or grabbing something).
+  function gull(c, g, time) {
+    c.save();
+    c.translate(0, P(0, g.z));
+    c.scale(g.face, 1);
+    const flap = Math.sin(g.ph) * 7;
+    c.fillStyle = '#c9ced6'; // wings
+    c.beginPath(); c.moveTo(-2, -6); c.lineTo(-16, -6 - flap); c.lineTo(-6, -3); c.closePath(); c.fill();
+    c.beginPath(); c.moveTo(2, -6); c.lineTo(14, -6 - flap); c.lineTo(6, -3); c.closePath(); c.fill();
+    c.fillStyle = '#3a3d44';
+    c.fillRect(-16, -7 - flap, 3, 2);
+    c.fillRect(12, -7 - flap, 3, 2);
+    c.fillStyle = '#fbfbf6'; // body and head
+    c.beginPath(); c.ellipse(0, -5, 9, 4.5, 0, 0, 6.2832); c.fill();
+    c.beginPath(); c.arc(8, -8, 3.6, 0, 6.2832); c.fill();
+    c.fillStyle = '#ffb000';
+    c.fillRect(11, -8.5, 4.5, 1.8);
+    c.fillStyle = '#16181c';
+    c.fillRect(8.6, -9.4, 1.4, 1.4);
+    if (g.carry) { // the loot
+      c.fillStyle = '#ffd23f';
+      c.beginPath(); c.arc(15, -6.5, 2.6, 0, 6.2832); c.fill();
+    }
+    c.restore();
+  }
+
   // "P1" / "P2" tag over a player's head in two-player mode.
   function tag(c, text, color, z) {
     const y = P(0, z);
@@ -1464,5 +1669,6 @@ const Draw = (() => {
     trainCar, log, xing,
     cactus, deadbush, skull, mesa, planter, hydrant, bin, mailbox, bench, snowman, building, buildingWindows,
     pit, cone, barrier, worksign, excavator, welcome, cow, deer, weed, medic, tag,
+    umbrella, chair, sandcastle, palm, lifeguard, gull,
   };
 })();
