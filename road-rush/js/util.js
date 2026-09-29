@@ -78,13 +78,55 @@ const Store = {
 const Settings = {
   gore: false,
   shake: true,
+  ghost: true,
   load() {
     const s = Store.get('settings', {}) || {};
     this.gore = s.gore === true;
     this.shake = s.shake !== false;
+    this.ghost = s.ghost !== false;
   },
-  save() { Store.set('settings', { gore: this.gore, shake: this.shake }); },
+  save() { Store.set('settings', { gore: this.gore, shake: this.shake, ghost: this.ghost }); },
 };
 Settings.load();
+
+// Seeded randomness for world layout, so a daily challenge is the same road for everyone.
+// Effects and traffic timing keep using Math.random.
+function mulberry32(seed) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+const Gen = {
+  r: Math.random,
+  seed(s) { this.r = mulberry32(s); },
+  rand(a, b) { return b === undefined ? this.r() * a : a + this.r() * (b - a); },
+  int(a, b) { return Math.floor(a + this.r() * (b - a + 1)); },
+  chance(p) { return this.r() < p; },
+  pick(arr) { return arr[(this.r() * arr.length) | 0]; },
+  weighted(entries) {
+    let total = 0;
+    for (const e of entries) total += e[1];
+    let r = this.r() * total;
+    for (const e of entries) if ((r -= e[1]) <= 0) return e[0];
+    return entries[entries.length - 1][0];
+  },
+};
+
+// The daily challenge uses the UTC date so everyone gets the same road on the same day.
+const dayKey = () => new Date().toISOString().slice(0, 10);
+function hashSeed(str) {
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++) h = Math.imul(h ^ str.charCodeAt(i), 16777619);
+  return h >>> 0;
+}
+function dayLabel(key) {
+  const d = new Date(key + 'T12:00:00Z');
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: 'UTC' });
+}
 
 const UI_FONT = "Overpass, 'Arial Narrow', Arial, system-ui, sans-serif";

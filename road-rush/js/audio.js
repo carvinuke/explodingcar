@@ -5,6 +5,7 @@ const Sound = (() => {
   let ctx = null, master = null, noiseBuf = null;
   let muted = Store.get('muted', false);
   let lastWhoosh = 0;
+  let rainGain = null, windGain = null;
 
   // Must be called from a user gesture (browsers block audio until then).
   function init() {
@@ -26,6 +27,21 @@ const Sound = (() => {
         noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 3, ctx.sampleRate);
         const d = noiseBuf.getChannelData(0);
         for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+        // looping weather beds (silent until it rains or snows)
+        const bed = (type, freq, q) => {
+          const src = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+          src.buffer = noiseBuf;
+          src.loop = true;
+          f.type = type;
+          f.frequency.value = freq;
+          f.Q.value = q;
+          g.gain.value = 0;
+          src.connect(f); f.connect(g); g.connect(master);
+          src.start();
+          return g;
+        };
+        rainGain = bed('highpass', 1800, 0.4);
+        windGain = bed('lowpass', 380, 0.8);
       }
       if (ctx.state === 'suspended') ctx.resume();
     } catch (e) {
@@ -178,6 +194,121 @@ const Sound = (() => {
     stun() {
       if (!ok()) return;
       [0, 0.11, 0.22].forEach(d => tone('sine', 1900, 2700, 0.09, 0.05, d));
+    },
+
+    // weather beds: called every frame with 0..1 amounts
+    ambient(rain, snow) {
+      if (!ctx || !rainGain) return;
+      const t = ctx.currentTime;
+      rainGain.gain.setTargetAtTime(0.12 * rain, t, 0.3);
+      windGain.gain.setTargetAtTime(0.18 * snow, t, 0.3);
+    },
+
+    near(combo) {
+      if (!ok()) return;
+      const f = 880 * Math.pow(1.122, Math.min(combo - 1, 10));
+      tone('triangle', f, f * 1.5, 0.12, 0.13);
+      noise('bandpass', 1200, 3000, 0.2, 0.12, { q: 1.2, attack: 0.02 });
+    },
+
+    mission() {
+      if (!ok()) return;
+      [659, 784, 988, 1319].forEach((f, i) => tone('square', f, 0, 0.1, 0.06, i * 0.08));
+      tone('triangle', 1319, 0, 0.4, 0.12, 0.32);
+    },
+
+    eventSting() {
+      if (!ok()) return;
+      [392, 466, 554, 740].forEach((f, i) => tone('sawtooth', f, 0, 0.14, 0.05, i * 0.09));
+      tone('sine', 1480, 740, 0.6, 0.08, 0.36);
+    },
+
+    bell(vol) {
+      if (!ok()) return;
+      tone('triangle', 1760, 0, 0.22, 0.12 * vol);
+      tone('sine', 2637, 0, 0.18, 0.05 * vol);
+    },
+
+    trainHorn(pan, vol) {
+      if (!ok()) return;
+      for (const f of [311, 370, 466]) tone('sawtooth', f, f * 0.98, 1.1, 0.045 * vol, 0, pan);
+      noise('lowpass', 500, 120, 1.8, 0.35 * vol, { pan, attack: 0.2 });
+    },
+
+    siren(pan) {
+      if (!ok()) return;
+      tone('triangle', 740, 1100, 0.42, 0.06, 0, pan);
+      tone('triangle', 1100, 740, 0.42, 0.06, 0.44, pan);
+    },
+
+    splash(vol = 0.6) {
+      if (!ok()) return;
+      noise('bandpass', 1400, 300, 0.4, 0.5 * vol, { q: 0.8 });
+      tone('sine', 300, 90, 0.2, 0.15 * vol);
+    },
+
+    screech() {
+      if (!ok()) return;
+      tone('sawtooth', 1900, 1500, 0.6, 0.035);
+      noise('bandpass', 2600, 1800, 0.6, 0.25, { q: 6 });
+    },
+
+    ufo() {
+      if (!ok()) return;
+      for (let i = 0; i < 4; i++) tone('sine', 420 + i * 60, 900 - i * 80, 0.35, 0.05, i * 0.18);
+    },
+
+    laser() {
+      if (!ok()) return;
+      tone('sawtooth', 1800, 180, 0.3, 0.08);
+      tone('square', 900, 90, 0.25, 0.04, 0.02);
+    },
+
+    whistle() {
+      if (!ok()) return;
+      tone('sine', 1800, 400, 1.6, 0.05);
+    },
+
+    stomp(vol) {
+      if (!ok()) return;
+      tone('sine', 70, 30, 0.35, 0.6 * vol);
+      noise('lowpass', 400, 60, 0.3, 0.4 * vol);
+    },
+
+    cluck() {
+      if (!ok()) return;
+      tone('square', 330, 220, 0.12, 0.08);
+      tone('square', 300, 200, 0.14, 0.08, 0.16);
+    },
+
+    honk() {
+      if (!ok()) return;
+      tone('sawtooth', 260, 230, 0.3, 0.08);
+      tone('square', 390, 350, 0.3, 0.04);
+    },
+
+    moon() {
+      if (!ok()) return;
+      for (const [f, d] of [[220, 0], [330, 0.2], [440, 0.4]]) tone('sine', f, f * 1.01, 1.6, 0.06, d);
+    },
+
+    bossHorn() {
+      if (!ok()) return;
+      for (const d of [0, 0.5]) for (const f of [110, 138]) tone('sawtooth', f, f * 0.97, 0.45, 0.1, d);
+      noise('lowpass', 300, 60, 1.2, 0.4);
+    },
+
+    rumble(vol) {
+      if (!ok()) return;
+      noise('lowpass', 180, 60, 0.6, 0.35 * vol, { attack: 0.05 });
+      tone('sawtooth', 55, 50, 0.5, 0.05 * vol);
+    },
+
+    switchClick() {
+      if (!ok()) return;
+      tone('square', 600, 0, 0.05, 0.1);
+      tone('square', 900, 0, 0.08, 0.1, 0.06);
+      tone('sine', 1320, 0, 0.3, 0.1, 0.12);
     },
 
     gameOver() {
