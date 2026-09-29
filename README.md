@@ -1,6 +1,10 @@
 # explodingcar
 car go boom
 
+## Play
+
+**https://carvinuke.github.io/explodingcar/road-rush/**
+
 ## Games
 
 - **[Road Rush](road-rush/)**: an endless cross-the-road arcade game with
