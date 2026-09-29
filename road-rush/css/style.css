@@ -751,6 +751,43 @@ kbd {
 .lvl-bar { display: inline-block; width: 54px; height: 6px; border-radius: 3px; background: rgba(255, 255, 255, 0.25); overflow: hidden; }
 .lvl-bar i { display: block; height: 100%; background: #b9a8ff; }
 
+/* ---- Admin panel: a hazard-striped work order ------------------------------------ */
+.exit-tab { cursor: pointer; }
+.exit-tab.tapped { animation: tap-wiggle 0.2s ease; }
+@keyframes tap-wiggle { 50% { transform: translateY(2px) rotate(-3deg); } }
+.admin-card { width: min(640px, 100%); border-radius: 12px; overflow: hidden; background: var(--ink); color: var(--sign-white); box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55); animation: slide-up 0.25s ease-out; }
+.admin-stripes { height: 16px; background: repeating-linear-gradient(-45deg, var(--sign-yellow) 0 14px, var(--ink) 14px 28px); }
+.admin-inner { display: flex; flex-direction: column; gap: 6px; padding: 14px 18px 18px; }
+.admin-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.admin-top h2 { margin: 0; font-size: 26px; font-weight: 900; letter-spacing: 0.2em; color: var(--sign-yellow); }
+.admin-status { margin: 0; font: 700 13px var(--font-mono); color: var(--muted); min-height: 1.3em; }
+.admin-status.pop { color: var(--sign-yellow); }
+.admin-head { margin: 12px 0 6px; font-size: 11px; font-weight: 900; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); }
+.admin-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: stretch; }
+.admin-btn {
+  padding: 8px 11px 6px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--asphalt-2);
+  color: var(--sign-white);
+  box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.18);
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.admin-btn:hover { background: #3a3f48; }
+.admin-btn:active { transform: translateY(2px); }
+.admin-btn.go { background: var(--sign-yellow); color: var(--ink); box-shadow: none; }
+.admin-btn.gold { background: #6b4f00; box-shadow: inset 0 0 0 1.5px var(--sign-yellow); color: #ffe27a; }
+.admin-btn.danger { background: #4a0d15; box-shadow: inset 0 0 0 1.5px var(--sign-red); color: #ff9aa8; }
+.admin-btn.flip[aria-pressed="true"] { background: var(--sign-green); box-shadow: inset 0 0 0 1.5px #5fd39c; }
+.admin-field { display: inline-flex; align-items: center; gap: 6px; padding: 0 8px; border-radius: 6px; background: var(--asphalt-2); box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.18); }
+.admin-field span { font-size: 12px; font-weight: 800; color: var(--muted); }
+.admin-field input { width: 110px; padding: 7px 4px; border: 0; background: transparent; color: var(--sign-white); font: 700 15px var(--font-mono); -webkit-user-select: text; user-select: text; }
+.admin-field input:focus { outline: none; }
+.admin-field:focus-within { box-shadow: inset 0 0 0 2px var(--sign-yellow); }
+.admin-card button:focus-visible { outline-color: var(--sign-yellow); }
+
 /* ---- Toasts --------------------------------------------------------------------- */
 .t-zone { background: var(--sign-green); color: var(--sign-white); box-shadow: inset 0 0 0 2px var(--sign-green), inset 0 0 0 4px var(--sign-white), 0 6px 18px rgba(0, 0, 0, 0.35); }
 .t-trophy { background: var(--sign-blue); color: var(--sign-white); box-shadow: inset 0 0 0 2px var(--sign-blue), inset 0 0 0 4px var(--sign-yellow), 0 6px 18px rgba(0, 0, 0, 0.35); }

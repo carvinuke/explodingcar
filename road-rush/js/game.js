@@ -59,6 +59,7 @@ const Game = {
     Replay.init();
     Missions.load();
     UI.init();
+    Admin.init();
     Input.init();
     document.addEventListener('visibilitychange', () => { if (document.hidden) this.togglePause(true); });
     addEventListener('blur', () => this.togglePause(true));
@@ -368,7 +369,7 @@ const Game = {
 
   kill(source, opts = {}) {
     const p = opts.p || Player;
-    if (!p.alive) return;
+    if (!p.alive || Admin.god) return;
     const sameMoment = this.state === 'dying' && this.deathT === 0 && this.players.length > 1;
     if (this.state !== 'playing' && !sameMoment) return;
     const gore = Settings.gore && source !== 'danger' && source !== 'pit';
@@ -496,7 +497,7 @@ const Game = {
 
   // The creeping danger line: dawdle too long and it catches you.
   updateDanger(dt) {
-    if (!this.danger.active) return;
+    if (!this.danger.active || Admin.noDanger) return;
     const lead = this.leader();
     const d = difficulty(lead.maxRow);
     this.danger.y += TILE * (0.3 + 0.45 * d) * (this.modeDef().danger || 1) * dt;
@@ -516,7 +517,7 @@ const Game = {
 
   updateWeather(dt) {
     const w = this.weather;
-    const want = World.weatherAt(Math.max(0, this.leader().maxRow + 4));
+    const want = Admin.weather || World.weatherAt(Math.max(0, this.leader().maxRow + 4));
     if (w.type !== want) {
       w.amt = approach(w.amt, 0, dt * 0.6);
       if (w.amt === 0) {
@@ -580,6 +581,7 @@ const Game = {
     this.updateWeather(dt);
     this.updateZone();
     Lighting.update();
+    Admin.update();
     FX.update(dt);
     Cam.update(dt, realDt);
     // game over on a wide screen: slide the scene right so the report sits beside it
