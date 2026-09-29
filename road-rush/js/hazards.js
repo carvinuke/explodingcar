@@ -33,7 +33,7 @@ const River = {
       if (row.type !== 'river') continue;
       const R = row.river, dir = R.dir, logs = R.logs;
       const dx = dir * R.speed * fz * dt;
-      for (const l of logs) { l.x += dx; l.bob += dt * 2; }
+      for (const l of logs) { if (!l.still) l.x += dx; l.bob += dt * 2; }
       const uEnd = R.xEnd * dir;
       for (let i = logs.length - 1; i >= 0; i--) if (logs[i].x * dir - logs[i].len / 2 > uEnd) logs.splice(i, 1);
       // spawn behind the rear-most log once the gap has opened up

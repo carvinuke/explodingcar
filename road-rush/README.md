@@ -119,6 +119,46 @@ Rare events that happen every minute or two:
 - **The moon is too close** and **Gravity glitch:** low gravity with floaty hops.
 - **Miniature world:** everything shrinks into a tiny tilt-shift view.
 
+## Reverse Day
+
+Every couple of minutes in Endless and Hardcore, the whole screen flips over
+like a card and for 20 seconds you're the car. Chickens stream across a
+five-lane highway, some stop dead in the middle, and now and then a whole
+flock crosses in a line with one gap to thread. Up and down change lanes,
+right speeds up, left brakes. Every chicken you pass untouched is a coin
+(golden chickens are worth 5, and every 10 in a row pays a bonus). Every one
+you hit costs 3 coins and a point off your licence. Lose all 5 points and your
+licence is revoked early. Then the world flips back, and the real road
+carries on exactly where you left it.
+
+## Big J's rage stomp
+
+Only Big J has it. His face gets angrier with every close call, and with every
+crash or blast that rattles him: the brow drops, the frown deepens, an anger
+vein pops, he starts to shake and steam, and at maximum rage his eyes go
+white-hot. A RAGE meter on the HUD shows how close he is. At maximum he leaps
+up and slams the ground: a shockwave cracks the road and throws every car
+around him clear (worth points for each one). Big S doesn't rage at all. His
+face is just `:|`.
+
+## The egg
+
+Now and then an egg sits on the road (single player only). Pick it up and you
+carry it on your head. Get it 50 rows further without dying (the HUD counts
+the rows) and it cracks open into a rare pet you can't buy anywhere. Die and
+it breaks. Each egg hatches a pet you don't have yet; once you have all five,
+eggs are full of coins instead.
+
+- *Phoenix Chick* (legendary): once per run, brings you back from any death,
+  even the river or the danger line, and torches every car around you.
+- *Baby Dragon* (epic): breathes fire on any car about to hit you.
+- *Unicorn* (epic): rainbow steps appear under you on water, so you can walk
+  across rivers, and every coin is worth double.
+- *Golden Goose* (rare): lays a golden egg worth 10 coins every few seconds,
+  and doubles your XP.
+- *Time Owl* (rare): all traffic moves slower, and time slows down when a car
+  is about to hit you.
+
 ## Progression
 
 - **Levels and XP:** every run earns XP (rows, coins, close calls, events
@@ -128,7 +168,7 @@ Rare events that happen every minute or two:
   (20). The report shows the XP you earned and your progress.
 - **Shop:** spend coins on skins (Hard Hat Chick, Duck, Frog, Raccoon, and
   Big J, a grey body under a round helmet with a very unimpressed red face, and
-  Big S, the same but with a blue face), pets (see below), hats
+  Big S, the same but with a blue `:|` face), pets (see below), hats
   (party hat, sunglasses, traffic cone, cowboy hat, top hat, crown) and hop
   trails (sparkles, bubbles, confetti, fire, rainbow).
 - **Pets:** a companion that follows you around, each with a trick:
@@ -147,7 +187,7 @@ Rare events that happen every minute or two:
   ahead), Ghost (cars and trains pass straight through you for 4 seconds),
   Shrink (a tiny chicken with a tiny hitbox for 7 seconds) and Horn (every car
   nearby slams on its brakes, even speeders).
-- **Trophies:** 24 achievements, such as surviving three explosions in one run,
+- **Trophies:** 31 achievements, such as surviving three explosions in one run,
   a close call with a train, getting trampled by a deer, or getting picked up
   by a tornado and living. Three of them unlock skins you can't buy: the Crash
   Test Dummy, Penguin and Zombie Chick.
@@ -199,7 +239,9 @@ for the rest of the session. From there you can:
 - change the game speed from 0.25x to 3x
 - spawn any vehicle just ahead, clear all traffic, fill the road with coins,
   blow up every car on screen, or kill yourself to see the replay
-- give yourself any pet
+- give yourself any pet (including the egg-only ones)
+- start a Reverse Day, drop an egg in front of you, hatch one on the spot, or
+  max out Big J's rage
 - grant any power-up, start any secret event, or summon a tornado, lightning,
   a drunk driver, a reckless driver, a cow, deer or a seagull
 - force the weather or jump to morning, sunset or night
@@ -229,13 +271,15 @@ Plain scripts that share a few global objects, loaded in order by `index.html`:
 | `js/vehicles.js` | `Vehicles`: types, lanes, braking, skids, crashes, blasts, responders, crash director |
 | `js/hazards.js` | `River` (logs), `Rail` (signals, trains, trams, stalled cars), `Work` (excavators) |
 | `js/animals.js` | `Animals`: cows, deer, tumbleweeds, seagulls, paramedics |
-| `js/pets.js` | `Pets`: the companion that follows you |
+| `js/pets.js` | `Pets`: the companion that follows you, and the egg pets' powers |
 | `js/player.js` | `Player` / `Player2`: hops, ice, log riding, knockback, stun, abduction, deaths |
 | `js/powerups.js` | `Items` + `Powers`: coins, pickups and power-up timers |
 | `js/progress.js` | `SKINS`, `HATS`, `TRAILS` + `Shop`, `Missions`, `Ghost` |
 | `js/trophies.js` | `Stats`, `Trophies` and `Levels` |
 | `js/events.js` | `Events`: secret events |
 | `js/storms.js` | `Storms`: lightning and tornadoes |
+| `js/specials.js` | `Rage` (Big J's rage stomp) and `Egg` (carrying and hatching) |
+| `js/reverse.js` | `Reverse`: Reverse Day, where you drive and the chickens cross |
 | `js/camera.js` | `Cam`: follow (one or two players), shake, zoom |
 | `js/lighting.js` | `Lighting`: day and night, darkness layer and lights |
 | `js/renderer.js` | `Renderer`: frame composition, depth sorting, overlays |

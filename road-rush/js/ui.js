@@ -46,6 +46,17 @@ const UI = {
       this.chips[k] = { el, fill: el.querySelector('i'), on: false };
     }
 
+    // Big J's rage meter and the egg you're carrying get chips too
+    for (const [k, name, color] of [['rage', 'Rage', '#ff3b2f'], ['egg', 'Egg', '#ff8ad8']]) {
+      const el = document.createElement('div');
+      el.className = 'pw hidden';
+      el.style.setProperty('--c', color);
+      el.innerHTML = `<img src="${Draw.iconURL(k)}" alt=""><div class="pw-info"><span class="pw-name">${name}</span><span class="pw-bar"><i></i></span></div>`;
+      this.powers.appendChild(el);
+      this.extra = this.extra || {};
+      this.extra[k] = { el, fill: el.querySelector('i'), name: el.querySelector('.pw-name'), on: false, text: '' };
+    }
+
     const stop = e => e.stopPropagation();
     for (const b of document.querySelectorAll('button')) b.addEventListener('pointerdown', stop);
     const on = (id, fn) => $(id).addEventListener('click', fn);
@@ -241,13 +252,19 @@ const UI = {
       const item = table[id];
       const owned = Shop.has(tab, id), equipped = Shop.equipped(tab, id);
       const card = document.createElement('div');
-      card.className = 'skin' + (equipped ? ' equipped' : '') + ((item.unlock || item.level) && !owned ? ' locked' : '');
+      card.className = 'skin' + (equipped ? ' equipped' : '') + ((item.unlock || item.level || item.egg) && !owned ? ' locked' : '') + (item.egg ? ' egg' : '');
       const cv = document.createElement('canvas');
       cv.width = cv.height = 120;
       this.preview(cv, tab, id);
       const name = document.createElement('b');
       name.textContent = item.name;
       card.append(cv, name);
+      if (item.rare) {
+        const tag = document.createElement('span');
+        tag.className = 'rarity r-' + item.rare.toLowerCase();
+        tag.textContent = item.rare + ' · EGG ONLY';
+        card.appendChild(tag);
+      }
       if (item.perk) {
         const perk = document.createElement('span');
         perk.className = 'unlock perk';
@@ -263,11 +280,12 @@ const UI = {
         btn.className = 'btn-plate small';
         btn.textContent = 'Equip';
         btn.addEventListener('click', () => { Shop.equip(tab, id); Sound.click(); this.renderShop(); });
-      } else if (item.unlock || item.level) {
+      } else if (item.unlock || item.level || item.egg) {
         const t = item.unlock && TROPHIES.find(x => x.id === item.unlock);
         const how = document.createElement('span');
         how.className = 'unlock';
-        how.textContent = item.level ? `Reach level ${item.level} (you're level ${Levels.level})` : `Trophy: ${t ? t.desc : 'secret'}`;
+        how.textContent = item.egg ? 'Find an egg on the road and carry it 50 rows to hatch it'
+          : item.level ? `Reach level ${item.level} (you're level ${Levels.level})` : `Trophy: ${t ? t.desc : 'secret'}`;
         card.appendChild(how);
         btn.className = 'btn-plate small';
         btn.textContent = 'Locked';
@@ -297,11 +315,20 @@ const UI = {
     const skin = tab === 'skins' ? SKINS[id] : Shop.skin();
     const hat = tab === 'hats' ? (id === 'none' ? null : id) : tab === 'skins' ? null : Shop.hat;
     if (tab === 'trails') this.trailPreview(g, id);
-    if (tab === 'pets' && id !== 'none') g.translate(-9, 0);
-    Draw.shadow(g, 0, 0, 30, 24, 0.9);
-    Draw.player(g, { facing: 'down', squash: 0, z: 0, rot: 0, flap: 0, char: 0 }, 0, skin, hat);
-    if (tab === 'pets' && id !== 'none') {
-      const pet = { type: id, face: -1, z: ['drone', 'pigeon', 'parrot'].includes(id) ? 26 : 0, blink: 0 };
+    const eggPet = tab === 'pets' && PETS[id].egg;
+    if (eggPet) { // the hatchlings get the stage to themselves
+      const fly = ['phoenix', 'dragon', 'owl'].includes(id);
+      g.translate(fly ? -2 : -3, fly ? 2 : -2);
+      g.scale(1.25, 1.25);
+      Draw.shadow(g, 0, 0, 24, 16, 0.8);
+      Draw.pet(g, { type: id, face: 1, z: fly ? 5 : 0, blink: 0, ph: 0 }, 1);
+    } else {
+      if (tab === 'pets' && id !== 'none') g.translate(-9, 0);
+      Draw.shadow(g, 0, 0, 30, 24, 0.9);
+      Draw.player(g, { facing: 'down', squash: 0, z: 0, rot: 0, flap: 0, char: 0 }, 0, skin, hat);
+    }
+    if (tab === 'pets' && id !== 'none' && !eggPet) {
+      const pet = { type: id, face: -1, z: ['drone', 'pigeon', 'parrot', 'phoenix', 'dragon', 'owl'].includes(id) ? 26 : 0, blink: 0, ph: 0 };
       g.save();
       g.translate(22, 4);
       Draw.shadow(g, 0, 0, 20, 14, 0.7);
@@ -309,7 +336,8 @@ const UI = {
       g.restore();
     }
     g.restore();
-    if (tab === 'skins' && (SKINS[id].unlock || SKINS[id].level) && !Shop.has('skins', id)) { // locked: a padlock over a silhouette
+    const lockedPet = tab === 'pets' && PETS[id].egg && !Shop.has('pets', id);
+    if (lockedPet || (tab === 'skins' && (SKINS[id].unlock || SKINS[id].level) && !Shop.has('skins', id))) { // locked: a padlock over a silhouette
       g.globalCompositeOperation = 'source-atop';
       g.fillStyle = 'rgba(20,14,10,0.78)';
       g.fillRect(0, 0, cv.width, cv.height);
@@ -379,7 +407,8 @@ const UI = {
       ['Level', `${LI.level} (${LI.into}/${LI.need} XP)`], ['Runs played', d.runs], ['Time on the road', fmtTime(d.time)], ['Rows crossed', d.rows.toLocaleString()],
       ['Coins earned', d.coins.toLocaleString()], ['Cars wrecked near you', d.wrecks.toLocaleString()],
       ['Close calls', d.closeCalls.toLocaleString()], ['Best combo', 'x' + d.bestCombo], ['Trains dodged', d.trainDodges],
-      ['Logs ridden', d.logs], ['Secret events survived', d.events]
+      ['Logs ridden', d.logs], ['Secret events survived', d.events],
+      ['Eggs hatched', d.hatched || 0], ['Rage stomps', d.stomps || 0], ['Chickens dodged on Reverse Day', d.revDodged || 0],
       ['Two-player matches', d.versusGames],
     ];
     const bests = [['Endless', Game.bestFor('normal')], ['Hardcore', Game.bestFor('hardcore')], ['Time attack', Game.bestFor('time')]];
@@ -668,6 +697,19 @@ const UI = {
         ch.fill.style.transform = `scaleX(${(left / POWERUPS[k].dur).toFixed(3)})`;
         ch.el.classList.toggle('ending', left < 1.5);
       }
+    }
+
+    const extra = {
+      rage: Rage.able(Player) && Player.alive ? [Player.rage, Player.rage >= 1 ? 'Rage: MAX' : `Rage ${RAGE_LEVELS[Math.floor(Player.rage * 4)] || ''}`.trim()] : null,
+      egg: Egg.carry && Player.alive ? [Egg.progress(), `Egg ${Math.min(EGG_ROWS, Egg.carry.rows)}/${EGG_ROWS}`] : null,
+    };
+    for (const k in this.extra) {
+      const ch = this.extra[k], v = extra[k], on = !!v && !versus;
+      if (on !== ch.on) { ch.el.classList.toggle('hidden', !on); ch.on = on; }
+      if (!on) continue;
+      ch.fill.style.transform = `scaleX(${clamp(v[0], 0, 1).toFixed(3)})`;
+      if (v[1] !== ch.text) { ch.text = v[1]; ch.name.textContent = v[1]; }
+      ch.el.classList.toggle('rage-full', k === 'rage' ? v[0] >= 1 : v[0] >= 0.8);
     }
 
     const stunned = !versus && !Settings.motion && Player.alive && Player.stun > 0.25 && Player.stun < 10;

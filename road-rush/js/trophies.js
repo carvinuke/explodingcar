@@ -69,6 +69,11 @@ const TROPHIES = [
   { id: 'hardcore', name: 'Hardcore', desc: 'Reach row 100 in Hardcore', test: r => r.mode === 'hardcore' && r.row >= 100 },
   { id: 'speed', name: 'Speed Demon', desc: 'Reach row 60 in Time Attack', test: r => r.mode === 'time' && r.row >= 60 },
   { id: 'rivals', name: 'Friendly Rivalry', desc: 'Finish a two-player match', test: (r, s) => s.versusGames >= 1 },
+  { id: 'hatch', name: 'Hatchling', desc: 'Hatch an egg', test: r => r.hatch >= 1 },
+  { id: 'rage', name: 'Anger Management', desc: 'Throw 3 cars at once with Big J\'s rage stomp', test: r => r.stompCars >= 3 },
+  { id: 'reborn', name: 'Rise Again', desc: 'Get brought back to life by the Phoenix Chick', test: r => r.reborn >= 1 },
+  { id: 'reverse', name: 'Role Reversal', desc: 'Dodge 25 chickens in one Reverse Day', test: r => r.revDodge >= 25 },
+  { id: 'gentle', name: 'Careful Driver', desc: 'Get through a Reverse Day without hitting a single chicken', test: r => r.revClean >= 1 },
 ];
 
 const Trophies = {
@@ -143,7 +148,7 @@ const Levels = {
   // XP for a finished run.
   forRun(mode, row, coins, run) {
     const base = row + coins * 2 + (run.closeCalls || 0) * 3 + (run.events || 0) * 10 + Trophies.fresh.length * 25;
-    return Math.round(base * (mode === 'hardcore' ? 1.5 : mode === 'time' ? 1.2 : 1) * (Pets.has('duck') ? 1.25 : 1));
+    return Math.round(base * (mode === 'hardcore' ? 1.5 : mode === 'time' ? 1.2 : 1) * (Pets.has('duck') ? 1.25 : 1) * (Pets.has('goose') ? 2 : 1));
   },
 
   // Add XP; returns what happened, including any level-up rewards.

@@ -708,7 +708,9 @@ const Draw = (() => {
     // helmet head
     const R = 12 * (1 + sq * 0.12), hz = lift + bh + 11;
     const s = p.facing === 'right' ? 1 : p.facing === 'left' ? -1 : 0;
-    const cx = 0, cy = P(-3, hz);
+    const rage = sk.neutral ? 0 : Math.min(1, p.rage || 0); // Big J boils over with every close call
+    const shake = rage > 0.45 ? (rage - 0.45) * 2.4 : 0;
+    const cx = shake ? Math.sin(time * 61) * shake : 0, cy = P(-3, hz) + (shake ? Math.cos(time * 47) * shake * 0.6 : 0);
     c.fillStyle = '#80838c'; // side tabs and the top tab
     c.fillRect(cx - R - 3.2, cy - 3.5, 4.5, 7);
     c.fillRect(cx + R - 1.3, cy - 3.5, 4.5, 7);
@@ -728,7 +730,14 @@ const Draw = (() => {
       c.fillRect(cx - 0.6, cy - R + 3.5, 1.2, 2 * R - 7);
     } else {
       const fx = cx + s * 2.2;
-      c.fillStyle = red;
+      if (rage > 0.25) { // a hot red glow around the face
+        c.save();
+        c.globalCompositeOperation = 'lighter';
+        c.fillStyle = `rgba(255,40,20,${(0.12 + 0.3 * rage) * (0.75 + 0.25 * Math.sin(time * (6 + rage * 10)))})`;
+        c.beginPath(); c.arc(fx, cy, R + 3 + rage * 4, 0, 6.2832); c.fill();
+        c.restore();
+      }
+      c.fillStyle = rage > 0 ? mix(red, '#c80000', rage * 0.55) : red;
       c.beginPath(); c.arc(fx, cy, R - 3.2, 0, 6.2832); c.fill();
       c.fillStyle = 'rgba(255,255,255,0.12)';
       c.beginPath(); c.arc(fx - 3, cy - 3, 3, 0, 6.2832); c.fill();
@@ -736,19 +745,49 @@ const Draw = (() => {
       c.fillStyle = ink;
       c.lineWidth = 1.3;
       c.lineCap = 'round';
-      c.beginPath(); // the V
-      c.moveTo(fx - 2.3, cy - 6.2); c.lineTo(fx, cy - 2.6); c.lineTo(fx + 2.3, cy - 6.2);
-      c.stroke();
-      if (blink) {
-        c.fillRect(fx - 3.2, cy, 2.2, 0.8);
-        c.fillRect(fx + 1, cy, 2.2, 0.8);
+      if (sk.neutral) { // Big S: :|  two eyes and a flat mouth, no feelings at all
+        if (blink) {
+          c.fillRect(fx - 3.2, cy - 1, 2.2, 0.8);
+          c.fillRect(fx + 1, cy - 1, 2.2, 0.8);
+        } else {
+          c.fillRect(fx - 2.9, cy - 3, 1.6, 3.4);
+          c.fillRect(fx + 1.3, cy - 3, 1.6, 3.4);
+        }
+        c.beginPath(); // the |
+        c.moveTo(fx - 3.2, cy + 4.4); c.lineTo(fx + 3.2, cy + 4.4);
+        c.stroke();
       } else {
-        c.fillRect(fx - 2.9, cy - 0.9, 1.7, 1.7);
-        c.fillRect(fx + 1.2, cy - 0.9, 1.7, 1.7);
+        const w = 2.3 + rage * 1.4, top = cy - 6.2 - rage * 0.8;
+        c.lineWidth = 1.3 + rage * 0.9;
+        c.beginPath(); // the V, steeper and heavier the angrier he gets
+        c.moveTo(fx - w, top); c.lineTo(fx, cy - 2.6 + rage * 0.9); c.lineTo(fx + w, top);
+        c.stroke();
+        const eh = 1.7 * (1 - rage * 0.45);
+        if (rage >= 1) c.fillStyle = '#fff4d6'; // maxed out: the eyes go white-hot
+        if (blink && rage < 1) {
+          c.fillRect(fx - 3.2, cy, 2.2, 0.8);
+          c.fillRect(fx + 1, cy, 2.2, 0.8);
+        } else {
+          c.fillRect(fx - 2.9 - rage * 0.3, cy - 0.9 + rage * 0.6, 1.7 + rage * 0.4, eh);
+          c.fillRect(fx + 1.2 - rage * 0.1, cy - 0.9 + rage * 0.6, 1.7 + rage * 0.4, eh);
+        }
+        c.fillStyle = ink;
+        c.lineWidth = 1.3 + rage * 0.6;
+        c.beginPath(); // frown
+        c.arc(fx, cy + 6.4 + rage * 1.4, 3.4 + rage * 1.2, Math.PI * (1.18 - rage * 0.06), Math.PI * (1.82 + rage * 0.06));
+        c.stroke();
+        if (rage >= 0.5) { // the throbbing anger vein
+          const vx = fx + R * 0.42, vy = cy - R * 0.4, vs = 1.6 + Math.sin(time * 14) * 0.35;
+          c.strokeStyle = '#5c0000';
+          c.lineWidth = 1.1;
+          for (let k = 0; k < 4; k++) {
+            const a = k * Math.PI / 2 + Math.PI / 4;
+            c.beginPath();
+            c.arc(vx + Math.cos(a) * vs * 1.5, vy + Math.sin(a) * vs * 1.5, vs, a + Math.PI * 0.75, a + Math.PI * 1.25);
+            c.stroke();
+          }
+        }
       }
-      c.beginPath(); // frown
-      c.arc(fx, cy + 6.4, 3.4, Math.PI * 1.18, Math.PI * 1.82);
-      c.stroke();
       c.lineCap = 'butt';
     }
     if (hat) drawHat(c, hat, 9, 6, hz + R / GZ - 1, p.facing, hz);
@@ -909,6 +948,54 @@ const Draw = (() => {
     c.fillRect(-w * 0.4, cy - 4, Math.max(1, w * 0.3), 7);
   }
 
+  // A mystery egg (carry it 50 rows) or a golden egg laid by the goose (10 coins).
+  function eggShape(c, x, y, r) {
+    c.beginPath();
+    c.moveTo(x, y - r * 1.3);
+    c.bezierCurveTo(x + r * 0.95, y - r * 1.25, x + r * 1.05, y + r * 0.9, x, y + r);
+    c.bezierCurveTo(x - r * 1.05, y + r * 0.9, x - r * 0.95, y - r * 1.25, x, y - r * 1.3);
+    c.closePath();
+  }
+  function egg(c, it, time) {
+    const gold = it.type === 'goldegg';
+    const z = 14 + Math.sin(time * 3 + it.phase) * 3, cy = P(0, z);
+    const pulse = (time * 0.9 + it.phase) % 1;
+    c.strokeStyle = gold ? '#ffd23f' : '#ff8ad8';
+    c.globalAlpha = 0.7 * (1 - pulse);
+    c.lineWidth = 2;
+    c.beginPath(); c.ellipse(0, P(0, 1), 8 + pulse * 18, (8 + pulse * 18) * GY, 0, 0, 6.2832); c.stroke();
+    c.globalAlpha = 1;
+    c.save();
+    c.globalCompositeOperation = 'lighter';
+    c.fillStyle = gold ? 'rgba(255,210,60,0.3)' : `hsla(${(time * 120) % 360},100%,70%,0.3)`;
+    c.beginPath(); c.arc(0, cy, 20, 0, 6.2832); c.fill();
+    c.restore();
+    c.rotate(Math.sin(time * 5 + it.phase) * 0.12);
+    eggPic(c, 0, cy, gold ? 7 : 8.5, gold, time, 0);
+  }
+  // `crack` 0..1: how close it is to hatching.
+  function eggPic(c, x, y, r, gold, time, crack) {
+    c.fillStyle = gold ? '#c98a00' : '#d9c7a6';
+    eggShape(c, x, y + 1.5, r); c.fill();
+    c.fillStyle = gold ? '#ffd23f' : '#fff6e6';
+    eggShape(c, x, y, r); c.fill();
+    if (!gold) { // speckles in every colour
+      const dots = [[-0.4, -0.5, '#ff5c8a'], [0.35, -0.2, '#34c6ea'], [-0.2, 0.35, '#7ed957'], [0.3, 0.5, '#a78bfa'], [0.05, -0.9, '#ffb000']];
+      for (const [dx, dy, col] of dots) { c.fillStyle = col; c.beginPath(); c.arc(x + dx * r, y + dy * r, r * 0.16, 0, 6.2832); c.fill(); }
+    }
+    c.fillStyle = 'rgba(255,255,255,0.7)';
+    c.beginPath(); c.ellipse(x - r * 0.35, y - r * 0.55, r * 0.18, r * 0.35, -0.3, 0, 6.2832); c.fill();
+    if (crack > 0) {
+      c.strokeStyle = '#3a2a1a';
+      c.lineWidth = 1;
+      c.beginPath();
+      const n = 2 + Math.floor(crack * 5);
+      c.moveTo(x - r * 0.9, y - r * 0.1);
+      for (let k = 1; k <= n; k++) c.lineTo(x - r * 0.9 + (k / n) * r * 1.8 * Math.min(1, crack * 1.4), y - r * 0.1 + (k % 2 ? -1 : 1) * r * 0.22);
+      c.stroke();
+    }
+  }
+
   function powerItem(c, it, time) {
     const def = POWERUPS[it.type];
     const z = 18 + Math.sin(time * 3 + it.phase) * 3;
@@ -1014,6 +1101,17 @@ const Draw = (() => {
           c.stroke();
         }
         break;
+      case 'rage': // Big J's angry V and frown
+        c.lineWidth = r * 0.26;
+        c.beginPath(); c.moveTo(x - r * 0.7, y - r * 0.75); c.lineTo(x, y - r * 0.15); c.lineTo(x + r * 0.7, y - r * 0.75); c.stroke();
+        c.fillRect(x - r * 0.62, y - r * 0.02, r * 0.3, r * 0.26);
+        c.fillRect(x + r * 0.32, y - r * 0.02, r * 0.3, r * 0.26);
+        c.beginPath(); c.arc(x, y + r * 0.95, r * 0.5, Math.PI * 1.18, Math.PI * 1.82); c.stroke();
+        break;
+      case 'egg':
+        eggShape(c, x, y + r * 0.15, r * 0.72);
+        c.fill();
+        break;
       case 'horn': // a trumpet horn
         poly(c, x, y, r, [[-0.9, -0.25], [-0.3, -0.25], [0.8, -0.85], [0.8, 0.85], [-0.3, 0.25], [-0.9, 0.25]]);
         c.fill();
@@ -1024,11 +1122,12 @@ const Draw = (() => {
     c.restore();
   }
 
+  const HUD_ICONS = { rage: { color: '#e0231a', dark: '#8a0f0a' }, egg: { color: '#ff8ad8', dark: '#b04c94' } };
   function iconURL(type, size = 56) {
     const cv = document.createElement('canvas');
     cv.width = cv.height = size;
     const g = cv.getContext('2d');
-    const r = size / 2, def = POWERUPS[type];
+    const r = size / 2, def = POWERUPS[type] || HUD_ICONS[type];
     g.fillStyle = def.dark;
     g.beginPath(); g.arc(r, r + 2, r - 3, 0, 6.2832); g.fill();
     g.fillStyle = def.color;
@@ -1131,6 +1230,25 @@ const Draw = (() => {
       c.fillRect(L / 8, P(-6, 5), L / 4, 1.2);
       c.fillStyle = 'rgba(255,255,255,0.4)';
       c.fillRect(-L / 2 - 2, P(-hy, 0), L + 4, 2);
+      return;
+    }
+    if (l.style === 'rainbow') { // the unicorn's rainbow: a step of light on the water
+      const a = Math.max(0, Math.min(1, l.fade === undefined ? 1 : l.fade));
+      c.globalAlpha = a;
+      const cols = ['#ff5c8a', '#ffb000', '#ffe95c', '#7ed957', '#34c6ea', '#a78bfa'];
+      const band = (2 * hy) / cols.length;
+      cols.forEach((col, k) => {
+        c.fillStyle = col;
+        c.fillRect(-L / 2, P(hy - k * band, 3), L, band * GY + 0.5);
+      });
+      c.fillStyle = 'rgba(255,255,255,0.55)';
+      c.fillRect(-L / 2, P(hy, 3), L, 1.5);
+      c.save();
+      c.globalCompositeOperation = 'lighter';
+      c.fillStyle = `rgba(255,255,255,${0.12 + 0.08 * Math.sin(time * 5)})`;
+      c.fillRect(-L / 2 - 3, P(hy + 3, 3), L + 6, (2 * hy + 6) * GY);
+      c.restore();
+      c.globalAlpha = 1;
       return;
     }
     if (l.style === 'turtle') { // your pet turtle, surfaced
@@ -1468,6 +1586,133 @@ const Draw = (() => {
       return;
     }
     c.scale(o.face, 1);
+    if (o.type === 'phoenix') { // a tiny firebird with a burning tail
+      const flap = Math.sin(time * 16) * 5, fl = Math.sin(time * 23);
+      c.save();
+      c.globalCompositeOperation = 'lighter';
+      c.fillStyle = 'rgba(255,140,40,0.28)';
+      c.beginPath(); c.arc(0, -4, 14, 0, 6.2832); c.fill();
+      c.restore();
+      for (let k = 0; k < 3; k++) { // tail flames
+        c.fillStyle = ['#ffe27a', '#ff8a2a', '#e8401a'][k];
+        c.beginPath();
+        c.moveTo(-4, -4 + k);
+        c.quadraticCurveTo(-12 - k * 2, -9 - fl * 2 + k * 3, -17 - k * 2 + fl, -2 + k * 2);
+        c.quadraticCurveTo(-10, -1 + k, -4, -2);
+        c.fill();
+      }
+      c.fillStyle = '#e0521c';
+      c.beginPath(); c.moveTo(-2, -5); c.lineTo(-10, -6 - flap); c.lineTo(3, -3); c.closePath(); c.fill();
+      c.fillStyle = '#ff9a2a';
+      c.beginPath(); c.ellipse(0, -4, 7, 4, 0, 0, 6.2832); c.fill();
+      c.fillStyle = '#ffc14a';
+      c.beginPath(); c.arc(6, -8, 3.6, 0, 6.2832); c.fill();
+      c.fillStyle = '#ffe95c'; // crest
+      c.beginPath(); c.moveTo(4, -11); c.lineTo(3 + fl, -16); c.lineTo(7, -11.5); c.lineTo(8 - fl, -15); c.lineTo(8.5, -10); c.closePath(); c.fill();
+      c.fillStyle = '#ffd23f';
+      c.fillRect(9, -8.5, 3, 1.6);
+      c.fillStyle = '#1d1d1f';
+      c.fillRect(6.8, -9.4, 1.3, 1.3);
+      c.fillStyle = '#ff7a1a';
+      c.beginPath(); c.moveTo(1, -5); c.lineTo(-7, -4 + flap); c.lineTo(4, -3); c.closePath(); c.fill();
+      c.restore();
+      return;
+    }
+    if (o.type === 'dragon') { // a little purple dragon, flapping hard to keep up
+      const flap = Math.sin(time * 12) * 6;
+      c.fillStyle = '#5b2a86';
+      c.beginPath(); c.moveTo(-3, -7); c.lineTo(-8, -18 - flap); c.lineTo(-1, -14 - flap * 0.6); c.lineTo(3, -7); c.closePath(); c.fill();
+      c.strokeStyle = '#7d3cb5';
+      c.lineWidth = 2.4;
+      c.beginPath(); c.moveTo(-6, -4); c.quadraticCurveTo(-13, -2, -15, -7); c.stroke();
+      c.fillStyle = '#7d3cb5';
+      c.beginPath(); c.moveTo(-15, -7); c.lineTo(-18, -9); c.lineTo(-16, -4); c.closePath(); c.fill();
+      c.beginPath(); c.ellipse(-1, -5, 7.5, 4.6, 0, 0, 6.2832); c.fill();
+      c.fillStyle = '#c9a2f0';
+      c.beginPath(); c.ellipse(0, -3.4, 5, 2.4, 0, 0, 6.2832); c.fill();
+      c.fillStyle = '#7d3cb5';
+      c.beginPath(); c.ellipse(7, -9, 4.6, 3.8, 0, 0, 6.2832); c.fill();
+      c.fillRect(9, -9, 5, 3.2); // snout
+      c.fillStyle = '#ffd23f'; // horns
+      c.beginPath(); c.moveTo(5, -12); c.lineTo(3.5, -16); c.lineTo(7, -12.5); c.closePath(); c.fill();
+      c.beginPath(); c.moveTo(8, -12.5); c.lineTo(8, -16.5); c.lineTo(10, -12); c.closePath(); c.fill();
+      c.fillStyle = '#fff';
+      c.fillRect(7.6, -11, 2.4, 2.4);
+      c.fillStyle = '#1d1d1f';
+      c.fillRect(8.8, -10.6, 1.2, 1.6);
+      c.fillRect(12.5, -8.2, 1, 1);
+      c.fillStyle = '#6a2f9a';
+      c.beginPath(); c.moveTo(-1, -7); c.lineTo(-5, -15 + flap); c.lineTo(2, -12 + flap * 0.6); c.lineTo(4, -7); c.closePath(); c.fill();
+      if (o.breath > 0) { // a lick of flame at the mouth
+        c.fillStyle = '#ffb000';
+        c.beginPath(); c.arc(15, -7.5, 2.4, 0, 6.2832); c.fill();
+      }
+      c.restore();
+      return;
+    }
+    if (o.type === 'owl') { // round, wide-eyed and always watching the traffic
+      const flap = Math.sin(time * 9) * 4;
+      c.fillStyle = '#6b4a2a';
+      c.beginPath(); c.moveTo(-5, -7); c.lineTo(-13, -8 - flap); c.lineTo(-4, -3); c.closePath(); c.fill();
+      c.beginPath(); c.moveTo(5, -7); c.lineTo(13, -8 - flap); c.lineTo(4, -3); c.closePath(); c.fill();
+      c.fillStyle = '#8a6239';
+      c.beginPath(); c.ellipse(0, -7, 7, 8, 0, 0, 6.2832); c.fill();
+      c.fillStyle = '#e8d6b0';
+      c.beginPath(); c.ellipse(0, -4, 4.5, 4.5, 0, 0, 6.2832); c.fill();
+      c.fillStyle = '#8a6239'; // ear tufts
+      c.beginPath(); c.moveTo(-6, -12); c.lineTo(-6, -17); c.lineTo(-2.5, -13.5); c.closePath(); c.fill();
+      c.beginPath(); c.moveTo(6, -12); c.lineTo(6, -17); c.lineTo(2.5, -13.5); c.closePath(); c.fill();
+      for (const ex of [-2.8, 2.8]) {
+        c.fillStyle = '#fff';
+        c.beginPath(); c.arc(ex, -10, 2.7, 0, 6.2832); c.fill();
+        c.fillStyle = '#ffc619';
+        c.beginPath(); c.arc(ex + 0.4, -10, 1.8, 0, 6.2832); c.fill();
+        c.fillStyle = '#1d1d1f';
+        c.beginPath(); c.arc(ex + 0.6, -10, 0.9, 0, 6.2832); c.fill();
+      }
+      c.fillStyle = '#ff9f1c';
+      c.beginPath(); c.moveTo(-1, -8); c.lineTo(1, -8); c.lineTo(0, -5.8); c.closePath(); c.fill();
+      c.restore();
+      return;
+    }
+    if (o.type === 'unicorn') { // white pony, rainbow mane, golden horn
+      const trot = Math.sin(time * 14) * 1.2;
+      for (const lx of [-6, -3, 4, 7]) box(c, lx - 1, lx + 1, -3, -1, 0, 6 + (lx > 0 ? trot : -trot) * 0.3, '#ececf4', '#c9c9d6');
+      box(c, -8, 9, -4, 4, 6, 13, '#ffffff', '#dcdcea');
+      box(c, 7, 10, -2.5, 2.5, 11, 18, '#ffffff', '#dcdcea'); // neck
+      box(c, 8, 16, -3, 3, 16, 21, '#ffffff', '#dcdcea'); // head
+      c.fillStyle = '#ffb3c7';
+      c.fillRect(14, P(-3, 17), 2, 2);
+      c.fillStyle = '#1d1d1f';
+      c.fillRect(12, P(-3, 20), 1.5, 1.5);
+      c.fillStyle = '#ffd23f'; // horn
+      c.beginPath(); c.moveTo(11, P(0, 21)); c.lineTo(14.5, P(0, 31)); c.lineTo(13.5, P(0, 21)); c.closePath(); c.fill();
+      const mane = ['#ff5c8a', '#ffb000', '#ffe95c', '#7ed957', '#34c6ea', '#a78bfa'];
+      mane.forEach((col, k) => { // mane down the neck, tail at the back
+        c.fillStyle = col;
+        c.fillRect(6 + k * 0.6, P(0, 21 - k * 1.6), 2.5, 2);
+        c.fillRect(-10 - (k % 3), P(0, 12 - k * 1.3 + trot * 0.4), 3, 2);
+      });
+      if (o.x !== undefined && Math.random() < 0.25) FX.spawn('glow', o.x + rand(-10, 10), o.y + rand(-4, 4), rand(4, 20), { vz: 20, life: 0.5, size: 2, size2: 0.4, color: `hsl(${rand(360)},100%,75%)` });
+      c.restore();
+      return;
+    }
+    if (o.type === 'goose') { // solid gold, and knows it
+      const bob = Math.sin(time * 6) * 0.8;
+      for (const fx of [-2, 2]) { c.fillStyle = '#ff9f1c'; c.fillRect(fx, P(-2, 1.5), 2.5, 1.5 * GZ + 1); }
+      box(c, -7, 6, -4.5, 4.5, 1.5, 10, '#ffe98a', '#e0a800');
+      box(c, 3, 6, -2, 2, 9, 19 + bob, '#ffe98a', '#e0a800'); // neck
+      box(c, 3, 9, -2.5, 2.5, 17 + bob, 21.5 + bob, '#ffe98a', '#e0a800'); // head
+      box(c, 9, 12, -1.5, 1.5, 18 + bob, 19.5 + bob, '#ff9f1c', '#e07b00');
+      box(c, -10, -6, -2.5, 2.5, 6, 9, '#ffe98a', '#e0a800'); // tail
+      c.fillStyle = '#1d1d1f';
+      c.fillRect(6.5, P(-2.5, 20.5 + bob), 1.4, 1.4);
+      c.fillStyle = 'rgba(255,255,255,0.8)';
+      const gl = ((time * 0.8) % 1) * 18 - 9;
+      c.fillRect(gl, P(0, 9), 1.6, 5); // a glint runs along the body
+      c.restore();
+      return;
+    }
     if (o.type === 'pigeon' || o.type === 'parrot') { // small flapping birds
       const parrot = o.type === 'parrot', flap = Math.sin(time * 18) * 4;
       const body = parrot ? '#e63946' : '#8d93a3', wing = parrot ? '#3a86ff' : '#6d7282';
@@ -1813,7 +2058,7 @@ const Draw = (() => {
 
   return {
     LANE_D, box, shadow, vehiclePalette, wreckPalette, vehicle, warning,
-    tree, bush, rock, lamp, sign, player, hint, ghost, bestGhost, stars, bubble, coin, powerItem, icon, iconURL,
+    tree, bush, rock, lamp, sign, player, hint, ghost, bestGhost, stars, bubble, coin, powerItem, icon, iconURL, egg, eggPic,
     trainCar, log, xing,
     cactus, deadbush, skull, mesa, planter, hydrant, bin, mailbox, bench, snowman, building, buildingWindows,
     pit, cone, barrier, worksign, excavator, welcome, cow, deer, weed, medic, tag,

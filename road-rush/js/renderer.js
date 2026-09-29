@@ -54,6 +54,7 @@ const Renderer = {
   frame(time, dt) {
     const c = this.c;
     this.metrics();
+    if (Reverse.arena) { Reverse.draw(c, time); return; }
     c.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     c.fillStyle = ZONES[World.zoneAt(Math.round(Cam.y / TILE))].bg;
     c.fillRect(0, 0, this.W, this.H);
@@ -72,6 +73,7 @@ const Renderer = {
     Events.drawGround(c, time);
     Storms.drawGround(c, time);
     Animals.drawGround(c, time);
+    Rage.drawGround(c);
 
     // gather drawables, far to near
     const list = this.list;
@@ -434,6 +436,7 @@ const Renderer = {
       case 'pet': Draw.pet(c, o, time); break;
       case 'item':
         if (o.type === 'coin') Draw.coin(c, o, time);
+        else if (o.type === 'egg' || o.type === 'goldegg') Draw.egg(c, o, time);
         else Draw.powerItem(c, o, time);
         break;
       case 'ghost': Draw.bestGhost(c, o.z, o.alpha); break;
@@ -489,6 +492,20 @@ const Renderer = {
       FX.spawn('fire', p.x + rand(-9, 9), p.y + rand(-5, 5), p.z + rand(8, 24), { vz: rand(25, 55), g: -25, drag: 1, life: rand(0.25, 0.5), size: rand(3, 5.5), size2: 1 });
     }
     Draw.player(c, p, time, sk, p.hat());
+    if (p.id === 0 && Egg.carry && p.alive) { // carrying the egg on your head, wobbling more as it gets close
+      const k = Egg.progress(), wob = Math.sin(time * (4 + k * 14)) * (0.08 + k * 0.25);
+      const ez = p.z + (sk.kind === 'bigj' ? 54 : 36) + (p.hat() ? 8 : 0) + Math.sin(time * 3) * 1.5;
+      c.save();
+      c.translate(0, P(0, ez));
+      c.rotate(wob);
+      c.save();
+      c.globalCompositeOperation = 'lighter';
+      c.fillStyle = `hsla(${(time * 120) % 360},100%,70%,${0.18 + 0.2 * k})`;
+      c.beginPath(); c.arc(0, 0, 12 + k * 4, 0, 6.2832); c.fill();
+      c.restore();
+      Draw.eggPic(c, 0, 0, 7, false, time, Math.max(0, (k - 0.78) / 0.22));
+      c.restore();
+    }
     c.globalAlpha = 1;
     if (p.shield) { // one bubble per stacked shield, each a little bigger
       c.save();
