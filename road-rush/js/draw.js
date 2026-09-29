@@ -985,6 +985,41 @@ const Draw = (() => {
         starPath(c, x, y, r, r * 0.45);
         c.fill();
         break;
+      case 'jetpack': // two tanks and a flame
+        c.fillRect(x - r * 0.62, y - r * 0.85, r * 0.5, r * 1.15);
+        c.fillRect(x + r * 0.12, y - r * 0.85, r * 0.5, r * 1.15);
+        poly(c, x, y + r * 0.35, r, [[-0.55, 0], [-0.35, 0.65], [-0.15, 0], [0.15, 0], [0.35, 0.65], [0.55, 0]]);
+        c.fill();
+        break;
+      case 'ghost': // a little sheet ghost
+        c.beginPath();
+        c.arc(x, y - r * 0.2, r * 0.7, Math.PI, 0);
+        c.lineTo(x + r * 0.7, y + r * 0.85);
+        for (let k = 0; k < 3; k++) c.lineTo(x + r * (0.47 - k * 0.47), y + r * (k % 2 ? 0.85 : 0.5));
+        c.lineTo(x - r * 0.7, y + r * 0.85);
+        c.closePath();
+        c.fill();
+        c.fillStyle = 'rgba(0,0,0,0.45)';
+        c.beginPath(); c.arc(x - r * 0.27, y - r * 0.25, r * 0.15, 0, 6.2832); c.arc(x + r * 0.27, y - r * 0.25, r * 0.15, 0, 6.2832); c.fill();
+        break;
+      case 'shrink': // arrows pointing in
+        c.lineWidth = r * 0.22;
+        for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+          c.beginPath();
+          c.moveTo(x + sx * r * 0.9, y + sy * r * 0.9);
+          c.lineTo(x + sx * r * 0.3, y + sy * r * 0.3);
+          c.moveTo(x + sx * r * 0.3, y + sy * r * 0.62);
+          c.lineTo(x + sx * r * 0.3, y + sy * r * 0.3);
+          c.lineTo(x + sx * r * 0.62, y + sy * r * 0.3);
+          c.stroke();
+        }
+        break;
+      case 'horn': // a trumpet horn
+        poly(c, x, y, r, [[-0.9, -0.25], [-0.3, -0.25], [0.8, -0.85], [0.8, 0.85], [-0.3, 0.25], [-0.9, 0.25]]);
+        c.fill();
+        c.lineWidth = r * 0.14;
+        c.beginPath(); c.arc(x + r * 0.8, y, r * 0.35, -0.9, 0.9); c.stroke();
+        break;
     }
     c.restore();
   }
@@ -1094,6 +1129,17 @@ const Draw = (() => {
       c.fillStyle = 'rgba(120,170,210,0.45)';
       c.fillRect(-L / 4, P(2, 5), L / 3, 1.2);
       c.fillRect(L / 8, P(-6, 5), L / 4, 1.2);
+      c.fillStyle = 'rgba(255,255,255,0.4)';
+      c.fillRect(-L / 2 - 2, P(-hy, 0), L + 4, 2);
+      return;
+    }
+    if (l.style === 'turtle') { // your pet turtle, surfaced
+      box(c, -L / 2, L / 2, -hy + 2, hy - 2, -3, 6, '#5a8f3a', '#3f6b27');
+      c.fillStyle = '#7fb85a';
+      for (const [sx, sy] of [[-6, 3], [4, -4], [5, 5], [-5, -5]]) c.fillRect(sx - 2.5, P(sy, 6) - 2, 5, 4);
+      box(c, L / 2 - 1, L / 2 + 7, -4, 4, -1, 5, '#8cc26b', '#6a9c4d');
+      c.fillStyle = '#1d1d1f';
+      c.fillRect(L / 2 + 4, P(-4, 4), 1.5, 1.5);
       c.fillStyle = 'rgba(255,255,255,0.4)';
       c.fillRect(-L / 2 - 2, P(-hy, 0), L + 4, 2);
       return;
@@ -1410,7 +1456,37 @@ const Draw = (() => {
       c.restore();
       return;
     }
+    if (o.type === 'twister') { // a small swirling funnel
+      for (let k = 0; k < 7; k++) {
+        const f = k / 6, r = 3 + f * 11, wob = Math.sin(time * 8 + f * 5) * (1 + f * 3);
+        c.globalAlpha = 0.75 - f * 0.3;
+        c.fillStyle = k % 2 ? '#8a8174' : '#a39a8a';
+        c.beginPath(); c.ellipse(wob, P(0, f * 30), r, r * 0.35, 0, 0, 6.2832); c.fill();
+      }
+      c.globalAlpha = 1;
+      c.restore();
+      return;
+    }
     c.scale(o.face, 1);
+    if (o.type === 'pigeon' || o.type === 'parrot') { // small flapping birds
+      const parrot = o.type === 'parrot', flap = Math.sin(time * 18) * 4;
+      const body = parrot ? '#e63946' : '#8d93a3', wing = parrot ? '#3a86ff' : '#6d7282';
+      c.fillStyle = wing;
+      c.beginPath(); c.moveTo(-2, -4); c.lineTo(-9, -4 - flap); c.lineTo(3, -2); c.closePath(); c.fill();
+      c.fillStyle = body;
+      c.beginPath(); c.ellipse(0, -3, 6, 3.4, 0, 0, 6.2832); c.fill();
+      c.beginPath(); c.arc(5, -6, 2.8, 0, 6.2832); c.fill();
+      if (!parrot) { c.fillStyle = '#5fbf8f'; c.fillRect(3, -4.5, 3, 1.4); } // shiny neck
+      else { c.fillStyle = '#ffd23f'; c.fillRect(-7, -2.5, 4, 2); } // yellow tail
+      c.fillStyle = parrot ? '#2b2b2b' : '#e8a0a0';
+      c.fillRect(7.5, -6.5, 2.6, 1.6);
+      c.fillStyle = '#1d1d1f';
+      c.fillRect(5.2, -7, 1.1, 1.1);
+      c.fillStyle = wing;
+      c.beginPath(); c.moveTo(1, -4); c.lineTo(-6, -4 + flap); c.lineTo(4, -2); c.closePath(); c.fill();
+      c.restore();
+      return;
+    }
     if (o.type === 'duck') {
       for (const fx of [-3, 1]) { c.fillStyle = '#ff9f1c'; c.fillRect(fx, P(-2, 1.5), 2.5, 1.5 * GZ + 1); }
       box(c, -5, 5, -4, 4, 1.5, 9, '#ffe66d', '#f2c230');

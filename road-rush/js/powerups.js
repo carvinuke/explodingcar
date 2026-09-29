@@ -7,6 +7,10 @@ const POWERUPS = {
   magnet:     { name: 'Magnet',     color: '#ff4f6d', dur: 8, weight: 1.0 },
   freeze:     { name: 'Freeze',     color: '#34c6ea', dur: 5, weight: 0.9 },
   invincible: { name: 'Invincible', color: '#a95cff', dur: 5, weight: 0.6 },
+  jetpack:    { name: 'Jetpack',    color: '#ff7a1a', dur: 0, weight: 0.7, instant: true }, // fly 5 rows ahead
+  ghost:      { name: 'Ghost',      color: '#9fe7ff', dur: 4, weight: 0.7 },                // cars pass straight through you
+  shrink:     { name: 'Shrink',     color: '#7ed957', dur: 7, weight: 0.8 },                // tiny chicken, tiny hitbox
+  horn:       { name: 'Horn',       color: '#ffd23f', dur: 0, weight: 0.8, instant: true }, // everything nearby slams its brakes
 };
 for (const k in POWERUPS) POWERUPS[k].dark = shade(POWERUPS[k].color, -0.3);
 
@@ -87,6 +91,8 @@ const Powers = {
       if (p.shield > 1) { FX.text(it.x, it.y + 32, `x${p.shield} SHIELDS`, def.color, 16); }
     }
     else if (type === 'freeze') { this.freeze = def.dur; FX.ice(it.x, it.y); Sound.freeze(); }
+    else if (type === 'jetpack') p.jetpack();
+    else if (type === 'horn') this.horn(p);
     else p.pw[type] = def.dur;
     Sound.powerup();
     FX.pickup(it.x, it.y, def.color);
@@ -97,6 +103,23 @@ const Powers = {
       Missions.add('powerups');
       this.seen.add(type);
       Trophies.max('powerTypes', this.seen.size);
+    }
+  },
+
+  // Horn: every car near you slams on its brakes (even reckless drivers).
+  horn(p) {
+    Sound.honk2(0);
+    Sound.horn(0);
+    FX.text(p.x, p.y + 36, 'HOOOONK!', '#ffd23f', 22);
+    Cam.addTrauma(0.2);
+    for (let k = 0; k < 3; k++) FX.spawn('glow', p.x, p.y, 20, { life: 0.5 + k * 0.15, size: 20 + k * 20, size2: 120 + k * 50, color: '#ffe27a', alpha: 0.16 });
+    for (const row of World.rows.values()) {
+      if (row.type !== 'road' || Math.abs(row.y - p.y) > 3.5 * TILE) continue;
+      for (const v of row.lane.vehicles) {
+        if (v.wreck || v.animal || Math.abs(v.x - p.x) > 7 * TILE) continue;
+        v.reckless = false;
+        v.panic = 1.6;
+      }
     }
   },
 
