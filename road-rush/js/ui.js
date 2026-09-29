@@ -49,7 +49,6 @@ const UI = {
     for (const b of document.querySelectorAll('button')) b.addEventListener('pointerdown', stop);
     const on = (id, fn) => $(id).addEventListener('click', fn);
     on('btn-play', () => Game.start('normal'));
-    on('btn-daily', () => Game.start('daily'));
     on('btn-hardcore', () => Game.start('hardcore'));
     on('btn-time', () => Game.start('time'));
     on('btn-versus', () => Game.start('versus'));
@@ -238,7 +237,7 @@ const UI = {
       const item = table[id];
       const owned = Shop.has(tab, id), equipped = Shop.equipped(tab, id);
       const card = document.createElement('div');
-      card.className = 'skin' + (equipped ? ' equipped' : '') + (item.unlock && !owned ? ' locked' : '');
+      card.className = 'skin' + (equipped ? ' equipped' : '') + ((item.unlock || item.level) && !owned ? ' locked' : '');
       const cv = document.createElement('canvas');
       cv.width = cv.height = 120;
       this.preview(cv, tab, id);
@@ -254,11 +253,11 @@ const UI = {
         btn.className = 'btn-plate small';
         btn.textContent = 'Equip';
         btn.addEventListener('click', () => { Shop.equip(tab, id); Sound.click(); this.renderShop(); });
-      } else if (item.unlock) {
-        const t = TROPHIES.find(x => x.id === item.unlock);
+      } else if (item.unlock || item.level) {
+        const t = item.unlock && TROPHIES.find(x => x.id === item.unlock);
         const how = document.createElement('span');
         how.className = 'unlock';
-        how.textContent = `Trophy: ${t ? t.desc : 'secret'}`;
+        how.textContent = item.level ? `Reach level ${item.level} (you're level ${Levels.level})` : `Trophy: ${t ? t.desc : 'secret'}`;
         card.appendChild(how);
         btn.className = 'btn-plate small';
         btn.textContent = 'Locked';
@@ -291,7 +290,7 @@ const UI = {
     Draw.shadow(g, 0, 0, 30, 24, 0.9);
     Draw.player(g, { facing: 'down', squash: 0, z: 0, rot: 0, flap: 0, char: 0 }, 0, skin, hat);
     g.restore();
-    if (tab === 'skins' && SKINS[id].unlock && !Shop.has('skins', id)) { // locked: a padlock over a silhouette
+    if (tab === 'skins' && (SKINS[id].unlock || SKINS[id].level) && !Shop.has('skins', id)) { // locked: a padlock over a silhouette
       g.globalCompositeOperation = 'source-atop';
       g.fillStyle = 'rgba(20,14,10,0.78)';
       g.fillRect(0, 0, cv.width, cv.height);
@@ -356,14 +355,15 @@ const UI = {
       const m = Math.floor(s / 60), h = Math.floor(m / 60);
       return h ? `${h}h ${m % 60}m` : `${m}m ${Math.floor(s % 60)}s`;
     };
+    const LI = Levels.info();
     const rows = [
-      ['Runs played', d.runs], ['Time on the road', fmtTime(d.time)], ['Rows crossed', d.rows.toLocaleString()],
+      ['Level', `${LI.level} (${LI.into}/${LI.need} XP)`], ['Runs played', d.runs], ['Time on the road', fmtTime(d.time)], ['Rows crossed', d.rows.toLocaleString()],
       ['Coins earned', d.coins.toLocaleString()], ['Cars wrecked near you', d.wrecks.toLocaleString()],
       ['Close calls', d.closeCalls.toLocaleString()], ['Best combo', 'x' + d.bestCombo], ['Trains dodged', d.trainDodges],
-      ['Logs ridden', d.logs], ['Secret events survived', d.events], ['Daily challenges', d.dailies.length],
+      ['Logs ridden', d.logs], ['Secret events survived', d.events]
       ['Two-player matches', d.versusGames],
     ];
-    const bests = [['Endless', Game.bestFor('normal')], ['Hardcore', Game.bestFor('hardcore')], ['Time attack', Game.bestFor('time')], ['Today’s daily', Game.bestFor('daily')]];
+    const bests = [['Endless', Game.bestFor('normal')], ['Hardcore', Game.bestFor('hardcore')], ['Time attack', Game.bestFor('time')]];
     stats.textContent = '';
     const mk = (cls, pairs, title) => {
       const h = document.createElement('p');
@@ -443,14 +443,16 @@ const UI = {
   refreshMeta() {
     this.$('title-best').textContent = Game.best;
     this.$('title-coins').textContent = Game.bank;
-    const db = Store.get(Game.dailyKey(), 0);
-    this.$('daily-best').textContent = db ? `Best ${db}` : dayLabel(dayKey());
     const hb = Game.bestFor('hardcore'), tb = Game.bestFor('time');
     this.$('best-hardcore').textContent = hb ? `Best ${hb}` : '';
     this.$('best-time').textContent = tb ? `Best ${tb}` : '';
     const w = Game.versusWins;
     this.$('vs-record').textContent = w[0] + w[1] ? `${w[0]} : ${w[1]}` : '';
     this.$('trophy-count').textContent = `${Trophies.count}/${TROPHIES.length}`;
+    const L = Levels.info();
+    const lv = this.$('title-level');
+    lv.innerHTML = `<b>LV ${L.level}</b><span class="lvl-bar"><i style="width:${Math.round((L.into / L.need) * 100)}%"></i></span>`;
+    lv.title = `${L.into} / ${L.need} XP to level ${L.level + 1}`;
     this.$('gore-badge').classList.toggle('hidden', !Settings.gore);
   },
 
@@ -499,7 +501,6 @@ const UI = {
     this.show('screen-over', false);
     this.show('screen-pause', false);
     this.show('hud', true);
-    this.show('daily-badge', mode === 'daily');
     const badge = this.$('mode-badge');
     badge.textContent = mode === 'hardcore' ? 'HARDCORE' : mode === 'time' ? 'TIME ATTACK' : '';
     badge.className = 'plate mode-badge' + (mode === 'hardcore' ? ' hardcore' : mode === 'time' ? ' time' : ' hidden');
@@ -548,12 +549,42 @@ const UI = {
       const mult = MODES[info.mode].coinMult;
       this.$('over-coins').textContent = `${info.coins}${mult ? ` (x${mult})` : ''}, ${info.bank} total`;
     }
-    const modeName = info.daily ? `Daily challenge, ${info.daily}` : info.mode === 'normal' || vs ? '' : MODES[info.mode].name;
+    const modeName = info.mode === 'normal' || vs ? '' : MODES[info.mode].name;
     this.$('over-mode-row').classList.toggle('hidden', !modeName);
     this.$('over-mode').textContent = modeName;
     this.$('over-new').classList.toggle('hidden', !info.newBest);
     this.$('report').classList.toggle('bloody', !!info.gore);
     this.$('btn-again').textContent = vs ? 'REMATCH' : 'PLAY AGAIN';
+    const xp = info.xp, xb = this.$('over-xp');
+    xb.classList.toggle('hidden', !xp);
+    if (xp) {
+      const a = xp.after;
+      this.$('xp-level').textContent = `LEVEL ${a.level}`;
+      this.$('xp-gain').textContent = `+${xp.amount} XP`;
+      const fill = this.$('xp-fill');
+      const from = xp.rewards.length ? 0 : xp.before.into / xp.before.need;
+      fill.style.transition = 'none';
+      fill.style.width = `${from * 100}%`;
+      void fill.offsetWidth;
+      fill.style.transition = '';
+      setTimeout(() => { fill.style.width = `${(a.into / a.need) * 100}%`; }, 120);
+      const ul = this.$('xp-rewards');
+      ul.textContent = '';
+      for (const r of xp.rewards) {
+        const li = document.createElement('li');
+        li.textContent = `LEVEL UP! Level ${r.level}: +${r.coins} coins` + (r.skin ? `, new skin: ${SKINS[r.skin].name}` : '');
+        ul.appendChild(li);
+      }
+      if (!xp.rewards.length) {
+        const nx = Levels.nextSkin();
+        if (nx) {
+          const li = document.createElement('li');
+          li.className = 'next';
+          li.textContent = `Next skin: ${SKINS[nx.skin].name} at level ${nx.level}`;
+          ul.appendChild(li);
+        }
+      }
+    }
     const tr = this.$('over-trophies');
     tr.textContent = '';
     for (const t of info.trophies) {

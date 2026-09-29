@@ -19,7 +19,6 @@
     <div class="hud-l">
       <div id="score-plate" class="plate guide"><span class="plate-lbl" id="score-lbl">SCORE</span><b id="score">0</b></div>
       <div id="coin-plate" class="plate coinplate"><span class="coin-ico"></span><b id="coins">0</b></div>
-      <div id="daily-badge" class="plate daily-badge hidden">DAILY</div>
       <div id="mode-badge" class="plate mode-badge hidden"></div>
       <div id="combo" class="plate combo hidden"><b>x2</b><span>CLOSE CALLS</span></div>
     </div>
@@ -55,7 +54,6 @@
       <button id="btn-play" class="btn-yellow btn-big play-main">PLAY</button>
 
       <div class="modes" role="group" aria-label="Other modes">
-        <button id="btn-daily" class="mode-btn m-daily" data-hint="Same road for everyone today"><b>Daily</b><em id="daily-best"></em></button>
         <button id="btn-hardcore" class="mode-btn m-hardcore" data-hint="Faster traffic, no power-ups, double coins"><b>Hardcore</b><em id="best-hardcore"></em></button>
         <button id="btn-time" class="mode-btn m-time" data-hint="90 seconds. Every coin adds a second"><b>Time Attack</b><em id="best-time"></em></button>
         <button id="btn-versus" class="mode-btn m-versus" data-hint="WASD vs arrow keys (or 2 controllers). Last chicken standing"><b>2 Players</b><em id="vs-record"></em></button>
@@ -68,7 +66,7 @@
         <button id="btn-settings" class="btn-plate small">Settings</button>
       </div>
 
-      <p class="meta">Best <b id="title-best">0</b> &middot; <span class="coin-ico"></span> <b id="title-coins">0</b><span id="gore-badge" class="gore-badge hidden">GRAPHIC</span></p>
+      <p class="meta"><span id="title-level" class="lvl"></span> Best <b id="title-best">0</b> &middot; <span class="coin-ico"></span> <b id="title-coins">0</b><span id="gore-badge" class="gore-badge hidden">GRAPHIC</span></p>
     </div>
   </div>
 
@@ -106,6 +104,11 @@
         <div id="over-p2-row" class="hidden"><dt>Player 2</dt><dd id="over-p2"></dd></div>
         <div id="over-tally-row" class="hidden"><dt>Wins</dt><dd id="over-tally"></dd></div>
       </dl>
+      <div id="over-xp" class="xp-block hidden">
+        <div class="xp-top"><b id="xp-level">LEVEL 1</b><span id="xp-gain">+0 XP</span></div>
+        <div class="xp-bar"><i id="xp-fill"></i></div>
+        <ul id="xp-rewards" class="xp-rewards"></ul>
+      </div>
       <ul id="over-trophies" class="trophy-strip hidden"></ul>
       <ul id="over-missions" class="missions paper"></ul>
       <div class="actions">
@@ -233,6 +236,7 @@
 <script src="js/progress.js"></script>
 <script src="js/trophies.js"></script>
 <script src="js/events.js"></script>
+<script src="js/storms.js"></script>
 <script src="js/camera.js"></script>
 <script src="js/lighting.js"></script>
 <script src="js/renderer.js"></script>

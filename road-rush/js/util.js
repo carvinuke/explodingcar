@@ -112,7 +112,7 @@ const Settings = {
 };
 Settings.load();
 
-// Seeded randomness for world layout, so a daily challenge is the same road for everyone.
+// Seeded randomness for world layout (the same seed always builds the same road).
 // Effects and traffic timing keep using Math.random.
 function mulberry32(seed) {
   let a = seed >>> 0;
@@ -139,17 +139,5 @@ const Gen = {
     return entries[entries.length - 1][0];
   },
 };
-
-// The daily challenge uses the UTC date so everyone gets the same road on the same day.
-const dayKey = () => new Date().toISOString().slice(0, 10);
-function hashSeed(str) {
-  let h = 2166136261;
-  for (let i = 0; i < str.length; i++) h = Math.imul(h ^ str.charCodeAt(i), 16777619);
-  return h >>> 0;
-}
-function dayLabel(key) {
-  const d = new Date(key + 'T12:00:00Z');
-  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: 'UTC' });
-}
 
 const UI_FONT = "Overpass, 'Arial Narrow', Arial, system-ui, sans-serif";

@@ -70,6 +70,7 @@ const Lighting = {
   reset() {
     this.flies.length = 0;
     this.nightSeen = false;
+    this.warned = false;
   },
 
   phase() {
@@ -97,6 +98,10 @@ const Lighting = {
     const ph = this.phase();
     this.isNight = ph > 0.58 && ph < 0.86;
     if (Game.state !== 'playing' || !Player.alive) return;
+    if (this.isNight && !this.warned) {
+      this.warned = true;
+      UI.toast('t-weather', 'NIGHT FALLS', 'Some cars have no headlights. Watch for red tail lights', 3800);
+    }
     if (this.isNight) this.nightSeen = true;
     else if (this.nightSeen && ph >= 0.9) { this.nightSeen = false; Trophies.add('nights'); }
   },
@@ -220,8 +225,10 @@ const Lighting = {
           const T = VEHICLE_TYPES[v.type], zt = 4 + T.h * TILE;
           if (!v.wreck) {
             const fx = v.x + v.dir * v.len / 2;
-            fn(fx, v.y, 0, 0, 'cone', v.dir);
-            fn(fx, v.y - 8, zt - 2, 0, 'head');
+            if (!v.dark) { // some drivers forgot their headlights: you only see their tail lights
+              fn(fx, v.y, 0, 0, 'cone', v.dir);
+              fn(fx, v.y - 8, zt - 2, 0, 'head');
+            }
             fn(v.x - v.dir * v.len / 2, v.y - 8, zt - 2, 8, 'tail');
           } else if (v.wreckT < (v.gore ? 7 : 3.2) && !v.doused) {
             fn(v.x, v.y, 0, 2.2 * TILE, 'fire');
@@ -254,5 +261,6 @@ const Lighting = {
     }
     FX.lights((x, y, r) => fn(x, y, 0, r, 'fire'));
     Events.lights(fn);
+    Storms.lights(fn);
   },
 };

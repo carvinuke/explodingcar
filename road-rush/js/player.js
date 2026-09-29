@@ -240,6 +240,17 @@ const PlayerProto = {
     if (this.x < -0.25 * TILE || this.x > WORLD_W + 0.25 * TILE) Game.kill('swept', { p: this });
   },
 
+  // Caught by a tornado: spun up into the funnel and dropped a row or two away.
+  startTwister(tw) {
+    this.queue = null;
+    this.hop = null;
+    this.knock = null;
+    this.ride = null;
+    const opts = [this.row - 1, this.row + 1, this.row + 2].filter(r => r >= 0 && World.rows.get(r));
+    this.abduct = { t: 0, phase: 'lift', ufo: tw, vz: 0, twist: true, ty: (opts.length ? pick(opts) : this.row) * TILE };
+    FX.text(this.x, this.y + 30, 'WHOOOA!', '#e8e0cc', 18);
+  },
+
   // UFO beam: float up, hang there, then get dropped.
   startAbduct(ufo) {
     this.queue = null;
@@ -256,17 +267,27 @@ const PlayerProto = {
     if (a.phase === 'lift') {
       this.z = 90 * easeOutQuad(Math.min(1, a.t / 1.3));
       this.x = damp(this.x, a.ufo.x, 3, dt);
-      this.rot = Math.sin(a.t * 6) * 0.3;
-      if (a.t > 1.6) { a.phase = 'drop'; a.vz = 0; Sound.whistle(); }
+      this.rot = a.twist ? this.rot + dt * 14 : Math.sin(a.t * 6) * 0.3;
+      if (a.t > (a.twist ? 1.3 : 1.6)) { a.phase = 'drop'; a.vz = 0; a.fy = this.y; Sound.whistle(); }
     } else {
       a.vz -= 1100 * Events.gravity * dt;
       this.z += a.vz * dt;
       this.rot += dt * 8;
+      if (a.twist) this.y = lerp(a.fy, a.ty, clamp(1 - this.z / 90, 0, 1));
       if (this.z <= 0) {
         this.z = 0;
         this.rot = 0;
         this.abduct = null;
         this.col = clamp(Math.round(this.x / TILE - 0.5), 0, COLS - 1);
+        if (a.twist) {
+          this.y = a.ty;
+          this.row = Math.round(this.y / TILE);
+          // don't land inside a tree: slide to the nearest open cell
+          for (let d = 0; d < COLS && World.isBlocked(this.col, this.row); d++) {
+            const c2 = this.col + (d % 2 ? -(d + 1) / 2 : d / 2);
+            if (c2 >= 0 && c2 < COLS && !World.isBlocked(c2, this.row)) this.col = c2;
+          }
+        }
         this.x = this.rowObj() && this.rowObj().type === 'river' ? this.x : cellX(this.col);
         this.stun = 1.3;
         this.squash = 1;
@@ -275,6 +296,7 @@ const PlayerProto = {
         Cam.addTrauma(0.3);
         if (Settings.gore) FX.bleed(this.x, this.y, 30);
         this.landed(true);
+        if (a.twist && this.alive && this.id === 0) Trophies.add('tornado');
       }
     }
   },
@@ -348,7 +370,7 @@ const PlayerProto = {
       return;
     }
     if (how === 'pit') { this.sink = 0.01; return; }
-    if (gore && (how === 'train' || how === 'goose' || how === 'meteor')) { this.gone = true; return; }
+    if (gore && (how === 'train' || how === 'goose' || how === 'meteor' || how === 'lightning')) { this.gone = true; return; }
     if (gore) { // run over or crushed
       this.flat = true;
       this.z = 0;

@@ -70,6 +70,8 @@ const Renderer = {
     FX.drawDecals(c);
     FX.drawPools(c);
     Events.drawGround(c, time);
+    Storms.drawGround(c, time);
+    Animals.drawGround(c, time);
 
     // gather drawables, far to near
     const list = this.list;
@@ -107,6 +109,7 @@ const Renderer = {
     if (g && Game.state === 'playing') list.push({ kind: 'ghost', x: g.x, y: g.y, z: g.z, alpha: g.alpha, key: g.y - 10.5 });
     Events.drawables(list);
     Animals.drawables(list);
+    Storms.drawables(list);
     for (const p of Game.players) if (!p.gone) { p.key = p.y - 10; list.push(p); }
     list.sort((a, b) => b.key - a.key);
 
@@ -118,6 +121,7 @@ const Renderer = {
     FX.draw(c);
     FX.drawBlasts(c);
     Events.drawSky(c, time);
+    Storms.drawSky(c);
     FX.drawTexts(c);
 
     Lighting.draw(c, time);
@@ -136,7 +140,17 @@ const Renderer = {
         c.fillStyle = 'rgba(0,0,0,0.07)';
         for (let x = Math.floor(x0 / TILE) * TILE; x < x1; x += TILE) c.fillRect(x, P(yT, zt), 1.2, TILE * GY);
         c.fillRect(x0, P(row.y, zt), w, 1);
-      } else if (zone === 'desert') { // wind ripples in the sand
+      } else if (zone === 'beach' && row.boardwalk) { // boardwalk planks
+        c.fillStyle = row.i & 1 ? '#c59a64' : '#caa06a';
+        c.fillRect(x0, P(yT, zt), w, TILE * GY + 0.5);
+        c.fillStyle = 'rgba(80,50,20,0.28)';
+        for (let x = Math.floor(x0 / 10) * 10; x < x1; x += 10) c.fillRect(x, P(yT, zt), 1.2, TILE * GY);
+        c.fillStyle = 'rgba(80,50,20,0.4)';
+        for (let x = Math.floor(x0 / 60) * 60 + ((row.i * 23) % 60); x < x1; x += 60) {
+          c.fillRect(x + 3, P(row.y + 8, zt), 1.6, 1.6);
+          c.fillRect(x + 3, P(row.y - 8, zt), 1.6, 1.6);
+        }
+      } else if (zone === 'desert' || zone === 'beach') { // wind ripples in the sand
         c.fillStyle = 'rgba(160,110,50,0.12)';
         for (let x = Math.floor(x0 / 30) * 30; x < x1; x += 30) {
           c.fillRect(x + ((row.i * 13) % 30), P(row.y + 6, zt), 14, 1.5);
@@ -151,6 +165,10 @@ const Renderer = {
         if (zone === 'city') {
           c.fillStyle = 'rgba(60,60,70,0.18)';
           c.fillRect(f.x, fy, 3, 2);
+        } else if (zone === 'beach') {
+          if (row.boardwalk) continue;
+          c.fillStyle = f.c ? '#fff7e6' : 'rgba(200,150,110,0.6)'; // shells and pebbles
+          c.fillRect(f.x, fy - 1, 3, 2);
         } else if (zone === 'desert') {
           c.fillStyle = f.c ? 'rgba(150,110,60,0.5)' : 'rgba(120,90,50,0.35)';
           c.fillRect(f.x, fy - 1, 3, 2);
@@ -300,7 +318,7 @@ const Renderer = {
   water(c, row, x0, w, yT, time, a) {
     const style = row.river ? row.river.style : 'log';
     c.globalAlpha = a;
-    c.fillStyle = style === 'floe' ? (row.i & 1 ? '#3f79a8' : '#4380b0')
+    c.fillStyle = style === 'surf' ? (row.i & 1 ? '#2bb3c0' : '#30bac6') : style === 'floe' ? (row.i & 1 ? '#3f79a8' : '#4380b0')
       : style === 'raft' ? (row.i & 1 ? '#2f7d86' : '#33838c')
         : this.snow > 0.5 ? '#6fa6cf' : (row.i & 1 ? '#3a82c4' : '#3d88cb');
     c.fillRect(x0, P(yT, 0), w, TILE * GY + 0.5);
@@ -331,7 +349,10 @@ const Renderer = {
       case 'traincar': Draw.shadow(c, o.x + 3, o.y, o.len * 1.1, 1.0 * TILE, 0.9); break;
       case 'tree': case 'planter': Draw.shadow(c, o.x, o.y, o.size * 2.8, o.size * 2.5, 0.85); break;
       case 'bush': case 'rock': case 'deadbush': case 'snowman': case 'bench': Draw.shadow(c, o.x, o.y, 0.8 * TILE, 0.7 * TILE, 0.7); break;
-      case 'cactus': Draw.shadow(c, o.x, o.y, 0.6 * TILE, 0.5 * TILE, 0.7); break;
+      case 'cactus': case 'palm': Draw.shadow(c, o.x, o.y, 0.6 * TILE, 0.5 * TILE, 0.7); break;
+      case 'umbrella': Draw.shadow(c, o.x + 6, o.y, 1.1 * TILE, 0.8 * TILE, 0.55); break;
+      case 'chair': case 'sandcastle': case 'lifeguard': Draw.shadow(c, o.x, o.y, 0.8 * TILE, 0.6 * TILE, 0.6); break;
+      case 'gull': Draw.shadow(c, o.x, o.y, 0.5 * TILE * (1 - Math.min(0.6, o.z / 200)), 0.35 * TILE, 0.5); break;
       case 'lamp': case 'sign': case 'xing': case 'hydrant': case 'bin': case 'mailbox': case 'cone': case 'worksign':
         Draw.shadow(c, o.x, o.y, 0.35 * TILE, 0.3 * TILE, 0.6); break;
       case 'barrier': Draw.shadow(c, o.x, o.y, 0.9 * TILE, 0.4 * TILE, 0.6); break;
@@ -385,6 +406,12 @@ const Renderer = {
       case 'lamp': Draw.lamp(c, o); break;
       case 'sign': Draw.sign(c, o); break;
       case 'cactus': Draw.cactus(c, o); break;
+      case 'umbrella': Draw.umbrella(c, o); break;
+      case 'chair': Draw.chair(c, o); break;
+      case 'sandcastle': Draw.sandcastle(c); break;
+      case 'palm': Draw.palm(c, o); break;
+      case 'lifeguard': Draw.lifeguard(c); break;
+      case 'gull': Draw.gull(c, o, time); break;
       case 'skull': Draw.skull(c); break;
       case 'mesa': Draw.mesa(c, o); break;
       case 'building': Draw.building(c, o); break;
@@ -443,7 +470,11 @@ const Renderer = {
     if (p.grace > 0 && ((time * 18) | 0) % 2) c.globalAlpha = 0.4;
     if (p.sink) c.globalAlpha = 1 - p.sink;
     if (p.ride) c.translate(0, P(0, 7));
-    Draw.player(c, p, time, p.skin(), p.hat());
+    const sk = p.skin();
+    if (sk.flames && p.alive && !p.gone && Math.random() < 0.45) { // the Phoenix is always a little on fire
+      FX.spawn('fire', p.x + rand(-9, 9), p.y + rand(-5, 5), p.z + rand(8, 24), { vz: rand(25, 55), g: -25, drag: 1, life: rand(0.25, 0.5), size: rand(3, 5.5), size2: 1 });
+    }
+    Draw.player(c, p, time, sk, p.hat());
     c.globalAlpha = 1;
     if (p.shield) {
       c.save();

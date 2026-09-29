@@ -29,9 +29,28 @@ const SKINS = {
   zombie:  { name: 'Zombie Chick', price: 0, unlock: 'again', kind: 'bird', zombie: true,
              top: '#b5c9a3', front: '#86a077', wingTop: '#9fb68f', wingFront: '#6f8a62',
              comb: ['#8a4545', '#6a3030'], beak: ['#c9a36a', '#a27f48'], feet: '#7a8a5a' },
-  golden:  { name: 'Golden Chick', price: 0, unlock: 'warrior', kind: 'bird', shine: true,
+  bigj:    { name: 'Big J', price: 67, kind: 'bigj',
+             top: '#9a9ea8', front: '#7b7f89', wingTop: null, wingFront: null,
+             comb: null, beak: null, feet: '#6c7079' },
+  // level rewards
+  silver:  { name: 'Silver Chick', price: 0, level: 3, kind: 'bird', shine: true,
+             top: '#eef1f5', front: '#b3bac4', wingTop: '#dde2e8', wingFront: '#9aa2ad',
+             comb: ['#ff6b6b', '#e04848'], beak: ['#c9ced6', '#9aa2ad'], feet: '#8d95a0' },
+  robo:    { name: 'Robo Chick', price: 0, level: 5, kind: 'bird', antenna: true, eyeColor: '#4df0ff',
+             top: '#a9b4c2', front: '#6f7b8c', wingTop: '#8e9aab', wingFront: '#56616f',
+             comb: null, beak: ['#ffb347', '#e08a10'], feet: '#56616f' },
+  neon:    { name: 'Neon Chick', price: 0, level: 8, kind: 'bird', glow: 'rgba(255,70,230,0.5)',
+             top: '#ff6cf2', front: '#c42bb9', wingTop: '#7df9ff', wingFront: '#2bc2d0',
+             comb: ['#7df9ff', '#2bc2d0'], beak: ['#ffe95c', '#e0c020'], feet: '#7df9ff' },
+  diamond: { name: 'Diamond Chick', price: 0, level: 12, kind: 'bird', shine: true, glow: 'rgba(150,230,255,0.35)',
+             top: '#d9f7ff', front: '#86d4ee', wingTop: '#bdefff', wingFront: '#64bcdc',
+             comb: ['#b9f2ff', '#7fd6ef'], beak: ['#eafcff', '#a7e3f5'], feet: '#86d4ee' },
+  golden:  { name: 'Golden Chicken', price: 0, level: 16, kind: 'bird', shine: true, glow: 'rgba(255,210,60,0.35)',
              top: '#ffe98a', front: '#f0b400', wingTop: '#ffd84a', wingFront: '#d49a00',
              comb: ['#ff4f4f', '#d63030'], beak: ['#ffcf6b', '#f0a020'], feet: '#e89010' },
+  phoenix: { name: 'Phoenix', price: 0, level: 20, kind: 'bird', flames: true, glow: 'rgba(255,120,30,0.45)',
+             top: '#ffc14a', front: '#f0621c', wingTop: '#ff8a2a', wingFront: '#c8400f',
+             comb: ['#ffe95c', '#ffb000'], beak: ['#ffe27a', '#f0a020'], feet: '#c8400f' },
 };
 
 const HATS = {
@@ -83,6 +102,7 @@ const Shop = {
     const item = SHOP_TABS[tab][id];
     if (!item) return false;
     if (item.unlock) return Trophies.has(item.unlock);
+    if (item.level) return Levels.level >= item.level;
     return this.owned[tab].includes(id);
   },
 
@@ -94,7 +114,7 @@ const Shop = {
 
   buy(tab, id) {
     const item = SHOP_TABS[tab][id];
-    if (!item || item.unlock || this.has(tab, id) || Game.bank < item.price) return false;
+    if (!item || item.unlock || item.level || this.has(tab, id) || Game.bank < item.price) return false;
     Game.bank -= item.price;
     Store.set('coins', Game.bank);
     this.owned[tab].push(id);

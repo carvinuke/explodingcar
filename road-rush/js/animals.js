@@ -3,6 +3,7 @@
 // - cows wander into a lane and stop traffic until they move on
 // - deer bolt across a road; drivers slam their brakes and pile up behind them
 // - tumbleweeds roll across the desert
+// - seagulls on the beach snatch coins off the ground, and dive at you to steal yours
 // - graphic mode: paramedics cover the body with a sheet
 
 const Animals = {
@@ -10,9 +11,11 @@ const Animals = {
   deer: [],
   weeds: [],
   crew: [],
+  gulls: [],
 
   reset() {
-    this.cows.length = this.deer.length = this.weeds.length = this.crew.length = 0;
+    this.cows.length = this.deer.length = this.weeds.length = this.crew.length = this.gulls.length = 0;
+    this.gullT = rand(3, 6);
     this.t = rand(14, 24);
     this.weedT = 1;
   },
@@ -49,6 +52,11 @@ const Animals = {
     for (let i = this.deer.length - 1; i >= 0; i--) if (this.updateDeer(this.deer[i], dt)) this.deer.splice(i, 1);
     for (let i = this.weeds.length - 1; i >= 0; i--) if (this.updateWeed(this.weeds[i], dt)) this.weeds.splice(i, 1);
     for (let i = this.crew.length - 1; i >= 0; i--) if (this.updateMedic(this.crew[i], dt)) this.crew.splice(i, 1);
+    if (playing && zone === 'beach') {
+      this.gullT -= dt;
+      if (this.gullT <= 0) { this.gullT = rand(4, 8); this.spawnGull(); }
+    }
+    for (let i = this.gulls.length - 1; i >= 0; i--) if (this.updateGull(this.gulls[i], dt)) this.gulls.splice(i, 1);
   },
 
   // ---- Cows -------------------------------------------------------------------
@@ -276,7 +284,89 @@ const Animals = {
     return false;
   },
 
+  // ---- Seagulls -------------------------------------------------------------------
+  spawnGull() {
+    const lead = Game.leader();
+    const coins = Items.list.filter(it => it.type === 'coin' && it.row > lead.row && it.row < lead.row + 7 && !it.gull);
+    let tx, ty, coin = null;
+    if (coins.length && chance(0.55)) {
+      coin = pick(coins);
+      coin.gull = true;
+      tx = coin.x;
+      ty = coin.y;
+    } else { // dive at a player, aiming where they stand now
+      const p = Game.target();
+      if (!p.alive) return;
+      tx = p.x;
+      ty = p.y;
+    }
+    const side = chance(0.5) ? 1 : -1;
+    this.gulls.push({
+      kind: 'gull', x: tx + side * 7 * TILE, y: ty + 4 * TILE, z: 170, fx: tx + side * 7 * TILE, fy: ty + 4 * TILE,
+      tx, ty, t: 0, dur: 1.7, phase: 'in', coin, carry: false, face: -side, ph: rand(6),
+    });
+    Sound.squawk();
+  },
+
+  updateGull(g, dt) {
+    g.t += dt;
+    g.ph += dt * (g.phase === 'in' ? 14 : 18);
+    if (g.phase === 'in') {
+      const k = Math.min(1, g.t / g.dur), e = easeOutQuad(k);
+      g.x = lerp(g.fx, g.tx, e);
+      g.y = lerp(g.fy, g.ty, e);
+      g.z = lerp(170, 6, e);
+      if (k < 1) return false;
+      g.phase = 'out';
+      g.t = 0;
+      if (g.coin) { // snatch the coin if it's still there
+        const i = Items.list.indexOf(g.coin);
+        if (i >= 0) { Items.list.splice(i, 1); g.carry = true; FX.text(g.x, g.y + 16, 'STOLEN!', '#ffffff', 14); Sound.squawk(); }
+      } else {
+        let hit = false;
+        for (const p of Game.players) {
+          if (!p.alive || Math.abs(p.x - g.x) > 0.6 * TILE || Math.abs(p.y - g.y) > 0.5 * TILE || p.z > 30) continue;
+          hit = true;
+          const n = Math.min(3, p.coins);
+          if (n > 0) {
+            p.coins -= n;
+            if (p.id === 0) Game.coins = p.coins;
+            g.carry = true;
+            FX.text(p.x, p.y + 24, `-${n} COIN${n > 1 ? 'S' : ''}`, '#ffd23f', 16);
+          } else {
+            FX.text(p.x, p.y + 24, 'PECK!', '#ffffff', 14);
+          }
+          p.squash = 0.6;
+          Sound.squawk();
+        }
+        if (!hit) FX.text(g.x, g.y + 16, 'MISSED', '#ffffff', 12);
+      }
+      g.fx = g.x;
+      g.fy = g.y;
+      return false;
+    }
+    const k = Math.min(1, g.t / 1.3);
+    g.x = g.fx - g.face * k * 7 * TILE;
+    g.y = g.fy + k * 3 * TILE;
+    g.z = 6 + k * 180;
+    return k >= 1;
+  },
+
+  // Where a diving gull will land (so you can get out of the way).
+  drawGround(c, time) {
+    for (const g of this.gulls) {
+      if (g.phase !== 'in' || g.coin) continue;
+      const k = Math.min(1, g.t / g.dur), pulse = 0.6 + 0.4 * Math.sin(time * 16);
+      c.strokeStyle = `rgba(255,255,255,${0.35 + 0.5 * k * pulse})`;
+      c.lineWidth = 2;
+      c.setLineDash([5, 5]);
+      c.beginPath(); c.ellipse(g.tx, P(g.ty, 4), 0.5 * TILE, 0.5 * TILE * GY, 0, 0, 6.2832); c.stroke();
+      c.setLineDash([]);
+    }
+  },
+
   drawables(list) {
+    for (const g of this.gulls) { g.key = g.y - 12; list.push(g); }
     for (const c of this.cows) if (!c.walk.lane || c.walk.leaving) { c.key = c.y - 14; list.push(c); }
     for (const d of this.deer) if (d.delay <= 0 && d.alpha > 0) { d.key = d.y - 11; list.push(d); }
     for (const w of this.weeds) { w.key = w.y - 9; list.push(w); }

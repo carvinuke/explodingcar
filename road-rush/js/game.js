@@ -3,7 +3,7 @@
 // glue between systems.
 
 const CAUSES = {
-  vehicle: (g, v) => `${g ? 'Flattened' : 'Hit'} by ${VEHICLE_TYPES[v.type].name}`,
+  vehicle: (g, v) => `${g ? 'Flattened' : 'Hit'} by ${v.drunk ? 'a drunk driver' : VEHICLE_TYPES[v.type].name}`,
   train: (g, R) => (R && R.tram ? (g ? 'Obliterated by a tram' : 'Hit by a tram') : g ? 'Obliterated by a freight train' : 'Hit by a train'),
   drown: g => (g ? 'Eaten alive by piranhas' : 'Fell in the river'),
   swept: g => (g ? 'Swept downstream and eaten by piranhas' : 'Swept away by the river'),
@@ -12,11 +12,11 @@ const CAUSES = {
   giant: g => (g ? 'Squashed flat by a giant chicken' : 'Stepped on by a giant chicken'),
   goose: g => (g ? 'Torn apart by the giant goose' : 'Caught by the giant goose'),
   pit: () => 'Fell into a construction pit',
+  lightning: g => (g ? 'Fried by lightning' : 'Struck by lightning'),
 };
 
 const MODES = {
   normal:   { name: 'Endless', best: 'best', ghost: 'best' },
-  daily:    { name: 'Daily challenge', ghost: 'daily' },
   hardcore: { name: 'Hardcore', best: 'best.hardcore', ghost: 'hardcore', offset: 90, speedMul: 1.2, gapMul: 0.8, powerups: false, coinMult: 2, danger: 1.35, crashRate: 0.75 },
   time:     { name: 'Time attack', best: 'best.time', ghost: 'time', limit: 90 },
   versus:   { name: 'Two players', players: 2 },
@@ -52,6 +52,7 @@ const Game = {
   init() {
     Stats.load();
     Trophies.load();
+    Levels.load();
     Shop.load();
     Renderer.init(document.getElementById('view'));
     Lighting.init();
@@ -93,6 +94,7 @@ const Game = {
     Vehicles.reset();
     Events.reset();
     Animals.reset();
+    Storms.reset();
     Lighting.reset();
     Replay.reset();
     World.reset(seed, { speedMul: M.speedMul, gapMul: M.gapMul, powerups: M.powerups });
@@ -116,28 +118,26 @@ const Game = {
     this.timeLeft = M.limit || 0;
     this.timerOn = false;
     this.winner = null;
+    this.xpInfo = null;
     this.lastTick = 99;
   },
 
-  dailyKey() { return 'daily.' + dayKey(); },
   bestFor(mode) {
-    if (mode === 'daily') return Store.get(this.dailyKey(), 0);
     if (mode === 'normal') return this.best;
     const key = this.modeDef(mode).best;
     return key ? Store.get(key, 0) : 0;
   },
   setBest(mode, v) {
-    if (mode === 'daily') Store.set(this.dailyKey(), v);
-    else if (mode === 'normal') { this.best = v; Store.set('best', v); }
+    if (mode === 'normal') { this.best = v; Store.set('best', v); }
     else if (this.modeDef(mode).best) Store.set(this.modeDef(mode).best, v);
   },
 
   start(mode = this.mode) {
     Sound.init();
     Sound.click();
-    const fresh = this.state !== 'title' || mode !== this.mode || mode === 'daily';
+    const fresh = this.state !== 'title' || mode !== this.mode;
     this.mode = mode;
-    if (fresh) this.reset(mode === 'daily' ? hashSeed('roadrush-' + dayKey()) : (Math.random() * 4294967296) >>> 0);
+    if (fresh) this.reset((Math.random() * 4294967296) >>> 0);
     this.state = 'playing';
     this.time = 0;
     for (const p of this.players) p.lastMoveT = 0;
@@ -145,12 +145,11 @@ const Game = {
       this.runs = Store.get('runs', 0) + 1;
       Store.set('runs', this.runs);
       Stats.add('runs');
-      if (mode === 'daily') Stats.daily(dayKey());
     }
     Missions.startRun();
     Trophies.startRun(mode);
     const M = this.modeDef();
-    Ghost.start(this.tracksProgress() ? (M.ghost === 'daily' ? this.dailyKey() : M.ghost) : null);
+    Ghost.start(this.tracksProgress() ? M.ghost : null);
     UI.startRun();
   },
 
@@ -240,6 +239,7 @@ const Game = {
     if (p.id === 0) {
       Missions.max('combo', p.combo);
       Trophies.max('combo', p.combo);
+      if (this.tracksProgress()) Trophies.run.closeCalls++;
       if (this.tracksProgress()) {
         Stats.add('closeCalls');
         if (p.combo > Stats.data.bestCombo) Stats.data.bestCombo = p.combo;
@@ -330,8 +330,9 @@ const Game = {
         this.kill('train', { p, dir: R.dir, rail: R });
         return;
       }
-      if (row.type !== 'road' || Math.abs(row.y - p.y) > 0.58 * TILE) continue;
+      if (row.type !== 'road') continue;
       for (const v of row.lane.vehicles) {
+        if (Math.abs((v.drunk ? v.y : row.y) - p.y) > 0.58 * TILE) continue; // drunk drivers weave between lanes
         if (v.abducted || v.z > 30 || v.animal) continue;
         if (Math.abs(v.x - p.x) > v.len / 2 - 2 + 0.24 * TILE) continue;
         if (v.wreck) { // a sliding wreck shoves you aside instead of killing you
@@ -390,7 +391,7 @@ const Game = {
         Sound.splat();
         if (source === 'train') { FX.trainRoadkill(p.x, p.y, dir, skin); if (opts.rail) opts.rail.bloody = true; }
         else if (source === 'giant') FX.crushed(p.x, p.y, skin);
-        else if (source === 'meteor') { FX.trainRoadkill(p.x, p.y, chance(0.5) ? 1 : -1, skin); FX.scorch(p.x, p.y); }
+        else if (source === 'meteor' || source === 'lightning') { FX.trainRoadkill(p.x, p.y, chance(0.5) ? 1 : -1, skin); FX.scorch(p.x, p.y); }
         else if (source !== 'danger') FX.roadkill(p.x, p.y, dir || (chance(0.5) ? 1 : -1), skin);
         if (v) { v.bloody = true; v.bloodT = 2.6; }
         FX.flashScreen(0.5, '200,20,30');
@@ -405,7 +406,7 @@ const Game = {
     Cam.punch += gore ? 0.1 : 0.08;
     this.slowmo(0.25, 0.9);
 
-    const statKey = source === 'vehicle' && v && v.responder ? 'responder' : source;
+    const statKey = source === 'vehicle' && v && v.responder ? 'responder' : source === 'vehicle' && v && v.drunk ? 'drunk' : source;
     if (p.id === 0 && this.tracksProgress()) {
       Stats.death(statKey);
       if (statKey === 'responder') Trophies.add('irony');
@@ -467,20 +468,23 @@ const Game = {
     Stats.add('coins', this.coins);
     Stats.save();
     Trophies.check();
+    this.xpInfo = Levels.award(Levels.forRun(this.mode, Player.maxRow, this.coins, Trophies.run));
   },
 
   gameOver() {
     this.state = 'gameover';
     this.overT = 0;
     Replay.stop();
-    Sound.gameOver();
+    const versusRun = this.players.length > 1;
+    if (!versusRun && this.xpInfo && this.xpInfo.rewards.length) Sound.levelUp();
+    else Sound.gameOver();
     const versus = this.players.length > 1;
     UI.showGameOver({
       cause: this.cause, score: this.score, best: this.bestFor(this.mode), newBest: this.newBest,
       coins: this.coins, bank: this.bank, rows: Player.maxRow, run: this.runs, mode: this.mode,
-      daily: this.mode === 'daily' ? dayLabel(dayKey()) : null, gore: this.goreDeath,
+      gore: this.goreDeath,
       versus: versus ? { winner: this.winner, wins: this.versusWins, rows: this.players.map(p => p.maxRow), scores: this.players.map(p => p.score) } : null,
-      trophies: Trophies.fresh.slice(),
+      trophies: Trophies.fresh.slice(), xp: versusRun ? null : this.xpInfo,
     });
   },
 
@@ -562,6 +566,8 @@ const Game = {
     Rail.update(dt, fz);
     Work.update(dt);
     Animals.update(dt);
+    Storms.update(dt);
+    Vehicles.drunkDirector(dt);
     if ((playing || this.state === 'title') && Powers.freeze <= 0) Vehicles.director(dt, this.leader().row, fz);
     if (playing) {
       this.checkHits();

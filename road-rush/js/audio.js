@@ -349,6 +349,31 @@ const Sound = (() => {
       tone('square', 1320, 1300, 0.5, 0.05, 0.05);
     },
 
+    thunder(vol) {
+      if (!ok()) return;
+      noise('lowpass', 2400, 80, 1.6, 0.7 * vol, { attack: 0.005 });
+      noise('lowpass', 300, 60, 2.2, 0.5 * vol, { delay: 0.12, attack: 0.08 });
+      tone('sine', 55, 32, 1.4, 0.3 * vol, 0.05);
+    },
+
+    rumble(vol) { // tornado
+      if (!ok()) return;
+      noise('bandpass', 180, 120, 0.7, 0.3 * vol, { q: 0.7, attack: 0.2 });
+      noise('highpass', 1800, 2400, 0.6, 0.06 * vol, { attack: 0.2 });
+    },
+
+    squawk() {
+      if (!ok()) return;
+      tone('sawtooth', 1250, 900, 0.14, 0.035);
+      tone('sawtooth', 1150, 780, 0.16, 0.03, 0.17);
+    },
+
+    levelUp() {
+      if (!ok()) return;
+      [523, 659, 784, 1047, 1319].forEach((f, i) => tone('triangle', f, 0, 0.2, 0.13, i * 0.07));
+      tone('sine', 1319, 2637, 0.5, 0.06, 0.36);
+    },
+
     gameOver() {
       if (!ok()) return;
       [523, 440, 349, 262].forEach((f, i) => tone('triangle', f, 0, 0.24, 0.14, 0.16 * i));
