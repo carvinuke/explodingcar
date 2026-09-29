@@ -18,6 +18,8 @@
     <div class="hud-l">
       <div class="plate guide"><span class="plate-lbl">SCORE</span><b id="score">0</b></div>
       <div class="plate coinplate"><span class="coin-ico"></span><b id="coins">0</b></div>
+      <div id="daily-badge" class="plate daily-badge hidden">DAILY</div>
+      <div id="combo" class="plate combo hidden"><b>x2</b><span>CLOSE CALLS</span></div>
     </div>
     <div class="hud-r">
       <div class="plate limit"><span class="plate-lbl">BEST</span><b id="best">0</b></div>
@@ -28,6 +30,8 @@
         <button id="btn-mute" class="icon-btn" aria-label="Mute"></button>
       </div>
     </div>
+    <div id="boss-bar" class="boss-bar hidden"><b>BOSS: GIANT BULLDOZER</b><span></span></div>
+    <div id="toasts" class="toasts" aria-live="polite"></div>
     <div id="powers"></div>
   </div>
 
@@ -46,7 +50,18 @@
 
       <div class="actions">
         <button id="btn-play" class="btn-yellow btn-big">PLAY</button>
+        <button id="btn-daily" class="btn-daily"><b>DAILY CHALLENGE</b><span><span id="daily-date"></span> &middot; <span id="daily-best"></span></span></button>
+      </div>
+      <div class="actions">
+        <button id="btn-shop" class="btn-plate">Skin shop</button>
         <button id="btn-settings" class="btn-plate">Settings</button>
+      </div>
+
+      <div class="work-sign">
+        <div class="work-inner">
+          <p class="work-title">ROAD WORK: MISSIONS</p>
+          <ul id="title-missions" class="missions"></ul>
+        </div>
       </div>
 
       <div class="service-sign">
@@ -79,25 +94,31 @@
           <button id="btn-resume" class="btn-yellow">RESUME</button>
           <button id="btn-pause-settings" class="btn-plate">Settings</button>
         </div>
+        <ul id="pause-missions" class="missions dark"></ul>
         <p class="hint">P or Esc to resume &middot; M to mute</p>
       </div>
     </div>
   </div>
 
   <div id="screen-over" class="screen hidden">
-    <div class="report">
+    <div id="report" class="report">
       <div class="report-head"><span>TRAFFIC INCIDENT REPORT</span><span id="report-no">No. 00001</span></div>
-      <h2>Game Over</h2>
+      <div class="report-title">
+        <h2>Game Over</h2>
+        <div id="over-new" class="stamp hidden">NEW RECORD</div>
+      </div>
       <dl class="fields">
         <div><dt>Cause</dt><dd id="over-cause"></dd></div>
         <div><dt>Distance</dt><dd id="over-rows"></dd></div>
         <div><dt>Score</dt><dd id="over-score">0</dd></div>
         <div><dt>Best</dt><dd id="over-best">0</dd></div>
         <div><dt>Coins</dt><dd id="over-coins"></dd></div>
+        <div id="over-mode-row" class="hidden"><dt>Mode</dt><dd id="over-mode"></dd></div>
       </dl>
-      <div id="over-new" class="stamp hidden">NEW RECORD</div>
+      <ul id="over-missions" class="missions paper"></ul>
       <div class="actions">
         <button id="btn-again" class="btn-yellow">PLAY AGAIN</button>
+        <button id="btn-over-shop" class="btn-plate">Shop</button>
         <button id="btn-over-settings" class="btn-plate">Settings</button>
       </div>
       <p class="hint">or press Space</p>
@@ -116,11 +137,28 @@
           <div><b id="lbl-shake">Screen shake</b><span>Camera shake on crashes and hits</span></div>
           <button id="set-shake" class="toggle" role="switch" aria-checked="true" aria-labelledby="lbl-shake"><i></i></button>
         </div>
+        <div class="set-row">
+          <div><b id="lbl-ghost">Ghost of best run</b><span>A faint copy of your best run hops along with you</span></div>
+          <button id="set-ghost" class="toggle" role="switch" aria-checked="true" aria-labelledby="lbl-ghost"><i></i></button>
+        </div>
         <div class="set-row gore">
-          <div><b id="lbl-gore">Graphic mode</b><span>Cartoon blood when the chick gets run over, and much more violent car crashes</span></div>
+          <div><b id="lbl-gore">Graphic mode</b><span>Cartoon blood and gore when you die, and much more violent crashes, trains, meteors and monsters</span></div>
           <button id="set-gore" class="toggle" role="switch" aria-checked="false" aria-labelledby="lbl-gore"><i></i></button>
         </div>
         <button id="btn-settings-done" class="btn-yellow">DONE</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="screen-shop" class="screen modal hidden" role="dialog" aria-modal="true" aria-labelledby="shop-title">
+    <div class="brown-sign">
+      <div class="brown-inner">
+        <div class="shop-head">
+          <h2 id="shop-title">SKIN SHOP</h2>
+          <span class="plate coinplate"><span class="coin-ico"></span><b id="shop-coins">0</b></span>
+        </div>
+        <div id="shop-grid" class="shop-grid"></div>
+        <button id="btn-shop-done" class="btn-yellow">DONE</button>
       </div>
     </div>
   </div>
@@ -132,7 +170,7 @@
           <div class="diamond big" aria-hidden="true"><span>!</span></div>
           <h2 id="warn-title">Graphic content</h2>
         </div>
-        <p id="warn-body">Graphic mode shows cartoon blood and gore when the chick gets run over, and turns car crashes into much bigger, more violent explosions with flying parts and fire. It stays on until you turn it off in Settings.</p>
+        <p id="warn-body">Graphic mode shows cartoon blood and gore whenever you die: getting run over, hit by a train, eaten by piranhas, crushed or caught. Crashes and explosions get much bigger and more violent, with flying parts, fire and chain reactions. It stays on until you turn it off in Settings.</p>
         <div class="actions">
           <button id="btn-warn-cancel" class="btn-plate">Keep it off</button>
           <button id="btn-warn-ok" class="btn-red">Turn on graphic mode</button>
@@ -148,8 +186,11 @@
 <script src="js/draw.js"></script>
 <script src="js/world.js"></script>
 <script src="js/vehicles.js"></script>
+<script src="js/hazards.js"></script>
 <script src="js/player.js"></script>
 <script src="js/powerups.js"></script>
+<script src="js/progress.js"></script>
+<script src="js/events.js"></script>
 <script src="js/camera.js"></script>
 <script src="js/renderer.js"></script>
 <script src="js/ui.js"></script>

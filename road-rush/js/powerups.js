@@ -22,16 +22,17 @@ const Items = {
   },
 
   populateRow(row) {
+    if (row.type === 'river') return; // nothing floats
     const free = [];
     for (let c = 0; c < COLS; c++) if (row.type !== 'grass' || !row.blocked[c]) free.push(c);
     if (!free.length) return;
-    if (row.i > 8 && chance(0.05)) {
-      this.add(weighted(Object.keys(POWERUPS).map(k => [k, POWERUPS[k].weight])), pick(free), row.i);
+    if (row.i > 8 && Gen.chance(0.05)) {
+      this.add(Gen.weighted(Object.keys(POWERUPS).map(k => [k, POWERUPS[k].weight])), Gen.pick(free), row.i);
       return;
     }
-    if (chance(row.type === 'grass' ? 0.3 : 0.18)) {
-      const c = pick(free);
-      if (row.type === 'grass' && chance(0.3)) {
+    if (Gen.chance(row.type === 'grass' ? 0.3 : 0.18)) {
+      const c = Gen.pick(free);
+      if (row.type === 'grass' && Gen.chance(0.3)) {
         for (let k = -1; k <= 1; k++) if (free.includes(c + k)) this.add('coin', c + k, row.i);
       } else {
         this.add('coin', c, row.i);
@@ -85,6 +86,7 @@ const Powers = {
     FX.text(it.x, it.y + 14, def.name.toUpperCase() + '!', def.color, 19);
     Cam.punch += 0.05;
     Game.addBonus(50);
+    Missions.add('powerups');
   },
 
   update(dt) {

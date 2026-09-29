@@ -1,5 +1,6 @@
 'use strict';
-// The player: grid hops, blast knockback + stun, and a ragdoll on death.
+// The player: grid hops (continuous x while riding logs), blast knockback and
+// stun, UFO abduction, and the different ways to die.
 
 const Player = {
   kind: 'player',
@@ -14,6 +15,9 @@ const Player = {
     this.queue = null;
     this.knock = null;
     this.rag = null;
+    this.abduct = null;
+    this.ride = null;
+    this.lastLog = 0;
     this.facing = 'up';
     this.stun = 0;
     this.alive = true;
@@ -25,43 +29,71 @@ const Player = {
     this.maxRow = 0;
     this.trail = [];
     this.trailT = 0;
-    this.char = 0;    // soot from a violent blast (graphic mode)
+    this.char = 0;     // soot from a violent blast (graphic mode)
     this.flat = false; // run over in graphic mode
+    this.gone = false; // nothing left to draw (graphic mode)
+    this.sink = 0;     // drowning animation
+    this.slideT = 0;
   },
 
+  skin() { return SKINS[Shop.current] || SKINS.chick; },
+  rowObj() { return World.rows.get(this.row); },
+
   input(dx, dy) {
-    if (!this.alive || this.knock || this.stun > 0) return;
+    if (!this.alive || this.knock || this.abduct || this.stun > 0) return;
     if (this.hop) { this.queue = [dx, dy]; return; } // buffer one move for snappy input
     this.move(dx, dy);
   },
 
   move(dx, dy) {
     this.facing = dx > 0 ? 'right' : dx < 0 ? 'left' : dy > 0 ? 'up' : 'down';
-    const nc = this.col + dx, nr = this.row + dy;
-    if (World.isBlocked(nc, nr) || Vehicles.blocksCell(nc, nr)) {
+    const nr = this.row + dy;
+    const target = World.rows.get(nr);
+    const toRiver = target && target.type === 'river';
+    // on water x stays continuous (logs drift); everywhere else snap to the grid
+    let tx = dx ? this.x + dx * TILE : this.x;
+    const nc = Math.round(tx / TILE - 0.5);
+    if (!toRiver) tx = cellX(nc);
+    if (nc < 0 || nc >= COLS || World.isBlocked(nc, nr) || Vehicles.blocksCell(nc, nr)) {
       this.squash = 0.5;
       Sound.bump();
       return false;
     }
+    const lg = Events.gravity < 1 ? (1 - Events.gravity) / 0.7 : 0;
     const fast = Powers.speed > 0;
-    this.hop = { fx: this.x, fy: this.y, tx: cellX(nc), ty: nr * TILE, t: 0, dur: fast ? 0.075 : 0.12 };
+    const from = this.rowObj();
+    if (from && (from.type === 'road' || from.type === 'rail')) Game.leftCell = { col: this.col, row: this.row, t: Game.time, used: false };
+    this.hop = {
+      fx: this.x, fy: this.y, tx, ty: nr * TILE, t: 0,
+      dur: (fast ? 0.075 : 0.12) * lerp(1, 1.7, lg),
+      h: 0.3 * TILE * lerp(1, 3.2, lg),
+    };
     this.col = nc;
     this.row = nr;
+    this.ride = null;
     Sound.hop(fast);
+    Ghost.mark(Game.time, tx, nr * TILE, 'h');
     Game.onPlayerMove();
     return true;
   },
 
   update(dt, time) {
     if (this.rag) { this.updateRagdoll(dt); return; }
-    if (this.flat) return;
+    if (this.sink) {
+      this.sink = Math.min(1, this.sink + dt * 1.6);
+      this.z = -this.sink * 18;
+      if (Math.random() < dt * 14) FX.bubbles(this.x, this.y);
+      return;
+    }
+    if (this.flat || this.gone) return;
     if (this.grace > 0) this.grace -= dt;
     if (this.char > 0) {
       this.char -= dt;
       if (Math.random() < dt * 7) FX.puff(this.x, this.y, this.z + 26);
     }
 
-    if (this.knock) {
+    if (this.abduct) this.updateAbduct(dt);
+    else if (this.knock) {
       const k = this.knock;
       k.t = Math.min(1, k.t + dt / k.dur);
       const e = easeOutQuad(k.t);
@@ -76,6 +108,8 @@ const Player = {
         this.squash = 0.8;
         FX.dust(this.x, this.y, 8);
         Sound.land();
+        if (Settings.gore) FX.bleed(this.x, this.y, 16);
+        this.landed();
       }
     } else if (this.hop) {
       const h = this.hop;
@@ -83,7 +117,7 @@ const Player = {
       const e = easeOutQuad(h.t);
       this.x = lerp(h.fx, h.tx, e);
       this.y = lerp(h.fy, h.ty, e);
-      this.z = Math.sin(Math.PI * h.t) * 0.3 * TILE;
+      this.z = Math.sin(Math.PI * h.t) * h.h;
       this.flap = Math.sin(Math.PI * h.t);
       if (h.t >= 1) {
         this.hop = null;
@@ -91,17 +125,21 @@ const Player = {
         this.flap = 0;
         this.squash = 0.45;
         if (Powers.speed > 0) FX.dust(this.x, this.y, 3);
-        if (this.queue) {
+        this.landed();
+        if (this.alive && Vehicles.justPassed(this.col, this.row)) Game.nearMiss(1);
+        if (this.queue && this.alive) {
           const q = this.queue;
           this.queue = null;
           if (this.stun <= 0) this.move(q[0], q[1]);
         }
       }
+    } else {
+      this.riding(dt);
     }
 
     if (this.stun > 0) this.stun = Math.max(0, this.stun - dt);
     this.squash = damp(this.squash, 0, 14, dt);
-    if (!this.knock) this.rot = this.stun > 0 ? Math.sin(time * 16) * 0.14 * Math.min(1, this.stun / 0.5) : 0;
+    if (!this.knock && !this.abduct) this.rot = this.stun > 0 ? Math.sin(time * 16) * 0.14 * Math.min(1, this.stun / 0.5) : 0;
 
     // speed-boost afterimages
     if (Powers.speed > 0) {
@@ -117,10 +155,78 @@ const Player = {
     while (this.trail.length && this.trail[0].a <= 0) this.trail.shift();
   },
 
+  // Just touched down after a hop or knockback: water, flood, logs.
+  landed() {
+    const row = this.rowObj();
+    if (!row) return;
+    if (row.type === 'river') {
+      const log = River.logAt(row, this.x);
+      if (!log) { Game.kill('drown'); return; }
+      this.ride = log;
+      if (log.id !== this.lastLog) { this.lastLog = log.id; Missions.add('logs'); }
+      FX.ripple(this.x, this.y, 16);
+    } else if (row.type === 'road' && row.flood) {
+      FX.splash(this.x, this.y, 8);
+    }
+  },
+
+  // Standing on a river row: drift with the log, or fall in.
+  riding(dt) {
+    const row = this.rowObj();
+    if (!row || row.type !== 'river' || !this.alive) { this.ride = null; return; }
+    const log = River.logAt(row, this.x);
+    if (!log) { Game.kill('drown'); return; }
+    this.ride = log;
+    this.x += row.river.dir * row.river.speed * Game.trafficFactor() * dt;
+    this.col = clamp(Math.round(this.x / TILE - 0.5), 0, COLS - 1);
+    this.slideT -= dt;
+    if (this.slideT <= 0) { this.slideT = 0.2; Ghost.mark(Game.time, this.x, this.y, 's'); }
+    if (this.x < -0.25 * TILE || this.x > WORLD_W + 0.25 * TILE) Game.kill('swept');
+  },
+
+  // UFO beam: float up, hang there, then get dropped.
+  startAbduct(ufo) {
+    this.queue = null;
+    this.hop = null;
+    this.knock = null;
+    this.ride = null;
+    this.abduct = { t: 0, phase: 'lift', ufo, vz: 0 };
+    FX.text(this.x, this.y + 30, 'ABDUCTED!', '#b8ffcc', 18);
+  },
+
+  updateAbduct(dt) {
+    const a = this.abduct;
+    a.t += dt;
+    if (a.phase === 'lift') {
+      this.z = 90 * easeOutQuad(Math.min(1, a.t / 1.3));
+      this.x = damp(this.x, a.ufo.x, 3, dt);
+      this.rot = Math.sin(a.t * 6) * 0.3;
+      if (a.t > 1.6) { a.phase = 'drop'; a.vz = 0; Sound.whistle(); }
+    } else {
+      a.vz -= 1100 * Events.gravity * dt;
+      this.z += a.vz * dt;
+      this.rot += dt * 8;
+      if (this.z <= 0) {
+        this.z = 0;
+        this.rot = 0;
+        this.abduct = null;
+        this.col = clamp(Math.round(this.x / TILE - 0.5), 0, COLS - 1);
+        this.x = this.rowObj() && this.rowObj().type === 'river' ? this.x : cellX(this.col);
+        this.stun = 1.3;
+        this.squash = 1;
+        FX.dust(this.x, this.y, 10);
+        Sound.land();
+        Cam.addTrauma(0.3);
+        if (Settings.gore) FX.bleed(this.x, this.y, 30);
+        this.landed();
+      }
+    }
+  },
+
   // Explosion nearby: distance decides knockback and stun.
   // `scale` widens the danger zone for bigger blasts.
   blast(ex, ey, scale = 1) {
-    if (!this.alive) return;
+    if (!this.alive || this.abduct) return;
     const dx = (this.x - ex) / TILE, dy = (this.y - ey) / TILE;
     const dist = Math.hypot(dx, dy) / scale;
     if (dist > 4.6) return;
@@ -144,6 +250,7 @@ const Player = {
   knockback(sx, sy, cells, stun) {
     this.queue = null;
     this.hop = null;
+    this.ride = null;
     this.flap = 0;
     // snap the logical cell to wherever we are right now
     this.col = clamp(Math.round(this.x / TILE - 0.5), 0, COLS - 1);
@@ -156,40 +263,50 @@ const Player = {
       moved++;
     }
     if (cells > 0) {
-      const dur = 0.3 + 0.1 * moved;
+      const dur = (0.3 + 0.1 * moved) * lerp(1, 1.6, 1 - Events.gravity);
       this.knock = {
         fx: this.x, fy: this.y, tx: cellX(c), ty: r * TILE, t: 0, dur,
-        h: (0.45 + 0.35 * moved) * TILE,
+        h: (0.45 + 0.35 * moved) * TILE / Math.max(0.4, Events.gravity),
         spin: (sx !== 0 ? sx : -sy) * Math.PI * 2,
       };
       this.col = c;
       this.row = r;
+      Ghost.mark(Game.time, cellX(c), r * TILE, 'k');
     }
     this.stun = Math.max(this.stun, stun + (this.knock ? this.knock.dur : 0));
     Sound.stun();
   },
 
-  // `flatten` (graphic mode): squashed where it stood instead of tumbling away.
-  die(pushDir, flatten = false) {
+  // How the run ends decides what's left to see.
+  die(how, dir, gore) {
     this.alive = false;
-    this.hop = this.knock = this.queue = null;
+    this.hop = this.knock = this.queue = this.abduct = null;
+    this.ride = null;
     this.stun = 0;
     this.flap = 0;
     this.char = 0;
-    if (flatten) {
+    Ghost.mark(Game.time, this.x, this.y, 'd');
+    if (how === 'drown' || how === 'swept') {
+      if (gore) this.gone = true;
+      else this.sink = 0.01;
+      return;
+    }
+    if (gore && (how === 'train' || how === 'goose' || how === 'meteor')) { this.gone = true; return; }
+    if (gore) { // run over or crushed
       this.flat = true;
       this.z = 0;
       this.rot = 0;
-      this.x += pushDir * 6;
+      this.x += dir * 6;
       this.trail.length = 0;
       return;
     }
-    this.rag = { vx: pushDir * rand(240, 320), vy: rand(-30, 30), vz: 330, rotV: pushDir * 13, bounces: 0 };
+    const k = how === 'train' ? 2.6 : how === 'meteor' ? 1.8 : 1;
+    this.rag = { vx: dir * rand(240, 320) * k, vy: rand(-30, 30), vz: 330 * Math.min(1.6, k), rotV: (dir || 1) * 13 * k, bounces: 0 };
   },
 
   updateRagdoll(dt) {
     const r = this.rag;
-    r.vz -= 1100 * dt;
+    r.vz -= 1100 * Events.gravity * dt;
     this.x += r.vx * dt;
     this.y += r.vy * dt;
     this.z += r.vz * dt;

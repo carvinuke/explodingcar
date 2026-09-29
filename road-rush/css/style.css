@@ -11,6 +11,8 @@
   --sign-red: #c8102e;
   --sign-orange: #f26722;
   --sign-white: #f7f7f2;
+  --sign-brown: #6b3f21;
+  --sign-purple: #5b3a9e;
   --ink: #16181c;
   --ink-soft: #4b515c;
   --paper: #fbfbf8;
@@ -47,6 +49,8 @@ html, body {
   transition: filter 0.3s ease;
 }
 #view.stunned { filter: blur(1.2px) saturate(0.85); }
+#view.mini { filter: saturate(1.45) contrast(1.08); }
+#view.stunned.mini { filter: blur(1.2px) saturate(1.2); }
 
 .hidden { display: none !important; }
 
@@ -378,7 +382,7 @@ kbd {
   font: 700 12px var(--font-mono);
   letter-spacing: 0.06em;
 }
-.report h2 { margin: 12px 20px 2px; color: var(--ink); font-size: 36px; font-weight: 900; line-height: 1; }
+.report h2 { color: var(--ink); font-size: 36px; font-weight: 900; line-height: 1; }
 .fields { margin: 6px 20px 0; }
 .fields div {
   display: grid;
@@ -390,19 +394,18 @@ kbd {
 }
 .fields dt { font-size: 11px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; }
 .fields dd { margin: 0; color: var(--ink); font: 700 17px var(--font-mono); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.report-title { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; margin: 12px 20px 2px; }
+.report-title h2 { margin: 0; }
 .stamp {
-  position: absolute;
-  right: 20px;
-  bottom: 124px;
   padding: 5px 10px 2px;
   border: 3px solid var(--sign-red);
   border-radius: 4px;
   color: var(--sign-red);
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 900;
   letter-spacing: 0.12em;
   opacity: 0.85;
-  transform: rotate(-12deg);
+  transform: rotate(-10deg);
   animation: stamp 0.35s 0.25s cubic-bezier(0.3, 1.6, 0.5, 1) both;
 }
 .report .actions { padding: 18px 20px 0; }
@@ -474,6 +477,156 @@ kbd {
 .warn-head h2 { margin: 0; font-size: 26px; font-weight: 900; letter-spacing: 0.04em; text-transform: uppercase; }
 .warn-inner p { margin: 0; font-size: 16px; font-weight: 600; line-height: 1.4; }
 
+/* ---- Daily challenge button (purple plate) ------------------------------------ */
+.btn-daily {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  border: 0;
+  border-radius: 8px;
+  padding: 11px 18px 9px;
+  cursor: pointer;
+  color: var(--sign-white);
+  background: var(--sign-purple);
+  box-shadow: inset 0 0 0 3px var(--sign-purple), inset 0 0 0 5px var(--sign-white), 0 5px 0 #3a2566, 0 12px 22px rgba(0, 0, 0, 0.3);
+  transition: transform 0.1s ease;
+}
+.btn-daily b { font-size: 18px; font-weight: 900; letter-spacing: 0.08em; }
+.btn-daily > span { font-size: 13px; font-weight: 700; opacity: 0.9; }
+.btn-daily:hover { transform: translateY(-2px); }
+.btn-daily:active { transform: translateY(4px); }
+
+.btn-yellow.small, .btn-plate.small { font-size: 14px; padding: 9px 12px 7px; }
+.btn-yellow:disabled, .btn-plate:disabled { opacity: 0.55; cursor: default; transform: none; }
+.btn-yellow .coin-ico { display: inline-block; vertical-align: -2px; }
+
+/* ---- Missions: orange construction sign ------------------------------------- */
+.work-sign { padding: 5px; border-radius: 10px; background: var(--sign-orange); box-shadow: 0 4px 0 #a8440f, 0 12px 26px rgba(0, 0, 0, 0.35); color: var(--ink); }
+.work-inner { padding: 10px 14px 12px; border: 3px solid var(--ink); border-radius: 7px; }
+.work-title { margin: 0 0 8px; font-size: 13px; font-weight: 900; letter-spacing: 0.14em; }
+.missions { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.missions li { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px 12px; font-size: 15px; font-weight: 800; }
+.m-text { min-width: 0; }
+.m-reward { display: inline-flex; align-items: center; gap: 5px; font-variant-numeric: tabular-nums; }
+.m-bar { grid-column: 1 / -1; height: 5px; background: rgba(0, 0, 0, 0.18); overflow: hidden; }
+.m-bar i { display: block; height: 100%; background: var(--sign-green); transform-origin: left center; }
+.missions.dark li { color: var(--sign-white); font-size: 14px; }
+.missions.dark .m-bar { background: rgba(255, 255, 255, 0.15); }
+.missions.dark .m-bar i { background: var(--sign-yellow); }
+.missions.paper { margin: 12px 20px 0; }
+.missions.paper li { font: 700 13px var(--font-mono); color: var(--ink); }
+.missions.paper .m-bar i { background: var(--form-ink); }
+
+/* ---- HUD extras ------------------------------------------------------------- */
+.plate.daily-badge {
+  min-width: 0;
+  padding: 5px 9px 3px;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  background: var(--sign-purple);
+  color: var(--sign-white);
+  box-shadow: inset 0 0 0 2px var(--sign-purple), inset 0 0 0 3.5px var(--sign-white), 0 3px 0 rgba(0, 0, 0, 0.3);
+}
+.plate.combo {
+  min-width: 0;
+  padding: 6px 10px 4px;
+  background: #0f6e8c;
+  color: var(--sign-white);
+  box-shadow: inset 0 0 0 2px #0f6e8c, inset 0 0 0 3.5px var(--sign-white), 0 3px 0 rgba(0, 0, 0, 0.3);
+  animation: pop-in 0.2s ease-out;
+}
+.plate.combo b { font-size: 24px; margin: 0; }
+.plate.combo span { font-size: 9px; font-weight: 900; letter-spacing: 0.14em; }
+
+.boss-bar {
+  position: absolute;
+  top: max(14px, env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 16px 6px;
+  border-radius: 8px;
+  background: var(--sign-yellow);
+  color: var(--ink);
+  box-shadow: inset 0 0 0 2px var(--sign-yellow), inset 0 0 0 4px var(--ink), 0 4px 0 rgba(0, 0, 0, 0.3);
+  max-width: calc(100vw - 220px);
+  text-align: center;
+}
+.boss-bar b { font-size: 14px; font-weight: 900; letter-spacing: 0.1em; }
+.boss-bar span { font-size: 12px; font-weight: 800; }
+
+.toasts {
+  position: absolute;
+  top: calc(max(14px, env(safe-area-inset-top)) + 64px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: min(420px, calc(100vw - 32px));
+}
+.toast {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 9px 16px 7px;
+  border-radius: 8px;
+  text-align: center;
+  animation: drop-in 0.3s cubic-bezier(0.2, 1.3, 0.4, 1);
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+.toast.out { opacity: 0; transform: translateY(-10px); }
+.toast b { font-size: 17px; font-weight: 900; letter-spacing: 0.08em; }
+.toast span { font-size: 13px; font-weight: 700; }
+.t-event { background: var(--sign-purple); color: var(--sign-white); box-shadow: inset 0 0 0 2px var(--sign-purple), inset 0 0 0 4px var(--sign-white), 0 6px 18px rgba(0, 0, 0, 0.35); }
+.t-weather { background: var(--sign-yellow); color: var(--ink); box-shadow: inset 0 0 0 2px var(--sign-yellow), inset 0 0 0 4px var(--ink), 0 6px 18px rgba(0, 0, 0, 0.35); }
+.t-mission { background: var(--sign-orange); color: var(--ink); box-shadow: inset 0 0 0 2px var(--sign-orange), inset 0 0 0 4px var(--ink), 0 6px 18px rgba(0, 0, 0, 0.35); }
+.t-boss { background: var(--sign-red); color: var(--sign-white); box-shadow: inset 0 0 0 2px var(--sign-red), inset 0 0 0 4px var(--sign-white), 0 6px 18px rgba(0, 0, 0, 0.35); }
+
+/* ---- Skin shop: brown attraction sign ------------------------------------------- */
+.brown-sign { width: min(620px, 100%); padding: 6px; border-radius: 12px; background: var(--sign-brown); color: var(--sign-white); box-shadow: 0 18px 40px rgba(0, 0, 0, 0.5); animation: slide-up 0.25s ease-out; }
+.brown-inner { display: flex; flex-direction: column; gap: 14px; padding: 16px 18px 18px; border: 4px solid var(--sign-white); border-radius: 8px; }
+.brown-inner > .btn-yellow { align-self: flex-start; }
+.shop-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.shop-head h2 { margin: 0; font-size: 26px; font-weight: 900; letter-spacing: 0.12em; }
+.shop-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+.skin {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 10px 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.18);
+}
+.skin.equipped { box-shadow: inset 0 0 0 3px var(--sign-yellow); }
+.skin canvas { width: 96px; height: 96px; }
+.skin b { font-size: 15px; font-weight: 800; text-align: center; }
+
+/* ---- Report extras ------------------------------------------------------------ */
+.report.bloody::after { /* evidence */
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 86% 18%, rgba(140, 8, 20, 0.75) 0 16px, transparent 17px),
+    radial-gradient(circle at 80% 24%, rgba(140, 8, 20, 0.7) 0 5px, transparent 6px),
+    radial-gradient(circle at 92% 28%, rgba(140, 8, 20, 0.65) 0 4px, transparent 5px),
+    radial-gradient(circle at 10% 88%, rgba(140, 8, 20, 0.6) 0 10px, transparent 11px),
+    radial-gradient(circle at 16% 82%, rgba(140, 8, 20, 0.55) 0 4px, transparent 5px),
+    radial-gradient(ellipse 6px 26px at 88% 34%, rgba(140, 8, 20, 0.55) 0 100%, transparent 101%);
+  mix-blend-mode: multiply;
+}
+
 /* ---- Animations --------------------------------------------------------- */
 @keyframes bump { 45% { transform: scale(1.16); } }
 @keyframes pop-in { from { transform: scale(0.6); opacity: 0; } }
@@ -481,7 +634,15 @@ kbd {
 @keyframes slide-up { from { transform: translateY(30px); opacity: 0; } }
 @keyframes drop-in { from { transform: translateY(-30px); opacity: 0; } }
 @keyframes blink { 50% { opacity: 0.45; } }
-@keyframes stamp { from { transform: rotate(-12deg) scale(2.2); opacity: 0; } }
+@keyframes stamp { from { transform: rotate(-10deg) scale(2.2); opacity: 0; } }
+
+@media (max-width: 560px) {
+  .toasts { top: calc(max(14px, env(safe-area-inset-top)) + 150px); }
+  .boss-bar { max-width: calc(100vw - 200px); padding: 6px 10px 5px; }
+  .boss-bar b { font-size: 11px; }
+  .boss-bar span { font-size: 11px; }
+  .toast b { font-size: 15px; }
+}
 
 @media (max-width: 480px) {
   .plate { min-width: 64px; padding: 7px 10px 4px; }
