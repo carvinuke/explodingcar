@@ -145,6 +145,8 @@ Rare events that happen every minute or two:
 - **Stats:** lifetime totals in the trophy room: runs, time played, rows,
   coins, wrecks, close calls, trains dodged, best scores per mode and deaths by
   cause.
+- **Shields stack:** grab two shields and you can take two hits; the HUD and
+  the bubbles around you show how many are left.
 - **Missions:** three goals at a time, like crossing lanes, riding logs,
   surviving crashes or reaching a row, each paying coins.
 - **Ghost:** a faint "BEST" ghost replays your best run alongside you.

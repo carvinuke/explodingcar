@@ -24,7 +24,7 @@ const PlayerProto = {
     this.lastDir = [0, 1];
     this.stun = 0;
     this.alive = true;
-    this.shield = false;
+    this.shield = 0; // number of stacked shields
     this.grace = 0;
     this.squash = 0;
     this.rot = 0;
@@ -172,7 +172,13 @@ const PlayerProto = {
       this.riding(dt);
     }
 
-    if (this.stun > 0) this.stun = Math.max(0, this.stun - dt);
+    if (this.stun > 0) {
+      this.stun = Math.max(0, this.stun - dt);
+      // graphic mode: dazed and dripping
+      if (Settings.gore && this.alive && Math.random() < dt * 10) {
+        FX.spawn('blood', this.x + rand(-6, 6), this.y + rand(-4, 4), this.z + rand(8, 18), { vx: rand(-20, 20), vy: rand(-10, 10), vz: rand(0, 40), g: 950, life: 2, size: rand(1.4, 2.4), color: pick(['#9e0b1a', '#b8111f', '#7a0612']) });
+      }
+    }
     this.squash = damp(this.squash, 0, 14, dt);
     // gentle breathing while standing still
     const still = !this.hop && !this.knock && !this.abduct;

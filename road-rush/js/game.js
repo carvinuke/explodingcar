@@ -323,7 +323,7 @@ const Game = {
         if (p.x < a - 0.2 * TILE || p.x > b + 0.2 * TILE) continue;
         if (p.invincible() || p.grace > 0) continue;
         if (p.shield) { // the shield can't stop a train, but it can throw you clear
-          p.shield = false;
+          p.shield--; // shields stack: one breaks per hit
           p.grace = 1.3;
           FX.shieldBreak(p.x, p.y);
           Sound.shieldBreak();
@@ -356,11 +356,11 @@ const Game = {
   vehicleHit(v, row, p) {
     if (p.invincible() || p.grace > 0) return;
     if (p.shield) {
-      p.shield = false;
+      p.shield--; // shields stack: one breaks per hit
       p.grace = 1.3;
       Vehicles.bounce(v, row);
       FX.shieldBreak(p.x, p.y);
-      FX.text(p.x, p.y + 14, 'SHIELD SAVED YOU!', '#8fd0ff', 17);
+      FX.text(p.x, p.y + 14, p.shield ? `SHIELD SAVED YOU! (${p.shield} LEFT)` : 'SHIELD SAVED YOU!', '#8fd0ff', 17);
       Sound.shieldBreak();
       Cam.addTrauma(0.45);
       Cam.punch += 0.04;
@@ -397,8 +397,17 @@ const Game = {
         else if (source === 'giant') FX.crushed(p.x, p.y, skin);
         else if (source === 'meteor' || source === 'lightning') { FX.trainRoadkill(p.x, p.y, chance(0.5) ? 1 : -1, skin); FX.scorch(p.x, p.y); }
         else if (source !== 'danger') FX.roadkill(p.x, p.y, dir || (chance(0.5) ? 1 : -1), skin);
-        if (v) { v.bloody = true; v.bloodT = 2.6; }
-        FX.flashScreen(0.5, '200,20,30');
+        if (v) { v.bloody = true; v.bloodT = 4; }
+        // everything close by gets splattered
+        for (const row of World.rows.values()) {
+          if (row.type !== 'road' || Math.abs(row.y - p.y) > 2.5 * TILE) continue;
+          for (const w of row.lane.vehicles) {
+            if (w.animal || Math.abs(w.x - p.x) > 2.5 * TILE + w.len / 2) continue;
+            w.bloody = true;
+            w.bloodT = Math.max(w.bloodT, 2.5);
+          }
+        }
+        FX.flashScreen(0.7, '200,20,30');
         // the paramedics come for the body
         if (source === 'vehicle' && opts.row && !v.responder) Vehicles.dispatch(opts.row, 'ambulance', { x: p.x, y: p.y, p });
       } else {
@@ -406,9 +415,9 @@ const Game = {
         FX.feathers(p.x, p.y, skin);
       }
     }
-    Cam.addTrauma(gore ? 0.85 : 0.7);
+    Cam.addTrauma(gore ? 1 : 0.7);
     Cam.punch += gore ? 0.1 : 0.08;
-    this.slowmo(0.25, 0.9);
+    this.slowmo(gore ? 0.18 : 0.25, gore ? 1.3 : 0.9);
 
     const statKey = source === 'vehicle' && v && v.responder ? 'responder' : source === 'vehicle' && v && v.drunk ? 'drunk' : source;
     if (p.id === 0 && this.tracksProgress()) {

@@ -86,7 +86,7 @@ const Storms = {
     for (const p of Game.players) {
       if (!p.alive || p.z > 40 || Math.abs(p.x - b.x) > 0.55 * TILE || Math.abs(p.y - b.y) > 0.5 * TILE) continue;
       if (p.invincible() || p.grace > 0) continue;
-      if (p.shield) { p.shield = false; p.grace = 1.3; FX.shieldBreak(p.x, p.y); Sound.shieldBreak(); continue; }
+      if (p.shield) { p.shield--; p.grace = 1.3; FX.shieldBreak(p.x, p.y); Sound.shieldBreak(); continue; }
       Game.kill('lightning', { p, dir: chance(0.5) ? 1 : -1 });
     }
   },
