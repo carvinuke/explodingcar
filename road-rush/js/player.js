@@ -34,6 +34,9 @@ const Player = {
     this.gone = false; // nothing left to draw (graphic mode)
     this.sink = 0;     // drowning animation
     this.slideT = 0;
+    this.breath = 0;   // idle breathing
+    this.idle = 0;
+    this.blinkSeed = rand(0, 3);
   },
 
   skin() { return SKINS[Shop.current] || SKINS.chick; },
@@ -139,6 +142,10 @@ const Player = {
 
     if (this.stun > 0) this.stun = Math.max(0, this.stun - dt);
     this.squash = damp(this.squash, 0, 14, dt);
+    // gentle breathing while standing still
+    const still = !this.hop && !this.knock && !this.abduct;
+    this.idle = still ? this.idle + dt : 0;
+    this.breath = still ? Math.sin(this.idle * 3.2) * 0.04 * Math.min(1, this.idle * 2) : 0;
     if (!this.knock && !this.abduct) this.rot = this.stun > 0 ? Math.sin(time * 16) * 0.14 * Math.min(1, this.stun / 0.5) : 0;
 
     // speed-boost afterimages

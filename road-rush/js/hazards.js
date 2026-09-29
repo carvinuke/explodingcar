@@ -127,7 +127,7 @@ const Rail = {
     const xEnd = R.dir > 0 ? WORLD_W + World.laneMargin + TILE : -World.laneMargin - TILE;
     if ((R.dir > 0 && rear > xEnd) || (R.dir < 0 && rear < xEnd)) {
       R.state = 'idle';
-      R.t = rand(5, 11) - 3 * d;
+      R.t = rand(8, 16) - 3 * d; // trains are an occasional scare, not a conveyor belt
       R.cars = null;
       R.horned = false;
     }

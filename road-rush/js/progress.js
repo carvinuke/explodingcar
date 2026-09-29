@@ -66,7 +66,7 @@ const MISSION_TYPES = {
   rails:    { text: n => `Cross ${n} railroad tracks in one run`, targets: [2, 4, 6], reward: n => n * 25 },
   powerups: { text: n => `Grab ${n} power-ups in one run`, targets: [2, 3, 5], reward: n => n * 25 },
   events:   { text: n => `Survive ${n} secret event${n > 1 ? 's' : ''} in one run`, targets: [1, 2], reward: n => n * 60 },
-  boss:     { text: () => 'Blow up the bulldozer boss', targets: [1], reward: () => 150 },
+  distance: { text: n => `Reach row ${n}`, targets: [40, 80, 120, 160], reward: n => n },
 };
 
 const Missions = {
@@ -101,7 +101,7 @@ const Missions = {
   text(m) { return MISSION_TYPES[m.type].text(m.target); },
 
   startRun() {
-    this.stats = { lanes: 0, streak: 0, coins: 0, score: 0, crashes: 0, combo: 0, logs: 0, rails: 0, powerups: 0, events: 0, boss: 0 };
+    this.stats = { lanes: 0, streak: 0, coins: 0, score: 0, crashes: 0, combo: 0, logs: 0, rails: 0, powerups: 0, events: 0, distance: 0 };
     for (const m of this.active) m.fresh = false; // new missions count from the next run
   },
 

@@ -32,6 +32,8 @@ const World = {
     this.pathCol = START_COL;
     this.seg = { type: 'grass', left: 0 };
     this.weather = [];
+    this.lastRail = -100;
+    this.lastRiver = -100;
     this.minRow = -16;
     this.maxRow = this.minRow - 1;
     this.ensure(30);
@@ -77,24 +79,32 @@ const World = {
     if (i >= 3) Items.populateRow(row);
   },
 
-  // Grass strips alternate with hazards: roads (most often), railroads and rivers.
+  // Grass strips alternate with hazards. Roads are the norm; railroads and rivers
+  // are rarer, never back to back, and each needs a long gap before it repeats.
   nextSegment(i) {
     const d = difficulty(i);
     if (this.seg.type !== 'grass') {
-      this.seg = { type: 'grass', left: Gen.int(1, d < 0.35 ? 3 : 2) };
+      // strips vary a lot: a one-row breather, or a wide meadow now and then
+      const len = Gen.weighted([[1, 3], [2, 4], [3, 3], [4, 1.6], [5, 0.9], [6, 0.4]]);
+      this.seg = { type: 'grass', left: d > 0.5 && len > 2 ? len - 1 : len };
       return;
     }
-    const kind = i < 12 ? 'road' : Gen.weighted([['road', 6], ['rail', 1.4], ['river', d > 0.06 ? 1.8 : 0.6]]);
+    const sinceSpecial = i - Math.max(this.lastRail, this.lastRiver);
+    const railOk = i >= 14 && i - this.lastRail >= Gen.int(14, 24) && sinceSpecial >= 7;
+    const riverOk = i >= 18 && i - this.lastRiver >= Gen.int(16, 28) && sinceSpecial >= 7;
+    const kind = Gen.weighted([['road', 6], ['rail', railOk ? 1.1 : 0], ['river', riverOk ? 1.3 : 0]]);
     if (kind === 'rail') {
       this.seg = { type: 'rail', left: 1 };
+      this.lastRail = i;
       return;
     }
     if (kind === 'river') {
-      const n = Gen.int(1, 1 + Math.round(d * 2.2));
+      const n = Gen.weighted([[1, 5], [2, 3], [3, d > 0.4 ? 1.2 : 0]]);
       const d0 = Gen.chance(0.5) ? 1 : -1;
       const dirs = [];
       for (let k = 0; k < n; k++) dirs.push(k % 2 ? -d0 : d0);
       this.seg = { type: 'river', left: n, n, dirs, k: 0 };
+      this.lastRiver = i + n - 1;
       return;
     }
     const maxLanes = 2 + Math.round(d * 3); // 2 -> 5
@@ -140,7 +150,7 @@ const World = {
     const row = {
       i, y: i * TILE, type: 'rail', objs: [],
       rail: {
-        dir, state: 'idle', t: Gen.rand(2.5, 7), x: 0, len: 0, speed: 0, cars: null,
+        dir, state: 'idle', t: Gen.rand(3, 11), x: 0, len: 0, speed: 0, cars: null,
         stalled: null, wrecks: [], bell: 0, horned: false, bloody: false,
       },
     };
