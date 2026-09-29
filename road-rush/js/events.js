@@ -14,8 +14,8 @@ const EVENT_DEFS = {
 };
 
 const box = (...a) => Draw.box(...a);
-const isPlaying = () => Game.state === 'playing' && Player.alive;
-const vulnerable = () => isPlaying() && Powers.invincible <= 0;
+const vulnerable = p => Game.state === 'playing' && p.alive && !p.invincible();
+const target = () => Game.target();
 
 function findRow(test, from, to) {
   for (let r = from; r <= to; r++) {
@@ -62,13 +62,14 @@ const HANDLERS = {
   // ---- UFO: hovers over a road, beams up cars (and maybe you), zaps a few, leaves ----
   ufo: {
     start(e) {
-      const row = findRow(r => r.type === 'road', Player.row + 1, Player.row + 5) || World.rows.get(Player.row + 2);
+      e.p = target();
+      const row = findRow(r => r.type === 'road', e.p.row + 1, e.p.row + 5) || World.rows.get(e.p.row + 2);
       if (!row) return false;
       e.gy = row.y;
       e.row = row;
       e.x = Renderer.x0 - 6 * TILE;
       e.z = 320;
-      e.tx = clamp(Player.x + rand(-1.5, 1.5) * TILE, TILE, WORLD_W - TILE);
+      e.tx = clamp(e.p.x + rand(-1.5, 1.5) * TILE, TILE, WORLD_W - TILE);
       e.phase = 'arrive';
       e.pt = 0;
       e.zapT = 0.2;
@@ -84,15 +85,17 @@ const HANDLERS = {
         e.z = damp(e.z, 150, 2.5, dt);
         if (e.pt > 1.8) { e.phase = 'beam'; e.pt = 0; Sound.ufo(); }
       } else if (e.phase === 'beam') {
-        e.x = approach(e.x, clamp(Player.x, TILE, WORLD_W - TILE), 35 * dt);
+        e.x = approach(e.x, clamp(e.p.x, TILE, WORLD_W - TILE), 35 * dt);
         if (e.row.type === 'road') {
           for (const v of e.row.lane.vehicles) {
             if (!v.wreck && !v.abducted && Math.abs(v.x - e.x) < 0.9 * TILE + v.len * 0.25) v.abducted = 0.001;
           }
         }
-        if (!e.grabbed && vulnerable() && !Player.abduct && Math.abs(Player.x - e.x) < 0.8 * TILE && Math.abs(Player.y - e.gy) < 0.5 * TILE) {
-          e.grabbed = true;
-          Player.startAbduct(e);
+        for (const p of Game.players) {
+          if (!e.grabbed && vulnerable(p) && !p.abduct && Math.abs(p.x - e.x) < 0.8 * TILE && Math.abs(p.y - e.gy) < 0.5 * TILE) {
+            e.grabbed = true;
+            p.startAbduct(e);
+          }
         }
         if (e.pt > 4.5) {
           e.phase = 'zap';
@@ -110,7 +113,7 @@ const HANDLERS = {
           e.zapT = 0.6;
           const targets = [];
           for (const row of World.rows.values()) {
-            if (row.type !== 'road' || row.y < Player.y - TILE || row.y > Player.y + 6 * TILE) continue;
+            if (row.type !== 'road' || row.y < e.p.y - TILE || row.y > e.p.y + 6 * TILE) continue;
             for (const v of row.lane.vehicles) if (!v.wreck && !v.abducted && Renderer.inViewX(v.x)) targets.push(v);
           }
           if (targets.length) {
@@ -202,8 +205,9 @@ const HANDLERS = {
     update(e, dt) {
       e.next -= dt;
       if (e.count < 3 && e.next <= 0) {
-        const tx = clamp(Player.x + rand(-2.5, 2.5) * TILE, 0.5 * TILE, WORLD_W - 0.5 * TILE);
-        const ty = (Player.row + randInt(0, 3)) * TILE;
+        const tp = target();
+        const tx = clamp(tp.x + rand(-2.5, 2.5) * TILE, 0.5 * TILE, WORLD_W - 0.5 * TILE);
+        const ty = (tp.row + randInt(0, 3)) * TILE;
         e.rocks.push({ tx, ty, t: 0, fall: 2.1, x: tx + 380, z: 720 });
         e.count++;
         e.next = 1.5;
@@ -220,8 +224,8 @@ const HANDLERS = {
         if (k >= 1) {
           e.rocks.splice(i, 1);
           const gore = Settings.gore;
-          if (vulnerable() && Math.hypot(Player.x - m.tx, Player.y - m.ty) < 0.85 * TILE) {
-            Game.kill('meteor');
+          for (const p of Game.players) {
+            if (vulnerable(p) && Math.hypot(p.x - m.tx, p.y - m.ty) < 0.85 * TILE) Game.kill('meteor', { p });
           }
           FX.meteorImpact(m.tx, m.ty, gore);
           flattenAt(m.tx, m.ty, 1.4 * TILE, 1.4 * TILE);
@@ -243,6 +247,14 @@ const HANDLERS = {
         c.stroke();
         c.fillStyle = `rgba(0,0,0,${0.35 * k})`;
         c.beginPath(); c.ellipse(m.tx, P(m.ty, 2), 0.5 * TILE * k, 0.5 * TILE * k * GY, 0, 0, 6.2832); c.fill();
+        if (Settings.colorblind) { // a crosshair as well as colour
+          c.strokeStyle = '#fcc21b';
+          c.lineWidth = 3;
+          c.beginPath();
+          c.moveTo(m.tx - r * 0.7, P(m.ty, 2)); c.lineTo(m.tx + r * 0.7, P(m.ty, 2));
+          c.moveTo(m.tx, P(m.ty + r * 0.7, 2)); c.lineTo(m.tx, P(m.ty - r * 0.7, 2));
+          c.stroke();
+        }
       }
     },
     sky(c, e, time) {
@@ -265,7 +277,7 @@ const HANDLERS = {
   // ---- A giant chicken stomps across the road ahead ----
   giant: {
     start(e) {
-      e.y = (Player.row + randInt(2, 3)) * TILE;
+      e.y = (target().row + randInt(2, 3)) * TILE;
       e.dir = chance(0.5) ? 1 : -1;
       e.x = e.dir > 0 ? Renderer.x0 - 3 * TILE : Renderer.x1 + 3 * TILE;
       e.speed = 115;
@@ -278,7 +290,7 @@ const HANDLERS = {
       e.x += e.dir * e.speed * dt;
       e.phase += dt * 6;
       e.stepT -= dt;
-      const near = clamp(1 - Math.abs(Player.y - e.y) / (10 * TILE), 0, 1);
+      const near = clamp(1 - Math.abs(Cam.y - e.y) / (10 * TILE), 0, 1);
       if (e.stepT <= 0) {
         e.stepT = 0.52;
         Cam.addTrauma(0.1 + 0.2 * near);
@@ -289,8 +301,8 @@ const HANDLERS = {
       if (e.cluckT <= 0) { e.cluckT = rand(1.5, 2.5); Sound.cluck(); }
       smashCars(e.x, e.y, 1.1 * TILE, 1.0 * TILE, 1.4);
       flattenAt(e.x, e.y, 1.1 * TILE, 1.0 * TILE);
-      if (vulnerable() && Math.abs(Player.x - e.x) < 1.0 * TILE && Math.abs(Player.y - e.y) < 0.9 * TILE && Player.z < 30) {
-        Game.kill('giant');
+      for (const p of Game.players) {
+        if (vulnerable(p) && Math.abs(p.x - e.x) < 1.0 * TILE && Math.abs(p.y - e.y) < 0.9 * TILE && p.z < 30) Game.kill('giant', { p });
       }
       if ((e.dir > 0 && e.x > Renderer.x1 + 4 * TILE) || (e.dir < 0 && e.x < Renderer.x0 - 4 * TILE) || e.t > 25) e.done = true;
     },
@@ -309,7 +321,8 @@ const HANDLERS = {
   // ---- Flash flood: a whole road block fills with water ----
   flood: {
     start(e) {
-      const first = findRow(r => r.type === 'road', Player.row, Player.row + 10);
+      const tp = target();
+      const first = findRow(r => r.type === 'road', tp.row, tp.row + 10);
       if (!first) return false;
       e.rows = [];
       for (let r = first.i; ; r++) {
@@ -361,11 +374,12 @@ const HANDLERS = {
   // ---- A giant goose chases you (and flattens anything in its way) ----
   goose: {
     start(e) {
-      e.x = Player.x;
-      e.y = Player.y - 6 * TILE;
+      e.p = target();
+      e.x = e.p.x;
+      e.y = e.p.y - 6 * TILE;
       e.z = 0;
       e.face = 1;
-      e.speed = 105 + 40 * difficulty(Player.maxRow);
+      e.speed = 105 + 40 * difficulty(e.p.maxRow);
       e.honkT = 0.3;
       e.leaving = false;
       e.step = 0;
@@ -374,16 +388,20 @@ const HANDLERS = {
     update(e, dt) {
       e.step += dt * 10;
       if (!e.leaving) {
-        const dx = Player.x - e.x, dy = Player.y - e.y, dist = Math.hypot(dx, dy) || 1;
-        if (Player.alive) {
+        if (!e.p.alive) e.p = target();
+        const P0 = e.p;
+        const dx = P0.x - e.x, dy = P0.y - e.y, dist = Math.hypot(dx, dy) || 1;
+        if (P0.alive) {
           e.x += (dx / dist) * e.speed * dt;
           e.y += (dy / dist) * e.speed * dt;
           if (Math.abs(dx) > 4) e.face = sign(dx);
-          if (dist > 9 * TILE) e.y = Player.y - 7 * TILE;
+          if (dist > 9 * TILE) e.y = P0.y - 7 * TILE;
         }
         smashCars(e.x, e.y, 0.9 * TILE, 0.7 * TILE, 1.2);
         flattenAt(e.x, e.y, 0.8 * TILE, 0.6 * TILE);
-        if (vulnerable() && dist < 0.75 * TILE && Player.z < 40) Game.kill('goose');
+        for (const p of Game.players) {
+          if (vulnerable(p) && Math.hypot(p.x - e.x, p.y - e.y) < 0.75 * TILE && p.z < 40) Game.kill('goose', { p });
+        }
         e.honkT -= dt;
         if (e.honkT <= 0) { e.honkT = rand(1.1, 1.8); Sound.honk(); if (chance(0.4)) FX.text(e.x, e.y + 40, 'HONK!', '#ffffff', 18); }
         if (e.t > 12) { e.leaving = true; e.lt = 0; Sound.honk(); }
@@ -495,10 +513,21 @@ const Events = {
     if (H.end) H.end(a);
     this.active = null;
     this.cd = rand(50, 90);
-    if (!silent && Game.state === 'playing' && Player.alive) Missions.add('events');
+    if (!silent && Game.state === 'playing' && Player.alive) {
+      Missions.add('events');
+      Trophies.add('events');
+      Stats.add('events');
+    }
   },
 
   // ---- Renderer hooks ----
+  lights(fn) {
+    const a = this.active;
+    if (!a) return;
+    if (a.type === 'ufo' && a.phase === 'beam') fn(a.x, a.gy, 0, 1.4 * TILE, 'lamp');
+    if (a.type === 'meteor') for (const m of a.rocks) fn(m.x, m.ty, m.z, 40, 'fire');
+  },
+
   drawables(list) {
     const a = this.active;
     if (a && HANDLERS[a.type].drawables) HANDLERS[a.type].drawables(a, list);

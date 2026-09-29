@@ -1,14 +1,15 @@
 'use strict';
-// The player: grid hops (continuous x while riding logs), blast knockback and
-// stun, UFO abduction, and the different ways to die.
+// The players: grid hops (continuous x while riding logs), sliding on ice,
+// blast knockback and stun, UFO abduction, and the different ways to die.
+// `Player` is player one; two-player mode adds `Player2`.
 
-const Player = {
+const PlayerProto = {
   kind: 'player',
 
-  reset() {
-    this.col = START_COL;
+  reset(col = START_COL) {
+    this.col = col;
     this.row = 0;
-    this.x = cellX(START_COL);
+    this.x = cellX(col);
     this.y = 0;
     this.z = 0;
     this.hop = null;
@@ -18,7 +19,9 @@ const Player = {
     this.abduct = null;
     this.ride = null;
     this.lastLog = 0;
+    this.logChain = 0;
     this.facing = 'up';
+    this.lastDir = [0, 1];
     this.stun = 0;
     this.alive = true;
     this.shield = false;
@@ -32,15 +35,33 @@ const Player = {
     this.char = 0;     // soot from a violent blast (graphic mode)
     this.flat = false; // run over in graphic mode
     this.gone = false; // nothing left to draw (graphic mode)
-    this.sink = 0;     // drowning animation
+    this.sink = 0;     // drowning / falling into a pit
     this.slideT = 0;
     this.breath = 0;   // idle breathing
     this.idle = 0;
     this.blinkSeed = rand(0, 3);
+    this.pw = { speed: 0, magnet: 0, invincible: 0 };
+    this.leftCell = null;
+    this.combo = 0;
+    this.comboT = -9;
+    this.streak = 0;
+    this.lastMoveT = 0;
+    this.bonus = 0;
+    this.coins = 0;
+    this.sheet = 0; // graphic mode: paramedics covered the body
   },
 
-  skin() { return SKINS[Shop.current] || SKINS.chick; },
+  get score() { return this.maxRow * 10 + this.bonus; },
+  get tag() { return this.id === 0 ? 'P1' : 'P2'; },
+
+  skin() {
+    const mine = SKINS[Shop.current] || SKINS.chick;
+    if (this.id === 0) return mine;
+    return Shop.current === 'duck' ? SKINS.chick : SKINS.duck; // player two always looks different
+  },
+  hat() { return this.id === 0 ? Shop.hat : null; },
   rowObj() { return World.rows.get(this.row); },
+  invincible() { return this.pw.invincible > 0; },
 
   input(dx, dy) {
     if (!this.alive || this.knock || this.abduct || this.stun > 0) return;
@@ -48,7 +69,11 @@ const Player = {
     this.move(dx, dy);
   },
 
-  move(dx, dy) {
+  canEnter(nc, nr) {
+    return nc >= 0 && nc < COLS && !World.isBlocked(nc, nr) && !Vehicles.blocksCell(nc, nr);
+  },
+
+  move(dx, dy, slide = false) {
     this.facing = dx > 0 ? 'right' : dx < 0 ? 'left' : dy > 0 ? 'up' : 'down';
     const nr = this.row + dy;
     const target = World.rows.get(nr);
@@ -57,26 +82,30 @@ const Player = {
     let tx = dx ? this.x + dx * TILE : this.x;
     const nc = Math.round(tx / TILE - 0.5);
     if (!toRiver) tx = cellX(nc);
-    if (nc < 0 || nc >= COLS || World.isBlocked(nc, nr) || Vehicles.blocksCell(nc, nr)) {
-      this.squash = 0.5;
-      Sound.bump();
+    if (!this.canEnter(nc, nr)) {
+      if (!slide) { this.squash = 0.5; Sound.bump(); }
       return false;
     }
     const lg = Events.gravity < 1 ? (1 - Events.gravity) / 0.7 : 0;
-    const fast = Powers.speed > 0;
+    const fast = this.pw.speed > 0;
     const from = this.rowObj();
-    if (from && (from.type === 'road' || from.type === 'rail')) Game.leftCell = { col: this.col, row: this.row, t: Game.time, used: false };
+    if (from && (from.type === 'road' || from.type === 'rail')) this.leftCell = { col: this.col, row: this.row, t: Game.time, used: false };
     this.hop = {
-      fx: this.x, fy: this.y, tx, ty: nr * TILE, t: 0,
-      dur: (fast ? 0.075 : 0.12) * lerp(1, 1.7, lg),
-      h: 0.3 * TILE * lerp(1, 3.2, lg),
+      fx: this.x, fy: this.y, tx, ty: nr * TILE, t: 0, slide,
+      dur: slide ? 0.11 : (fast ? 0.075 : 0.12) * lerp(1, 1.7, lg),
+      h: slide ? 0 : 0.3 * TILE * lerp(1, 3.2, lg),
     };
     this.col = nc;
     this.row = nr;
     this.ride = null;
-    Sound.hop(fast);
-    Ghost.mark(Game.time, tx, nr * TILE, 'h');
-    Game.onPlayerMove();
+    this.lastDir = [dx, dy];
+    if (slide) Sound.slide();
+    else {
+      Sound.hop(fast);
+      Cosmetics.hopTrail(this);
+    }
+    if (this.id === 0) Ghost.mark(Game.time, tx, nr * TILE, 'h');
+    Game.onPlayerMove(this);
     return true;
   },
 
@@ -85,11 +114,13 @@ const Player = {
     if (this.sink) {
       this.sink = Math.min(1, this.sink + dt * 1.6);
       this.z = -this.sink * 18;
-      if (Math.random() < dt * 14) FX.bubbles(this.x, this.y);
+      const row = this.rowObj();
+      if (row && row.type === 'river' && Math.random() < dt * 14) FX.bubbles(this.x, this.y);
       return;
     }
     if (this.flat || this.gone) return;
     if (this.grace > 0) this.grace -= dt;
+    for (const k in this.pw) if (this.pw[k] > 0) this.pw[k] = Math.max(0, this.pw[k] - dt);
     if (this.char > 0) {
       this.char -= dt;
       if (Math.random() < dt * 7) FX.puff(this.x, this.y, this.z + 26);
@@ -112,25 +143,26 @@ const Player = {
         FX.dust(this.x, this.y, 8);
         Sound.land();
         if (Settings.gore) FX.bleed(this.x, this.y, 16);
-        this.landed();
+        this.landed(true);
       }
     } else if (this.hop) {
       const h = this.hop;
       h.t = Math.min(1, h.t + dt / h.dur);
-      const e = easeOutQuad(h.t);
+      const e = h.slide ? h.t : easeOutQuad(h.t);
       this.x = lerp(h.fx, h.tx, e);
       this.y = lerp(h.fy, h.ty, e);
       this.z = Math.sin(Math.PI * h.t) * h.h;
-      this.flap = Math.sin(Math.PI * h.t);
+      this.flap = h.slide ? 0.4 : Math.sin(Math.PI * h.t);
+      if (h.slide && Math.random() < dt * 40) FX.spawn('dust', this.x + rand(-6, 6), this.y, 2, { vx: rand(-20, 20), vz: rand(10, 30), life: 0.35, size: 3, size2: 1, color: '#e8f6ff' });
       if (h.t >= 1) {
         this.hop = null;
         this.z = 0;
         this.flap = 0;
-        this.squash = 0.45;
-        if (Powers.speed > 0) FX.dust(this.x, this.y, 3);
-        this.landed();
-        if (this.alive && Vehicles.justPassed(this.col, this.row)) Game.nearMiss(1);
-        if (this.queue && this.alive) {
+        this.squash = h.slide ? 0.2 : 0.45;
+        if (this.pw.speed > 0) FX.dust(this.x, this.y, 3);
+        this.landed(false);
+        if (this.alive && !this.hop && Vehicles.justPassed(this.col, this.row)) Game.nearMiss(1, this);
+        if (this.queue && this.alive && !this.hop) {
           const q = this.queue;
           this.queue = null;
           if (this.stun <= 0) this.move(q[0], q[1]);
@@ -149,7 +181,7 @@ const Player = {
     if (!this.knock && !this.abduct) this.rot = this.stun > 0 ? Math.sin(time * 16) * 0.14 * Math.min(1, this.stun / 0.5) : 0;
 
     // speed-boost afterimages
-    if (Powers.speed > 0) {
+    if (this.pw.speed > 0) {
       this.trailT -= dt;
       const last = this.trail[this.trail.length - 1];
       if (this.trailT <= 0 && (!last || Math.hypot(last.x - this.x, last.y - this.y) > 3)) {
@@ -162,18 +194,35 @@ const Player = {
     while (this.trail.length && this.trail[0].a <= 0) this.trail.shift();
   },
 
-  // Just touched down after a hop or knockback: water, flood, logs.
-  landed() {
+  // Just touched down after a hop or knockback: water, pits, ice, flood, logs.
+  landed(fromKnock) {
     const row = this.rowObj();
     if (!row) return;
     if (row.type === 'river') {
       const log = River.logAt(row, this.x);
-      if (!log) { Game.kill('drown'); return; }
+      if (!log) { Game.kill('drown', { p: this }); return; }
       this.ride = log;
-      if (log.id !== this.lastLog) { this.lastLog = log.id; Missions.add('logs'); }
+      if (log.id !== this.lastLog) {
+        this.lastLog = log.id;
+        this.logChain++;
+        if (this.id === 0) {
+          Missions.add('logs');
+          Stats.add('logs');
+          Trophies.max('logChain', this.logChain);
+        }
+      }
       FX.ripple(this.x, this.y, 16);
-    } else if (row.type === 'road' && row.flood) {
-      FX.splash(this.x, this.y, 8);
+      return;
+    }
+    this.logChain = 0;
+    if (row.type === 'work' && row.pit[this.col]) { Game.kill('pit', { p: this }); return; }
+    if (row.type === 'road' && row.flood) FX.splash(this.x, this.y, 8);
+    // ice: keep sliding the way you were going until you reach grip or something solid
+    if (row.ice && row.ice[this.col] && !fromKnock && this.alive) {
+      if (this.id === 0) Trophies.add('ice');
+      const [dx, dy] = this.lastDir;
+      this.queue = null;
+      if (!this.move(dx, dy, true)) this.squash = 0.4;
     }
   },
 
@@ -182,13 +231,13 @@ const Player = {
     const row = this.rowObj();
     if (!row || row.type !== 'river' || !this.alive) { this.ride = null; return; }
     const log = River.logAt(row, this.x);
-    if (!log) { Game.kill('drown'); return; }
+    if (!log) { Game.kill('drown', { p: this }); return; }
     this.ride = log;
     this.x += row.river.dir * row.river.speed * Game.trafficFactor() * dt;
     this.col = clamp(Math.round(this.x / TILE - 0.5), 0, COLS - 1);
     this.slideT -= dt;
-    if (this.slideT <= 0) { this.slideT = 0.2; Ghost.mark(Game.time, this.x, this.y, 's'); }
-    if (this.x < -0.25 * TILE || this.x > WORLD_W + 0.25 * TILE) Game.kill('swept');
+    if (this.slideT <= 0 && this.id === 0) { this.slideT = 0.2; Ghost.mark(Game.time, this.x, this.y, 's'); }
+    if (this.x < -0.25 * TILE || this.x > WORLD_W + 0.25 * TILE) Game.kill('swept', { p: this });
   },
 
   // UFO beam: float up, hang there, then get dropped.
@@ -225,7 +274,7 @@ const Player = {
         Sound.land();
         Cam.addTrauma(0.3);
         if (Settings.gore) FX.bleed(this.x, this.y, 30);
-        this.landed();
+        this.landed(true);
       }
     }
   },
@@ -237,7 +286,7 @@ const Player = {
     const dx = (this.x - ex) / TILE, dy = (this.y - ey) / TILE;
     const dist = Math.hypot(dx, dy) / scale;
     if (dist > 4.6) return;
-    if (Powers.invincible > 0) { FX.text(this.x, this.y, 'IMMUNE', '#e2b8ff', 15); return; }
+    if (this.invincible()) { FX.text(this.x, this.y, 'IMMUNE', '#e2b8ff', 15); return; }
     if (Settings.gore && dist < 3.1) {
       this.char = 3.5;
       FX.scorch(this.x, this.y);
@@ -278,7 +327,7 @@ const Player = {
       };
       this.col = c;
       this.row = r;
-      Ghost.mark(Game.time, cellX(c), r * TILE, 'k');
+      if (this.id === 0) Ghost.mark(Game.time, cellX(c), r * TILE, 'k');
     }
     this.stun = Math.max(this.stun, stun + (this.knock ? this.knock.dur : 0));
     Sound.stun();
@@ -292,12 +341,13 @@ const Player = {
     this.stun = 0;
     this.flap = 0;
     this.char = 0;
-    Ghost.mark(Game.time, this.x, this.y, 'd');
+    if (this.id === 0) Ghost.mark(Game.time, this.x, this.y, 'd');
     if (how === 'drown' || how === 'swept') {
       if (gore) this.gone = true;
       else this.sink = 0.01;
       return;
     }
+    if (how === 'pit') { this.sink = 0.01; return; }
     if (gore && (how === 'train' || how === 'goose' || how === 'meteor')) { this.gone = true; return; }
     if (gore) { // run over or crushed
       this.flat = true;
@@ -337,3 +387,13 @@ const Player = {
     }
   },
 };
+
+function makePlayer(id) {
+  const p = Object.create(PlayerProto);
+  p.id = id;
+  p.reset();
+  return p;
+}
+
+const Player = makePlayer(0);
+const Player2 = makePlayer(1);

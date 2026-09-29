@@ -13,16 +13,19 @@
 <body>
 <div id="game">
   <canvas id="view"></canvas>
+  <canvas id="replay" class="hidden" aria-label="Instant replay of how you died"></canvas>
 
   <div id="hud" class="hidden">
     <div class="hud-l">
-      <div class="plate guide"><span class="plate-lbl">SCORE</span><b id="score">0</b></div>
-      <div class="plate coinplate"><span class="coin-ico"></span><b id="coins">0</b></div>
+      <div id="score-plate" class="plate guide"><span class="plate-lbl" id="score-lbl">SCORE</span><b id="score">0</b></div>
+      <div id="coin-plate" class="plate coinplate"><span class="coin-ico"></span><b id="coins">0</b></div>
       <div id="daily-badge" class="plate daily-badge hidden">DAILY</div>
+      <div id="mode-badge" class="plate mode-badge hidden"></div>
       <div id="combo" class="plate combo hidden"><b>x2</b><span>CLOSE CALLS</span></div>
     </div>
     <div class="hud-r">
-      <div class="plate limit"><span class="plate-lbl">BEST</span><b id="best">0</b></div>
+      <div id="best-plate" class="plate limit"><span class="plate-lbl">BEST</span><b id="best">0</b></div>
+      <div id="p2-plate" class="plate guide p2 hidden"><span class="plate-lbl">P2 ROWS</span><b id="p2-score">0</b></div>
       <div class="hud-btns">
         <button id="btn-pause" class="icon-btn" aria-label="Pause">
           <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="4" height="14" fill="currentColor"/><rect x="14" y="5" width="4" height="14" fill="currentColor"/></svg>
@@ -30,6 +33,8 @@
         <button id="btn-mute" class="icon-btn" aria-label="Mute"></button>
       </div>
     </div>
+    <div id="timer" class="timer hidden" aria-live="off"><span>TIME</span><b id="timer-val">90</b></div>
+    <div id="vs-tally" class="vs-tally hidden"></div>
     <div id="toasts" class="toasts" aria-live="polite"></div>
     <div id="powers"></div>
   </div>
@@ -47,12 +52,20 @@
         </div>
       </div>
 
-      <div class="actions">
+      <div class="actions play-row">
         <button id="btn-play" class="btn-yellow btn-big">PLAY</button>
         <button id="btn-daily" class="btn-daily"><b>DAILY CHALLENGE</b><span><span id="daily-date"></span> &middot; <span id="daily-best"></span></span></button>
       </div>
+
+      <div class="modes" role="group" aria-label="More modes">
+        <button id="btn-hardcore" class="mode-sign m-hardcore"><b>HARDCORE</b><span>Faster traffic, no power-ups, double coins</span><em id="best-hardcore"></em></button>
+        <button id="btn-time" class="mode-sign m-time"><b>TIME ATTACK</b><span>90 seconds. Coins add time</span><em id="best-time"></em></button>
+        <button id="btn-versus" class="mode-sign m-versus"><b>2 PLAYERS</b><span>WASD vs arrow keys. Last chicken standing</span><em id="vs-record"></em></button>
+      </div>
+
       <div class="actions">
-        <button id="btn-shop" class="btn-plate">Skin shop</button>
+        <button id="btn-shop" class="btn-plate">Shop</button>
+        <button id="btn-trophies" class="btn-plate">Trophies <span id="trophy-count" class="count"></span></button>
         <button id="btn-settings" class="btn-plate">Settings</button>
       </div>
 
@@ -70,13 +83,8 @@
         </div>
       </div>
 
-      <div class="ahead">
-        <div class="diamond" aria-hidden="true"><span>!</span></div>
-        <p>Reckless drivers ahead. When two cars crash they explode and can knock you back.</p>
-      </div>
-
       <div class="title-foot">
-        <p class="controls kb"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or <kbd>&uarr;</kbd><kbd>&larr;</kbd><kbd>&darr;</kbd><kbd>&rarr;</kbd> to move</p>
+        <p class="controls kb"><kbd id="kb-up">W</kbd><kbd id="kb-left">A</kbd><kbd id="kb-down">S</kbd><kbd id="kb-right">D</kbd> or <kbd>&uarr;</kbd><kbd>&larr;</kbd><kbd>&darr;</kbd><kbd>&rarr;</kbd> to move &middot; controllers work too</p>
         <p class="controls touch">Tap to hop, swipe to move</p>
         <p class="meta">Best <b id="title-best">0</b> &middot; Coins <b id="title-coins">0</b></p>
         <span id="gore-badge" class="gore-badge hidden">GRAPHIC MODE ON</span>
@@ -92,6 +100,7 @@
         <div class="actions">
           <button id="btn-resume" class="btn-yellow">RESUME</button>
           <button id="btn-pause-settings" class="btn-plate">Settings</button>
+          <button id="btn-pause-menu" class="btn-plate">Quit to menu</button>
         </div>
         <ul id="pause-missions" class="missions dark"></ul>
         <p class="hint">P or Esc to resume &middot; M to mute</p>
@@ -103,20 +112,25 @@
     <div id="report" class="report">
       <div class="report-head"><span>TRAFFIC INCIDENT REPORT</span><span id="report-no">No. 00001</span></div>
       <div class="report-title">
-        <h2>Game Over</h2>
+        <h2 id="over-title">Game Over</h2>
         <div id="over-new" class="stamp hidden">NEW RECORD</div>
       </div>
       <dl class="fields">
         <div><dt>Cause</dt><dd id="over-cause"></dd></div>
-        <div><dt>Distance</dt><dd id="over-rows"></dd></div>
-        <div><dt>Score</dt><dd id="over-score">0</dd></div>
-        <div><dt>Best</dt><dd id="over-best">0</dd></div>
-        <div><dt>Coins</dt><dd id="over-coins"></dd></div>
+        <div id="over-rows-row"><dt>Distance</dt><dd id="over-rows"></dd></div>
+        <div id="over-score-row"><dt>Score</dt><dd id="over-score">0</dd></div>
+        <div id="over-best-row"><dt>Best</dt><dd id="over-best">0</dd></div>
+        <div id="over-coins-row"><dt>Coins</dt><dd id="over-coins"></dd></div>
         <div id="over-mode-row" class="hidden"><dt>Mode</dt><dd id="over-mode"></dd></div>
+        <div id="over-p1-row" class="hidden"><dt>Player 1</dt><dd id="over-p1"></dd></div>
+        <div id="over-p2-row" class="hidden"><dt>Player 2</dt><dd id="over-p2"></dd></div>
+        <div id="over-tally-row" class="hidden"><dt>Wins</dt><dd id="over-tally"></dd></div>
       </dl>
+      <ul id="over-trophies" class="trophy-strip hidden"></ul>
       <ul id="over-missions" class="missions paper"></ul>
       <div class="actions">
         <button id="btn-again" class="btn-yellow">PLAY AGAIN</button>
+        <button id="btn-over-menu" class="btn-plate">Menu</button>
         <button id="btn-over-shop" class="btn-plate">Shop</button>
         <button id="btn-over-settings" class="btn-plate">Settings</button>
       </div>
@@ -128,6 +142,7 @@
     <div class="reg-sign">
       <div class="reg-inner">
         <h2 id="settings-title">SETTINGS</h2>
+        <p class="set-head">Sound and screen</p>
         <div class="set-row">
           <div><b id="lbl-sound">Sound</b><span>Sound effects</span></div>
           <button id="set-sound" class="toggle" role="switch" aria-checked="true" aria-labelledby="lbl-sound"><i></i></button>
@@ -137,9 +152,32 @@
           <button id="set-shake" class="toggle" role="switch" aria-checked="true" aria-labelledby="lbl-shake"><i></i></button>
         </div>
         <div class="set-row">
+          <div><b id="lbl-motion">Reduced motion</b><span>No shake, zoom punches or blur, and softer flashes</span></div>
+          <button id="set-motion" class="toggle" role="switch" aria-checked="false" aria-labelledby="lbl-motion"><i></i></button>
+        </div>
+        <div class="set-row">
+          <div><b id="lbl-colorblind">Colorblind-friendly</b><span>Shapes and stripes on warnings, not just red</span></div>
+          <button id="set-colorblind" class="toggle" role="switch" aria-checked="false" aria-labelledby="lbl-colorblind"><i></i></button>
+        </div>
+        <p class="set-head">Gameplay</p>
+        <div class="set-row">
           <div><b id="lbl-ghost">Ghost of best run</b><span>A faint copy of your best run hops along with you</span></div>
           <button id="set-ghost" class="toggle" role="switch" aria-checked="true" aria-labelledby="lbl-ghost"><i></i></button>
         </div>
+        <div class="set-row">
+          <div><b id="lbl-replay">Death replay</b><span>Slow-motion instant replay when you die</span></div>
+          <button id="set-replay" class="toggle" role="switch" aria-checked="true" aria-labelledby="lbl-replay"><i></i></button>
+        </div>
+        <p class="set-head">Controls</p>
+        <div class="keys" id="keys">
+          <div class="key-row"><span>Up</span><button class="key-btn" data-dir="up"></button></div>
+          <div class="key-row"><span>Left</span><button class="key-btn" data-dir="left"></button></div>
+          <div class="key-row"><span>Down</span><button class="key-btn" data-dir="down"></button></div>
+          <div class="key-row"><span>Right</span><button class="key-btn" data-dir="right"></button></div>
+        </div>
+        <p class="set-note">Arrow keys always work too. In two-player mode, player two uses the arrow keys. Controllers: the d-pad or left stick moves, A hops forward, Start pauses.</p>
+        <button id="btn-keys-reset" class="btn-plate small keys-reset">Reset keys</button>
+        <p class="set-head">Content</p>
         <div class="set-row gore">
           <div><b id="lbl-gore">Graphic mode</b><span>Cartoon blood and gore when you die, and much more violent crashes, trains, meteors and monsters</span></div>
           <button id="set-gore" class="toggle" role="switch" aria-checked="false" aria-labelledby="lbl-gore"><i></i></button>
@@ -153,11 +191,34 @@
     <div class="brown-sign">
       <div class="brown-inner">
         <div class="shop-head">
-          <h2 id="shop-title">SKIN SHOP</h2>
+          <h2 id="shop-title">SHOP</h2>
           <span class="plate coinplate"><span class="coin-ico"></span><b id="shop-coins">0</b></span>
         </div>
-        <div id="shop-grid" class="shop-grid"></div>
+        <div class="tabs" role="tablist" aria-label="Shop sections">
+          <button class="tab" role="tab" data-tab="skins" aria-selected="true">Skins</button>
+          <button class="tab" role="tab" data-tab="hats" aria-selected="false">Hats</button>
+          <button class="tab" role="tab" data-tab="trails" aria-selected="false">Trails</button>
+        </div>
+        <div id="shop-grid" class="shop-grid" role="tabpanel"></div>
         <button id="btn-shop-done" class="btn-yellow">DONE</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="screen-trophies" class="screen modal hidden" role="dialog" aria-modal="true" aria-labelledby="trophies-title">
+    <div class="blue-sign">
+      <div class="blue-inner">
+        <div class="shop-head">
+          <h2 id="trophies-title">TROPHY ROOM</h2>
+          <span id="trophy-progress" class="trophy-progress"></span>
+        </div>
+        <div class="tabs" role="tablist" aria-label="Trophy room sections">
+          <button class="tab" role="tab" data-ttab="trophies" aria-selected="true">Trophies</button>
+          <button class="tab" role="tab" data-ttab="stats" aria-selected="false">Stats</button>
+        </div>
+        <ul id="trophy-list" class="trophy-list"></ul>
+        <div id="stats-panel" class="stats-panel hidden"></div>
+        <button id="btn-trophies-done" class="btn-yellow">DONE</button>
       </div>
     </div>
   </div>
@@ -186,12 +247,17 @@
 <script src="js/world.js"></script>
 <script src="js/vehicles.js"></script>
 <script src="js/hazards.js"></script>
+<script src="js/animals.js"></script>
 <script src="js/player.js"></script>
 <script src="js/powerups.js"></script>
 <script src="js/progress.js"></script>
+<script src="js/trophies.js"></script>
 <script src="js/events.js"></script>
 <script src="js/camera.js"></script>
+<script src="js/lighting.js"></script>
 <script src="js/renderer.js"></script>
+<script src="js/replay.js"></script>
+<script src="js/input.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/game.js"></script>
 </body>

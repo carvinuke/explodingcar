@@ -1,10 +1,12 @@
 'use strict';
-// Endless world generation: rows of grass, road, railroad and river,
-// streamed in ahead of the player and dropped once they fall behind.
+// Endless world generation: rows of ground, road, railroad, river and
+// construction work, streamed in ahead of the player and dropped once they
+// fall behind. The world passes through biomes (countryside, city, desert,
+// mountain pass), each with its own ground, scenery, hazards and weather.
 // Layout uses the seeded `Gen` so the daily challenge is identical for everyone.
 
-// Palettes that rotate every ~48 rows for a gentle change of scenery.
-const BIOMES = [
+// Countryside palettes rotate every ~48 rows for a gentle change of scenery.
+const COUNTRY = [
   { grass: ['#94d36b', '#8acb62'], edge: '#5e8f3e', tree: ['#56a846', '#3f8a37', '#6cc255', '#50a043'],
     bush: ['#62b44e', '#4b953d', '#77c75f', '#5aa648'], flowers: ['#ffffff', '#ffd6e7', '#fff08a'] },
   { grass: ['#a8d66a', '#9fce60'], edge: '#6f8f3a', tree: ['#7ab648', '#5f9738', '#8fcb58', '#72ad44'],
@@ -15,7 +17,38 @@ const BIOMES = [
     bush: ['#d0a24a', '#b0873a', '#dbb35d', '#c09441'], flowers: ['#ffffff', '#ffcf8a', '#ff9e9e'] },
 ];
 
+const ZONES = {
+  country: {
+    name: 'THE COUNTRYSIDE', sub: 'Watch for cows and deer on the road',
+    weather: [['clear', 5], ['rain', 3], ['snow', 1]], work: 0.45, rail: 1.1, river: 1.3, lanes: 0,
+    bg: '#6fae55',
+  },
+  city: {
+    name: 'THE CITY', sub: 'Heavy traffic, trams and road work',
+    weather: [['clear', 5], ['rain', 3]], work: 1.4, rail: 1.2, river: 0.7, lanes: 1,
+    bg: '#8f939b',
+    pal: { grass: ['#c3c6cc', '#bcbfc6'], edge: '#8a8e96', tree: ['#56a846', '#3f8a37', '#6cc255', '#50a043'],
+           bush: ['#62b44e', '#4b953d', '#77c75f', '#5aa648'], flowers: ['#ffffff'] },
+  },
+  desert: {
+    name: 'THE DESERT', sub: 'Dust storms hide the road ahead',
+    weather: [['clear', 4], ['dust', 3]], work: 0.35, rail: 1.5, river: 0, lanes: 0,
+    bg: '#d9bd84',
+    pal: { grass: ['#ead29b', '#e4ca91'], edge: '#b8925a', tree: ['#5f9e4a', '#437a35', '#76b35c', '#548f41'],
+           bush: ['#a79a5c', '#857a45', '#b8ab6a', '#958a52'], flowers: ['#c9a36a'] },
+  },
+  snow: {
+    name: 'THE MOUNTAIN PASS', sub: 'Ice patches: you will slide',
+    weather: [['snow', 1]], work: 0.2, rail: 1.1, river: 1.2, lanes: 0,
+    bg: '#dfe8f1',
+    pal: { grass: ['#f1f5fa', '#e9eff6'], edge: '#aebfd1', tree: ['#2f7a5a', '#215c43', '#3a8d68', '#2a6c50'],
+           bush: ['#4f8a6c', '#3b6f55', '#5f9a7b', '#487f63'], flowers: ['#ffffff'] },
+  },
+};
+
 const WEATHER_SECTION = 60; // rows per weather zone
+const FIRST_ZONE = 80;      // rows of countryside before the first change
+const ZONE_LEN = 90;        // rows per biome after that
 
 const World = {
   rows: new Map(),
@@ -23,25 +56,60 @@ const World = {
   maxRow: 0,
   pathCol: START_COL,
   seg: null,
-  weather: [],
   laneMargin: 12 * TILE, // how far off-screen lanes extend (set on resize)
+  speedMul: 1,
+  gapMul: 1,
+  powerups: true,
 
-  reset(seed) {
+  reset(seed, opts = {}) {
     Gen.seed(seed);
+    // biome order and weather are decided up front from their own stream,
+    // so they don't depend on how far ahead rows have been generated
+    const r = mulberry32(seed ^ 0x5bd1e995);
+    this.zoneSeq = [];
+    const others = ['city', 'desert', 'snow'];
+    for (let lap = 0; lap < 12; lap++) {
+      const o = others.slice();
+      for (let k = o.length - 1; k > 0; k--) { const j = Math.floor(r() * (k + 1)); [o[k], o[j]] = [o[j], o[k]]; }
+      this.zoneSeq.push(...o, 'country');
+    }
+    this.weatherRolls = [];
+    for (let k = 0; k < 200; k++) this.weatherRolls.push(r());
+
+    this.speedMul = opts.speedMul || 1;
+    this.gapMul = opts.gapMul || 1;
+    this.powerups = opts.powerups !== false;
     this.rows.clear();
     this.pathCol = START_COL;
     this.seg = { type: 'grass', left: 0 };
-    this.weather = [];
     this.lastRail = -100;
     this.lastRiver = -100;
+    this.lastWork = -100;
+    this.signedZone = 'country';
     this.minRow = -16;
     this.maxRow = this.minRow - 1;
     this.ensure(30);
   },
 
-  biome(i) { return BIOMES[Math.floor(Math.max(0, i) / 48) % BIOMES.length]; },
+  zoneAt(row) {
+    if (row < FIRST_ZONE) return 'country';
+    return this.zoneSeq[Math.floor((row - FIRST_ZONE) / ZONE_LEN) % this.zoneSeq.length];
+  },
 
-  weatherAt(row) { return this.weather[Math.floor(Math.max(0, row) / WEATHER_SECTION)] || 'clear'; },
+  palette(i, zone) {
+    return zone === 'country' ? COUNTRY[Math.floor(Math.max(0, i) / 48) % COUNTRY.length] : ZONES[zone].pal;
+  },
+
+  weatherAt(row) {
+    const sec = Math.floor(Math.max(0, row) / WEATHER_SECTION);
+    if (sec === 0) return 'clear';
+    const w = ZONES[this.zoneAt(row)].weather;
+    let total = 0;
+    for (const e of w) total += e[1];
+    let x = this.weatherRolls[sec % this.weatherRolls.length] * total;
+    for (const e of w) if ((x -= e[1]) <= 0) return e[0];
+    return w[w.length - 1][0];
+  },
 
   ensure(upTo) {
     while (this.maxRow < upTo) this.generate(this.maxRow + 1);
@@ -52,26 +120,23 @@ const World = {
     Items.cull(this.minRow);
   },
 
-  // Is this grid cell off-limits for the player? Water and track are walkable
-  // (and dangerous); only scenery on grass blocks movement.
+  // Is this grid cell off-limits for the player? Water, track and pits are
+  // walkable (and dangerous); only scenery and road-work gear block movement.
   isBlocked(col, row) {
     if (col < 0 || col >= COLS || row < 0) return true;
     const r = this.rows.get(row);
-    return !r || (r.type === 'grass' && r.blocked[col]);
+    return !r || ((r.type === 'grass' || r.type === 'work') && r.blocked[col]);
   },
 
   generate(i) {
-    if (i >= 0 && i % WEATHER_SECTION === 0) {
-      const sec = i / WEATHER_SECTION;
-      this.weather[sec] = sec === 0 ? 'clear' : Gen.weighted([['clear', 5], ['rain', 3], ['snow', 2]]);
-    }
     let row;
     if (i < 0) row = this.makeGrass(i, 'backdrop');
     else if (i < 4) row = this.makeGrass(i, 'start');
     else {
       if (this.seg.left <= 0) this.nextSegment(i);
       const t = this.seg.type;
-      row = t === 'road' ? this.makeRoad(i) : t === 'rail' ? this.makeRail(i) : t === 'river' ? this.makeRiver(i) : this.makeGrass(i, 'normal');
+      row = t === 'road' ? this.makeRoad(i) : t === 'rail' ? this.makeRail(i) : t === 'river' ? this.makeRiver(i)
+        : t === 'work' ? this.makeWork(i) : this.makeGrass(i, 'normal');
       this.seg.left--;
     }
     this.rows.set(i, row);
@@ -79,10 +144,10 @@ const World = {
     if (i >= 3) Items.populateRow(row);
   },
 
-  // Grass strips alternate with hazards. Roads are the norm; railroads and rivers
-  // are rarer, never back to back, and each needs a long gap before it repeats.
+  // Ground strips alternate with hazards. Roads are the norm; railroads, rivers
+  // and road work are rarer, never back to back, and each needs a gap before it repeats.
   nextSegment(i) {
-    const d = difficulty(i);
+    const d = difficulty(i), zone = this.zoneAt(i), Z = ZONES[zone];
     if (this.seg.type !== 'grass') {
       // strips vary a lot: a one-row breather, or a wide meadow now and then
       const len = Gen.weighted([[1, 3], [2, 4], [3, 3], [4, 1.6], [5, 0.9], [6, 0.4]]);
@@ -91,11 +156,19 @@ const World = {
     }
     const sinceSpecial = i - Math.max(this.lastRail, this.lastRiver);
     const railOk = i >= 14 && i - this.lastRail >= Gen.int(14, 24) && sinceSpecial >= 7;
-    const riverOk = i >= 18 && i - this.lastRiver >= Gen.int(16, 28) && sinceSpecial >= 7;
-    const kind = Gen.weighted([['road', 6], ['rail', railOk ? 1.1 : 0], ['river', riverOk ? 1.3 : 0]]);
+    const riverOk = Z.river > 0 && i >= 18 && i - this.lastRiver >= Gen.int(16, 28) && sinceSpecial >= 7;
+    const workOk = i >= 12 && i - this.lastWork >= Gen.int(10, 18);
+    const kind = Gen.weighted([
+      ['road', 6], ['rail', railOk ? Z.rail : 0], ['river', riverOk ? Z.river : 0], ['work', workOk ? Z.work : 0],
+    ]);
     if (kind === 'rail') {
       this.seg = { type: 'rail', left: 1 };
       this.lastRail = i;
+      return;
+    }
+    if (kind === 'work') {
+      this.seg = { type: 'work', left: Gen.chance(0.25) ? 2 : 1 };
+      this.lastWork = i;
       return;
     }
     if (kind === 'river') {
@@ -107,8 +180,8 @@ const World = {
       this.lastRiver = i + n - 1;
       return;
     }
-    const maxLanes = 2 + Math.round(d * 3); // 2 -> 5
-    const n = d < 0.08 ? Gen.int(1, 2) : Gen.int(1, maxLanes);
+    const maxLanes = Math.min(6, 2 + Math.round(d * 3) + Z.lanes); // 2 -> 5 (6 in the city)
+    const n = d < 0.08 ? Gen.int(1, 2) : Gen.int(1 + Z.lanes, maxLanes);
     const d0 = Gen.chance(0.5) ? 1 : -1;
     const oneWay = n > 1 && Gen.chance(0.25);
     const alternate = !oneWay && n > 2 && Gen.chance(0.35);
@@ -118,9 +191,23 @@ const World = {
       else if (alternate) dirs.push(k % 2 ? -d0 : d0);
       else dirs.push(k < Math.ceil(n / 2) ? d0 : -d0);
     }
-    this.seg = { type: 'road', left: n, n, dirs, k: 0, speed: (60 + 125 * d) * Gen.rand(0.85, 1.2) };
+    this.seg = { type: 'road', left: n, n, dirs, k: 0, speed: (60 + 125 * d) * Gen.rand(0.85, 1.2) * this.speedMul };
     const prev = this.rows.get(i - 1);
     if (prev && prev.type === 'grass') this.addRoadside(prev, 1);
+  },
+
+  // Ice patches in the mountains: land on one and you keep sliding.
+  addIce(row, count) {
+    if (row.zone !== 'snow' || row.i < 6) return;
+    let ice = null;
+    for (let k = 0; k < count; k++) {
+      const col = Gen.int(0, COLS - 1);
+      if (row.blocked && row.blocked[col]) continue;
+      ice = ice || new Array(COLS).fill(false);
+      ice[col] = true;
+      if (Gen.chance(0.5) && col + 1 < COLS && !(row.blocked && row.blocked[col + 1])) ice[col + 1] = true;
+    }
+    row.ice = ice;
   },
 
   makeRoad(i) {
@@ -128,29 +215,32 @@ const World = {
     const lane = {
       dir,
       speed: s.speed * Gen.rand(0.85, 1.18),
-      gapMin: lerp(4.2, 2.1, d) * TILE,
-      gapMax: lerp(9.5, 5.2, d) * TILE,
+      gapMin: lerp(4.2, 2.1, d) * TILE * this.gapMul,
+      gapMax: lerp(9.5, 5.2, d) * TILE * this.gapMul,
       nextGap: 0,
       nextType: null,
+      pending: null,
       xStart: dir > 0 ? -this.laneMargin : WORLD_W + this.laneMargin,
       xEnd: dir > 0 ? WORLD_W + this.laneMargin : -this.laneMargin,
-      weights: Vehicles.weightsFor(d),
+      weights: Vehicles.weightsFor(d, this.zoneAt(i)),
       vehicles: [],
     };
     const row = {
-      i, y: i * TILE, type: 'road', lane, laneIdx: k, shade: k % 2,
+      i, y: i * TILE, type: 'road', lane, laneIdx: k, shade: k % 2, zone: this.zoneAt(i),
       markAbove: k < s.n - 1 ? (s.dirs[k + 1] === dir ? 'dash' : 'double') : 'edge',
     };
+    if (Gen.chance(0.35)) this.addIce(row, Gen.int(1, 2));
     Vehicles.populate(row);
     return row;
   },
 
   makeRail(i) {
     const dir = Gen.chance(0.5) ? 1 : -1;
+    const zone = this.zoneAt(i);
     const row = {
-      i, y: i * TILE, type: 'rail', objs: [],
+      i, y: i * TILE, type: 'rail', objs: [], zone,
       rail: {
-        dir, state: 'idle', t: Gen.rand(3, 11), x: 0, len: 0, speed: 0, cars: null,
+        dir, state: 'idle', t: Gen.rand(3, 11), x: 0, len: 0, speed: 0, cars: null, tram: zone === 'city',
         stalled: null, wrecks: [], bell: 0, horned: false, bloody: false,
       },
     };
@@ -163,8 +253,10 @@ const World = {
 
   makeRiver(i) {
     const s = this.seg, k = s.k++, dir = s.dirs[k], d = difficulty(i);
+    const zone = this.zoneAt(i);
     const river = {
       dir,
+      style: zone === 'snow' ? 'floe' : zone === 'city' ? 'raft' : 'log',
       speed: (32 + 55 * d) * Gen.rand(0.8, 1.3),
       gapMin: lerp(1.0, 1.6, d) * TILE,
       gapMax: lerp(2.6, 3.4, d) * TILE,
@@ -175,14 +267,58 @@ const World = {
       xEnd: dir > 0 ? WORLD_W + this.laneMargin : -this.laneMargin,
       logs: [],
     };
-    const row = { i, y: i * TILE, type: 'river', river, riverIdx: k, phase: Gen.rand(0, 60) };
+    const row = { i, y: i * TILE, type: 'river', river, riverIdx: k, phase: Gen.rand(0, 60), zone };
     River.populate(row);
     return row;
   },
 
+  // Road work: cones and barriers block cells, open pits swallow you, and an
+  // excavator swings its bucket across the row.
+  makeWork(i) {
+    const zone = this.zoneAt(i);
+    const row = {
+      i, y: i * TILE, type: 'work', zone, blocked: new Array(COLS).fill(false), pit: new Array(COLS).fill(false),
+      objs: [], biome: this.palette(i, zone),
+    };
+    const keep = this.pathCol;
+    const free = c => c !== keep && !row.blocked[c] && !row.pit[c];
+    // an excavator parked at one edge, swinging over the cells beside it
+    if (Gen.chance(0.7)) {
+      const left = Gen.chance(0.5);
+      const cols = left ? [0, 1] : [COLS - 2, COLS - 1];
+      if (cols.every(free)) {
+        for (const c of cols) row.blocked[c] = true;
+        const reach = left ? [2, 5] : [COLS - 6, COLS - 3];
+        row.objs.push({
+          kind: 'excavator', x: (cellX(cols[0]) + cellX(cols[1])) / 2, y: row.y, col: cols[0], side: left ? 1 : -1,
+          reach, state: 'idle', t: Gen.rand(1.5, 4), swing: 0, row,
+        });
+      }
+    }
+    for (let n = Gen.int(1, 2), tries = 0; n > 0 && tries < 12; tries++) {
+      const c = Gen.int(0, COLS - 1);
+      if (!free(c)) continue;
+      row.pit[c] = true;
+      n--;
+    }
+    for (let n = Gen.int(1, 3), tries = 0; n > 0 && tries < 12; tries++) {
+      const c = Gen.int(0, COLS - 1);
+      if (!free(c)) continue;
+      row.blocked[c] = true;
+      row.objs.push({ kind: Gen.chance(0.55) ? 'cone' : 'barrier', col: c, x: cellX(c), y: row.y });
+      n--;
+    }
+    for (const col of [-1, COLS]) {
+      if (Gen.chance(0.7)) row.objs.push({ kind: 'worksign', col, x: cellX(col), y: row.y });
+      else row.objs.push({ kind: 'cone', col, x: cellX(col), y: row.y });
+    }
+    return row;
+  },
+
   makeGrass(i, mode) {
-    const biome = this.biome(i);
-    const row = { i, y: i * TILE, type: 'grass', blocked: new Array(COLS).fill(false), objs: [], flat: [], biome };
+    const zone = this.zoneAt(i);
+    const biome = this.palette(i, zone);
+    const row = { i, y: i * TILE, type: 'grass', blocked: new Array(COLS).fill(false), objs: [], flat: [], biome, zone };
 
     // A random-walk column that is never blocked guarantees a path forward:
     // each row keeps both the previous and the new path column clear.
@@ -205,16 +341,35 @@ const World = {
     for (let col = -7; col < COLS + 7; col++) {
       if (col >= 0 && col < COLS) continue;
       const far = col < 0 ? -col : col - COLS + 1;
-      if (far === 1) { if (Gen.chance(0.15)) row.objs.push(this.decor('bush', col, row)); }
-      else if (Gen.chance(0.22 + far * 0.07)) row.objs.push(this.decor(Gen.weighted([['tree', 6], ['bush', 2], ['rock', 1]]), col, row));
+      if (zone === 'city') {
+        if (far === 1) { if (Gen.chance(0.12)) row.objs.push(this.decor(Gen.pick(['hydrant', 'bin', 'mailbox']), col, row)); }
+        else if (far === 2) { if (Gen.chance(0.25)) row.objs.push(this.decor('planter', col, row)); }
+        else if (far >= 3 && (col < 0 ? col === -3 || col === -6 : col === COLS + 2 || col === COLS + 5)) row.objs.push(this.decor('building', col, row));
+      } else if (far === 1) {
+        if (Gen.chance(0.15)) row.objs.push(this.decor(zone === 'desert' ? 'deadbush' : 'bush', col, row));
+      } else if (Gen.chance(0.22 + far * 0.07)) {
+        const kind = zone === 'desert' ? Gen.weighted([['cactus', 4], ['rock', 2], ['mesa', far > 3 ? 1.5 : 0]])
+          : Gen.weighted([['tree', 6], ['bush', zone === 'snow' ? 0.5 : 2], ['rock', 1]]);
+        row.objs.push(this.decor(kind, col, row));
+      }
     }
 
-    // flowers and grass tufts drawn flat on the ground
+    // flat ground detail: flowers and tufts, cracks, pebbles or sparkles
     for (let f = Gen.int(3, 7); f > 0; f--) {
       row.flat.push({ x: Gen.rand(-6 * TILE, WORLD_W + 6 * TILE), y: row.y + Gen.rand(-14, 14), c: Gen.chance(0.5) ? Gen.pick(biome.flowers) : null });
     }
 
+    // welcome sign where a new biome begins
+    if (mode === 'normal' && zone !== this.signedZone) {
+      this.signedZone = zone;
+      for (const col of [-1, COLS]) {
+        row.objs = row.objs.filter(o => o.col !== col);
+        row.objs.push({ kind: 'welcome', col, x: cellX(col), y: row.y, zone, side: col < 0 ? -1 : 1 });
+      }
+    }
+
     if (mode === 'normal') {
+      this.addIce(row, Gen.int(0, 2));
       const below = this.rows.get(i - 1);
       if (below && below.type === 'road') this.addRoadside(row, -1);
     }
@@ -222,37 +377,64 @@ const World = {
   },
 
   obstacle(col, row, mode) {
-    const kind = mode === 'backdrop'
-      ? Gen.weighted([['tree', 5], ['bush', 2], ['rock', 1]])
-      : Gen.weighted([['tree', 5], ['bush', 3], ['rock', 2], ['sign', 0.5], ['lamp', 0.4]]);
+    const z = row.zone;
+    let kind;
+    if (mode === 'backdrop' || z === 'country') {
+      kind = mode === 'backdrop'
+        ? Gen.weighted([['tree', 5], ['bush', 2], ['rock', 1]])
+        : Gen.weighted([['tree', 5], ['bush', 3], ['rock', 2], ['sign', 0.5], ['lamp', 0.4]]);
+    } else if (z === 'city') {
+      kind = Gen.weighted([['planter', 3], ['hydrant', 2], ['bin', 2], ['mailbox', 1], ['bench', 1.5], ['lamp', 1]]);
+    } else if (z === 'desert') {
+      kind = Gen.weighted([['cactus', 5], ['rock', 3], ['deadbush', 2], ['skull', 0.6]]);
+    } else {
+      kind = Gen.weighted([['tree', 6], ['rock', 2], ['snowman', 0.7]]);
+    }
     return this.decor(kind, col, row);
   },
 
   decor(kind, col, row) {
     const b = row.biome;
     const o = { kind, col, x: cellX(col), y: row.y };
-    if (kind === 'tree') {
-      o.tiers = Gen.weighted([[1, 4], [2, 4], [3, 2]]);
-      o.size = Gen.rand(13, 16);
+    if (kind === 'tree' || kind === 'planter') {
+      o.tiers = kind === 'planter' ? 1 : Gen.weighted([[1, 4], [2, 4], [3, 2]]);
+      o.size = kind === 'planter' ? Gen.rand(10, 12) : Gen.rand(13, 16);
+      if (row.zone === 'snow') { o.tiers = Gen.int(2, 3); o.pine = true; }
       const t = b.tree;
       o.pal = { top: shade(t[0], Gen.rand(-0.05, 0.05)), front: t[1], top2: t[2], front2: t[3] };
-    } else if (kind === 'bush') {
+    } else if (kind === 'bush' || kind === 'deadbush') {
       const t = b.bush;
       o.pal = { top: t[0], front: t[1], top2: t[2], front2: t[3] };
-      o.flower = Gen.chance(0.4) ? Gen.pick(b.flowers) : null;
+      o.flower = kind === 'bush' && row.zone === 'country' && Gen.chance(0.4) ? Gen.pick(b.flowers) : null;
     } else if (kind === 'sign') {
       o.style = Gen.pick(['warn', 'stop', 'info']);
     } else if (kind === 'lamp') {
       o.dir = Gen.chance(0.5) ? 1 : -1;
+    } else if (kind === 'cactus') {
+      o.h = Gen.rand(26, 40);
+      o.arms = Gen.int(0, 2);
+      o.flip = Gen.chance(0.5) ? 1 : -1;
+    } else if (kind === 'building') {
+      o.h = Gen.rand(90, 190);
+      o.w = Gen.rand(1.6, 2.6) * TILE;
+      o.color = Gen.pick(['#7d8796', '#a0876e', '#8b6f63', '#6f7f8c', '#9a9fa8', '#b39a7c']);
+      o.lit = Array.from({ length: 24 }, () => Gen.chance(0.55));
+    } else if (kind === 'mesa') {
+      o.h = Gen.rand(30, 60);
+      o.w = Gen.rand(1.5, 2.4) * TILE;
+    } else if (kind === 'rock') {
+      o.zone = row.zone;
     }
     return o;
   },
 
   // Street lamps and signs framing the road just outside the playable area.
   addRoadside(row, dirToRoad) {
+    const lampChance = row.zone === 'city' ? 0.9 : row.zone === 'desert' ? 0.35 : 0.6;
     for (const col of [-1, COLS]) {
+      if (row.objs.some(o => o.col === col && o.kind === 'welcome')) continue;
       row.objs = row.objs.filter(o => o.col !== col);
-      if (Gen.chance(0.65)) {
+      if (Gen.chance(lampChance)) {
         const o = this.decor('lamp', col, row);
         o.dir = dirToRoad;
         row.objs.push(o);

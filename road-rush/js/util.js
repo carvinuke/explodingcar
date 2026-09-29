@@ -37,7 +37,9 @@ const cellX = col => (col + 0.5) * TILE;
 const P = (y, z = 0) => -(y * GY + z * GZ);
 
 // Difficulty 0..1 by rows travelled: ramps early, then flattens out.
-const difficulty = row => 1 - Math.exp(-Math.max(0, row) / 170);
+// Hardcore mode starts further along the curve.
+const DIFF = { offset: 0 };
+const difficulty = row => 1 - Math.exp(-Math.max(0, row + DIFF.offset) / 170);
 
 // Smooth pseudo-noise in roughly [-1, 1] for camera shake.
 const wobble = t => (Math.sin(t) + 0.5 * Math.sin(t * 2.3 + 1.3) + 0.25 * Math.sin(t * 4.1 + 2.1)) / 1.75;
@@ -75,17 +77,38 @@ const Store = {
 };
 
 // Player settings. Graphic mode is opt-in and always starts off.
+const DEFAULT_KEYS = { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD' };
 const Settings = {
   gore: false,
   shake: true,
   ghost: true,
+  replay: true,
+  motion: false,     // reduced motion
+  colorblind: false,
+  keys: { ...DEFAULT_KEYS },
   load() {
     const s = Store.get('settings', {}) || {};
+    let prefersReduced = false;
+    try { prefersReduced = matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { /* ignore */ }
     this.gore = s.gore === true;
     this.shake = s.shake !== false;
     this.ghost = s.ghost !== false;
+    this.replay = s.replay !== false;
+    this.motion = s.motion === undefined ? prefersReduced : s.motion === true;
+    this.colorblind = s.colorblind === true;
+    this.keys = { ...DEFAULT_KEYS };
+    if (s.keys && typeof s.keys === 'object') {
+      for (const k in DEFAULT_KEYS) if (typeof s.keys[k] === 'string') this.keys[k] = s.keys[k];
+    }
   },
-  save() { Store.set('settings', { gore: this.gore, shake: this.shake, ghost: this.ghost }); },
+  save() {
+    Store.set('settings', {
+      gore: this.gore, shake: this.shake, ghost: this.ghost, replay: this.replay,
+      motion: this.motion, colorblind: this.colorblind, keys: this.keys,
+    });
+  },
+  // Camera shake is off when the player turned it off or asked for reduced motion.
+  get shakes() { return this.shake && !this.motion; },
 };
 Settings.load();
 

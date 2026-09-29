@@ -3,6 +3,7 @@
 // ghost of your best run.
 
 // ---- Skins ------------------------------------------------------------------
+// Most skins are bought with coins; a few are trophies you have to earn.
 const SKINS = {
   chick:   { name: 'Chick', price: 0, kind: 'bird',
              top: '#fff1a8', front: '#ffd23f', wingTop: '#ffe066', wingFront: '#f2b705',
@@ -19,40 +20,104 @@ const SKINS = {
   raccoon: { name: 'Raccoon', price: 500, kind: 'raccoon',
              top: '#a3a9b1', front: '#737a84', wingTop: null, wingFront: null,
              comb: null, beak: null, feet: '#3a3d42' },
+  penguin: { name: 'Penguin', price: 0, unlock: 'coldfeet', kind: 'bird', belly: '#f7f7f5', bill: true,
+             top: '#2e3440', front: '#1e232c', wingTop: '#2a303b', wingFront: '#161a21',
+             comb: null, beak: ['#ffb347', '#ff8c1a'], feet: '#ff9f1c' },
+  dummy:   { name: 'Crash Test Dummy', price: 0, unlock: 'crashtest', kind: 'bird', marks: true,
+             top: '#ffd84a', front: '#e8b400', wingTop: '#f2c830', wingFront: '#c99a00',
+             comb: null, beak: ['#9aa0a8', '#6d737c'], feet: '#3a3d42' },
+  zombie:  { name: 'Zombie Chick', price: 0, unlock: 'again', kind: 'bird', zombie: true,
+             top: '#b5c9a3', front: '#86a077', wingTop: '#9fb68f', wingFront: '#6f8a62',
+             comb: ['#8a4545', '#6a3030'], beak: ['#c9a36a', '#a27f48'], feet: '#7a8a5a' },
+  golden:  { name: 'Golden Chick', price: 0, unlock: 'warrior', kind: 'bird', shine: true,
+             top: '#ffe98a', front: '#f0b400', wingTop: '#ffd84a', wingFront: '#d49a00',
+             comb: ['#ff4f4f', '#d63030'], beak: ['#ffcf6b', '#f0a020'], feet: '#e89010' },
 };
 
+const HATS = {
+  none:    { name: 'No hat', price: 0 },
+  party:   { name: 'Party Hat', price: 60 },
+  shades:  { name: 'Sunglasses', price: 80 },
+  cone:    { name: 'Traffic Cone', price: 100 },
+  cowboy:  { name: 'Cowboy Hat', price: 120 },
+  tophat:  { name: 'Top Hat', price: 150 },
+  crown:   { name: 'Crown', price: 400 },
+};
+
+const TRAILS = {
+  none:     { name: 'No trail', price: 0 },
+  sparkle:  { name: 'Sparkles', price: 100 },
+  bubbles:  { name: 'Bubbles', price: 120 },
+  confetti: { name: 'Confetti', price: 150 },
+  fire:     { name: 'Fire', price: 200 },
+  rainbow:  { name: 'Rainbow', price: 300 },
+};
+
+const SHOP_TABS = { skins: SKINS, hats: HATS, trails: TRAILS };
+
 const Shop = {
-  owned: [],
+  owned: { skins: ['chick'], hats: ['none'], trails: ['none'] },
   current: 'chick',
+  hat: null,
+  trail: null,
 
   load() {
-    const owned = Store.get('skins', ['chick']);
-    this.owned = Array.isArray(owned) ? owned.filter(id => SKINS[id]) : ['chick'];
-    if (!this.owned.includes('chick')) this.owned.unshift('chick');
+    const list = (key, table, base) => {
+      const v = Store.get(key, [base]);
+      const out = Array.isArray(v) ? v.filter(id => table[id]) : [];
+      if (!out.includes(base)) out.unshift(base);
+      return out;
+    };
+    this.owned = { skins: list('skins', SKINS, 'chick'), hats: list('hats', HATS, 'none'), trails: list('trails', TRAILS, 'none') };
     const cur = Store.get('skin', 'chick');
-    this.current = this.owned.includes(cur) ? cur : 'chick';
+    this.current = SKINS[cur] && this.has('skins', cur) ? cur : 'chick';
+    const hat = Store.get('hat', 'none'), trail = Store.get('trail', 'none');
+    this.hat = HATS[hat] && this.has('hats', hat) && hat !== 'none' ? hat : null;
+    this.trail = TRAILS[trail] && this.has('trails', trail) && trail !== 'none' ? trail : null;
   },
 
   skin() { return SKINS[this.current]; },
 
-  buy(id) {
-    const s = SKINS[id];
-    if (!s || this.owned.includes(id) || Game.bank < s.price) return false;
-    Game.bank -= s.price;
+  // Trophy skins are yours as soon as the trophy is.
+  has(tab, id) {
+    const item = SHOP_TABS[tab][id];
+    if (!item) return false;
+    if (item.unlock) return Trophies.has(item.unlock);
+    return this.owned[tab].includes(id);
+  },
+
+  equipped(tab, id) {
+    if (tab === 'skins') return this.current === id;
+    if (tab === 'hats') return (this.hat || 'none') === id;
+    return (this.trail || 'none') === id;
+  },
+
+  buy(tab, id) {
+    const item = SHOP_TABS[tab][id];
+    if (!item || item.unlock || this.has(tab, id) || Game.bank < item.price) return false;
+    Game.bank -= item.price;
     Store.set('coins', Game.bank);
-    this.owned.push(id);
-    Store.set('skins', this.owned);
-    this.equip(id);
+    this.owned[tab].push(id);
+    Store.set(tab, this.owned[tab]);
+    this.equip(tab, id);
     return true;
   },
 
-  equip(id) {
-    if (!this.owned.includes(id)) return;
-    this.current = id;
-    Store.set('skin', id);
+  equip(tab, id) {
+    if (!this.has(tab, id)) return;
+    if (tab === 'skins') { this.current = id; Store.set('skin', id); }
+    else if (tab === 'hats') { this.hat = id === 'none' ? null : id; Store.set('hat', id); }
+    else { this.trail = id === 'none' ? null : id; Store.set('trail', id); }
   },
 };
-Shop.load();
+
+// Hop trails (player one's equipped trail).
+const Cosmetics = {
+  hopTrail(p) {
+    if (p.id !== 0 || !Shop.trail) return;
+    FX.hopTrail(p.x, p.y, Shop.trail);
+  },
+};
 
 // ---- Missions ----------------------------------------------------------------
 const MISSION_TYPES = {
@@ -107,8 +172,8 @@ const Missions = {
 
   progress(m) { return Math.min(m.target, this.stats[m.type] || 0); },
 
-  add(key, n = 1) { this.stats[key] = (this.stats[key] || 0) + n; this.check(); },
-  max(key, v) { if (v > (this.stats[key] || 0)) { this.stats[key] = v; this.check(); } },
+  add(key, n = 1) { if (!Game.tracksProgress()) return; this.stats[key] = (this.stats[key] || 0) + n; this.check(); },
+  max(key, v) { if (!Game.tracksProgress()) return; if (v > (this.stats[key] || 0)) { this.stats[key] = v; this.check(); } },
 
   check() {
     for (let i = 0; i < this.active.length; i++) {
@@ -137,6 +202,9 @@ const Ghost = {
   start(key) {
     this.key = key;
     this.rec = [[0, cellX(START_COL), 0, 'h']];
+    this.idx = 0;
+    this.pos = null;
+    if (!key) { this.play = null; return; } // no ghost in two-player mode
     const saved = Settings.ghost ? Store.get('ghost.' + key, null) : null;
     this.play = Array.isArray(saved) && saved.length > 1 ? saved : null;
     this.idx = 0;
@@ -146,10 +214,10 @@ const Ghost = {
 
   // kind: h = hop, k = knockback, s = drift on a log, d = died
   mark(t, x, y, kind) {
-    if (this.rec.length < 4000) this.rec.push([Math.round(t * 100) / 100, Math.round(x), Math.round(y), kind]);
+    if (this.key && this.rec.length < 4000) this.rec.push([Math.round(t * 100) / 100, Math.round(x), Math.round(y), kind]);
   },
 
-  save() { Store.set('ghost.' + this.key, this.rec); },
+  save() { if (this.key) Store.set('ghost.' + this.key, this.rec); },
 
   update(t) {
     const g = this.play;

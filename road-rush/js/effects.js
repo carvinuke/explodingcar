@@ -451,6 +451,28 @@ const FX = (() => {
         c.lineTo(d.x + d.len * 0.18, d.y - d.len);
       }
       c.stroke();
+    } else if (type === 'dust') {
+      // a dust storm: heavy haze further up the screen hides the road ahead
+      const g = c.createLinearGradient(0, 0, 0, H);
+      g.addColorStop(0, `rgba(196,150,92,${0.78 * amt})`);
+      g.addColorStop(0.45, `rgba(205,165,105,${0.42 * amt})`);
+      g.addColorStop(1, `rgba(210,175,120,${0.12 * amt})`);
+      c.fillStyle = g;
+      c.fillRect(0, 0, W, H);
+      const want = Math.round(120 * amt);
+      while (sky.drops.length < want) sky.drops.push({ x: rand(W), y: rand(H), len: rand(20, 60), v: rand(500, 900) });
+      if (sky.drops.length > want) sky.drops.length = want;
+      c.strokeStyle = 'rgba(235,205,150,0.35)';
+      c.lineWidth = 1.5;
+      c.beginPath();
+      for (const d of sky.drops) {
+        d.x += d.v * dt;
+        d.y += d.v * 0.06 * dt;
+        if (d.x > W + 60) { d.x = rand(-80, -10); d.y = rand(H); }
+        c.moveTo(d.x, d.y);
+        c.lineTo(d.x - d.len, d.y - d.len * 0.06);
+      }
+      c.stroke();
     } else if (type === 'snow') {
       c.fillStyle = `rgba(220,235,255,${0.12 * amt})`;
       c.fillRect(0, 0, W, H);
@@ -953,7 +975,61 @@ const FX = (() => {
   }
 
   function flashScreen(a, rgb = '255,250,235') {
+    if (Settings.motion) a *= 0.35;
     if (a >= flash.a) { flash.a = a; flash.rgb = rgb; }
+  }
+
+
+  // Graphic mode: a car ploughs through a cow.
+  function beef(x, y) {
+    spray(x, y, 14, 1, 160, 1.2);
+    spray(x, y, 14, -1, 160, 1.2);
+    mist(x, y, 1, 12);
+    for (let i = 0; i < 22; i++) {
+      spawn('gib', x, y, 18, {
+        vx: rand(-220, 220), vy: rand(-120, 120), vz: rand(120, 360), g: 700, drag: 0.6, bounce: 0.3,
+        life: rand(1.6, 2.6), size: rand(5, 10), color: pick(['#f4f1ea', '#2b2522', '#c7162a', '#e8a0a0', '#9e0b1a']),
+        rotV: rand(-12, 12), bleed: chance(0.5),
+      });
+    }
+    pool(x, y, 26);
+    splat(x + 20, y, 12, 2, 1);
+    splat(x - 20, y, 12, 2, -1);
+  }
+
+  // Graphic mode: whacked by an excavator bucket.
+  function whack(x, y, dir) {
+    spray(x, y, 16, dir, 90, 0.8);
+    splat(x + dir * 10, y, rand(6, 9), 1.5, dir);
+  }
+
+  // Cosmetic trail left behind on every hop.
+  function hopTrail(x, y, kind) {
+    if (kind === 'sparkle') {
+      for (let i = 0; i < 4; i++) spawn('glow', x + rand(-8, 8), y + rand(-5, 5), rand(6, 22), { vz: rand(10, 40), drag: 2, life: rand(0.5, 0.8), size: rand(2, 3.4), size2: 0.5, color: pick(['#fff6b0', '#ffffff', '#ffd84d']) });
+    } else if (kind === 'fire') {
+      for (let i = 0; i < 6; i++) spawn('fire', x + rand(-7, 7), y + rand(-4, 4), rand(2, 8), { vz: rand(30, 70), g: -30, drag: 1, life: rand(0.3, 0.55), size: rand(4, 7), size2: 1 });
+    } else if (kind === 'rainbow') {
+      const h = (performance.now() / 4) % 360;
+      for (let i = 0; i < 5; i++) spawn('glow', x + rand(-6, 6), y + rand(-4, 4), rand(4, 14), { vz: rand(5, 20), drag: 2, life: rand(0.6, 0.9), size: 4, size2: 1, color: `hsl(${(h + i * 50) % 360},95%,65%)` });
+    } else if (kind === 'bubbles') {
+      for (let i = 0; i < 3; i++) spawn('smoke', x + rand(-8, 8), y + rand(-4, 4), rand(6, 16), { vz: rand(20, 45), g: -10, drag: 1, life: rand(0.7, 1.1), size: rand(2, 3), size2: rand(4, 6), color: '#bfe8ff', alpha: 0.7 });
+    } else if (kind === 'confetti') {
+      for (let i = 0; i < 6; i++) spawn('confetti', x, y, 14, { vx: rand(-70, 70), vy: rand(-40, 40), vz: rand(90, 170), g: 520, drag: 1.2, life: rand(0.7, 1.1), size: rand(3, 5), color: pick(['#ff5c8a', '#ffd23f', '#34c6ea', '#7ed957', '#a95cff']), rotV: rand(-12, 12) });
+    }
+  }
+
+  // Tumbleweed breaks apart.
+  function twigs(x, y) {
+    for (let i = 0; i < 14; i++) {
+      spawn('debris', x, y, 10, { vx: rand(-120, 120), vy: rand(-70, 70), vz: rand(60, 180), g: 500, drag: 1.4, life: rand(0.6, 1.1), size: rand(3, 6), color: pick(['#b08a55', '#8c6a3c', '#caa46a']), rotV: rand(-12, 12) });
+    }
+  }
+
+  // Light sources for the night-time lighting pass.
+  function lights(fn) {
+    for (const b of blasts) if (b.t >= 0 && b.t < 1.1) fn(b.x, b.y, 4 * TILE * b.power * (1 - b.t / 1.1), 'fire');
+    for (const f of pools) if (f.t < f.life - 1) fn(f.x, f.y, f.r * 2.2 + TILE, 'fire');
   }
 
   return {
@@ -961,7 +1037,7 @@ const FX = (() => {
     sparks, carCrash, carCrashViolent, secondaryBlast, tankerBlast, trainCrash, meteorImpact, debrisRain, scorchMark,
     wreckFire, wreckSmoke, laser, ripple, splash, bubbles,
     splat, pool, track, cloud, lensSplat, roadkill, trainRoadkill, crushed, piranhas, bleed, scorch, puff,
-    dust, pickup, coin, feathers, ice, shieldBreak, text, flashScreen,
+    dust, pickup, coin, feathers, ice, shieldBreak, text, flashScreen, beef, whack, hopTrail, twigs, lights,
     bloodPools,
     get count() { return live.length; },
     get quality() { return quality; },
