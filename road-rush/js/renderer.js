@@ -110,12 +110,14 @@ const Renderer = {
     Events.drawables(list);
     Animals.drawables(list);
     Storms.drawables(list);
+    Pets.drawables(list);
     for (const p of Game.players) if (!p.gone) { p.key = p.y - 10; list.push(p); }
     list.sort((a, b) => b.key - a.key);
 
     for (const o of list) this.shadowOf(c, o);
     for (const o of list) this.object(c, o, time);
 
+    if (Admin.hitboxes) this.hitboxes(c);
     this.dimOutside(c);
     this.dangerZone(c);
     FX.draw(c);
@@ -361,6 +363,7 @@ const Renderer = {
       case 'deer': Draw.shadow(c, o.x, o.y, 0.9 * TILE, 0.5 * TILE, 0.6 * o.alpha); break;
       case 'weed': Draw.shadow(c, o.x, o.y, o.r * 2.4, o.r * 1.8, 0.5); break;
       case 'medic': Draw.shadow(c, o.x, o.y, 0.45 * TILE, 0.35 * TILE, 0.6); break;
+      case 'pet': Draw.shadow(c, o.x, o.y, (o.type === 'drone' ? 0.4 : 0.55) * TILE, 0.4 * TILE, o.type === 'drone' ? 0.35 : 0.6); break;
       case 'event': if (o.shadow) Draw.shadow(c, o.x, o.y, o.shadow[0], o.shadow[1], 0.8); break;
       case 'player': {
         if (o.flat || o.sink || o.ride) break;
@@ -428,6 +431,7 @@ const Renderer = {
       case 'deer': c.globalAlpha = Math.max(0, o.alpha); Draw.deer(c, o, time); break;
       case 'weed': Draw.weed(c, o); break;
       case 'medic': Draw.medic(c, o, time); break;
+      case 'pet': Draw.pet(c, o, time); break;
       case 'item':
         if (o.type === 'coin') Draw.coin(c, o, time);
         else Draw.powerItem(c, o, time);
@@ -488,6 +492,34 @@ const Renderer = {
     if (Game.state === 'playing' && p.maxRow === 0 && p.row === 0 && !p.hop && Game.time > 0.6) {
       const touch = matchMedia('(hover: none)').matches;
       Draw.hint(c, time, versus ? (p.id === 0 ? 'W A S D' : 'ARROW KEYS') : touch ? 'TAP TO HOP' : 'PRESS ↑ TO HOP', versus ? 70 : 58);
+    }
+  },
+
+  // Admin: outline exactly what can hit you.
+  hitboxes(c) {
+    c.lineWidth = 1.5;
+    for (const row of World.rows.values()) {
+      if (row.y < this.yBot - TILE || row.y > this.yTop) continue;
+      if (row.type === 'road') {
+        for (const v of row.lane.vehicles) {
+          if (v.animal || v.abducted) continue;
+          const half = v.len / 2 - 2 + 0.24 * TILE, vy = v.drunk ? v.y : row.y;
+          c.strokeStyle = v.wreck ? 'rgba(255,200,0,0.9)' : 'rgba(255,40,70,0.95)';
+          c.strokeRect(v.x - half, P(vy + 0.58 * TILE, 0), half * 2, 1.16 * TILE * GY);
+        }
+      } else if (row.type === 'rail' && row.rail.state === 'train') {
+        const [a, b] = Rail.extent(row.rail);
+        c.strokeStyle = 'rgba(255,40,70,0.95)';
+        c.strokeRect(a - 0.2 * TILE, P(row.y + 0.5 * TILE, 0), b - a + 0.4 * TILE, TILE * GY);
+      } else if (row.type === 'work') {
+        c.strokeStyle = 'rgba(255,140,0,0.95)';
+        for (let col = 0; col < COLS; col++) if (row.pit[col]) c.strokeRect(col * TILE + 3, P(row.y + TILE / 2 - 4, 0), TILE - 6, (TILE - 8) * GY);
+      }
+    }
+    for (const p of Game.players) {
+      if (!p.alive) continue;
+      c.strokeStyle = 'rgba(80,255,140,0.95)';
+      c.beginPath(); c.ellipse(p.x, P(p.y, 0), 0.24 * TILE, 0.24 * TILE * GY, 0, 0, 6.2832); c.stroke();
     }
   },
 

@@ -787,6 +787,10 @@ kbd {
 .admin-field input:focus { outline: none; }
 .admin-field:focus-within { box-shadow: inset 0 0 0 2px var(--sign-yellow); }
 .admin-card button:focus-visible { outline-color: var(--sign-yellow); }
+.admin-slider { flex: 1 1 200px; min-width: 0; accent-color: var(--sign-yellow); }
+.admin-speed-val { align-self: center; min-width: 3.5em; font: 700 15px var(--font-mono); color: var(--sign-yellow); }
+.freecam-banner { position: absolute; left: 50%; bottom: calc(max(14px, env(safe-area-inset-bottom)) + 4px); transform: translateX(-50%); padding: 8px 14px 6px; border-radius: 8px; background: repeating-linear-gradient(-45deg, var(--sign-yellow) 0 10px, var(--ink) 10px 20px); color: var(--ink); font-size: 13px; font-weight: 900; letter-spacing: 0.06em; white-space: nowrap; box-shadow: inset 0 0 0 100px rgba(252, 194, 27, 0.92); }
+.skin .perk { color: #ffe9b0; }
 
 /* ---- Toasts --------------------------------------------------------------------- */
 .t-zone { background: var(--sign-green); color: var(--sign-white); box-shadow: inset 0 0 0 2px var(--sign-green), inset 0 0 0 4px var(--sign-white), 0 6px 18px rgba(0, 0, 0, 0.35); }

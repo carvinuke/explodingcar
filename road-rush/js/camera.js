@@ -38,14 +38,15 @@ const Cam = {
       const half = viewW / 2 - 0.6 * TILE;
       tx = clamp(f.x, half, WORLD_W - half);
     }
-    this.x = damp(this.x, tx, 5, dt);
-
     // Vertical: trail the player; the creeping danger line pushes from below.
     let ty = f.y + 0.5 * TILE;
     if (Game.danger.active && Game.state === 'playing') {
       ty = Math.max(ty, Game.danger.y + (R.H * (1 - R.ANCHOR)) / (R.base * this.zoom * GY) - TILE);
     }
-    this.y = damp(this.y, ty, 4, dt);
+    if (!Admin.freeCam) { // the admin free camera moves itself
+      this.x = damp(this.x, tx, 5, dt);
+      this.y = damp(this.y, ty, 4, dt);
+    }
 
     const speed = Player.pw && Player.pw.speed > 0 && Game.players.length < 2;
     this.zoom = damp(this.zoom, (speed ? 0.94 : 1) * lerp(1, 0.5, Events.miniAmt) * (Game.players.length > 1 ? 0.92 : 1), 3, realDt);

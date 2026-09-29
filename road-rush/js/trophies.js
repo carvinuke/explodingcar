@@ -143,7 +143,7 @@ const Levels = {
   // XP for a finished run.
   forRun(mode, row, coins, run) {
     const base = row + coins * 2 + (run.closeCalls || 0) * 3 + (run.events || 0) * 10 + Trophies.fresh.length * 25;
-    return Math.round(base * (mode === 'hardcore' ? 1.5 : mode === 'time' ? 1.2 : 1));
+    return Math.round(base * (mode === 'hardcore' ? 1.5 : mode === 'time' ? 1.2 : 1) * (Pets.has('duck') ? 1.25 : 1));
   },
 
   // Add XP; returns what happened, including any level-up rewards.

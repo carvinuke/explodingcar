@@ -71,6 +71,10 @@ const Input = {
       if (e.code === 'Escape') { e.preventDefault(); UI.closeModal(); }
       return;
     }
+    if (Admin.freeCam) { // admin free camera: movement keys look around, Esc hands control back
+      if (e.code === 'Escape') { e.preventDefault(); Admin.toggle('freeCam'); return; }
+      if (Admin.camKey(e.code)) { e.preventDefault(); return; }
+    }
     if (Game.state === 'replay') {
       if (!e.repeat && !e.metaKey && !e.ctrlKey) { e.preventDefault(); Game.skipReplay(); }
       return;
