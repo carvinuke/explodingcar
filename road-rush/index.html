@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#1b2433">
+<title>Road Rush</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="game">
+  <canvas id="view"></canvas>
+
+  <div id="hud" class="hidden">
+    <div class="hud-block hud-l">
+      <div class="lbl">SCORE</div>
+      <div id="score" class="num">0</div>
+      <div class="coins"><span class="coin-ico"></span><span id="coins">0</span></div>
+    </div>
+    <div class="hud-block hud-r">
+      <div class="lbl">BEST</div>
+      <div id="best" class="num">0</div>
+      <div class="hud-btns">
+        <button id="btn-pause" class="icon-btn" aria-label="Pause">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1.5" fill="currentColor"/><rect x="14" y="5" width="4" height="14" rx="1.5" fill="currentColor"/></svg>
+        </button>
+        <button id="btn-mute" class="icon-btn" aria-label="Mute"></button>
+      </div>
+    </div>
+    <div id="powers"></div>
+  </div>
+
+  <div id="screen-title" class="screen">
+    <div class="title-panel">
+      <h1 class="logo"><span>ROAD</span><span>RUSH</span></h1>
+      <p class="tag">Cross. Dodge. Survive.</p>
+      <button id="btn-play" class="btn-primary">PLAY</button>
+      <p class="controls kb"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> <span>/</span> <kbd>&uarr;</kbd><kbd>&larr;</kbd><kbd>&darr;</kbd><kbd>&rarr;</kbd> to move</p>
+      <p class="controls touch">Tap to hop &middot; swipe to move</p>
+      <ul id="legend" class="legend"></ul>
+      <p class="meta">Best <b id="title-best">0</b> &middot; Coins <b id="title-coins">0</b></p>
+      <p class="hint">Watch for reckless drivers <span class="warn">!</span> &mdash; crashes explode and knock you back.</p>
+    </div>
+  </div>
+
+  <div id="screen-pause" class="screen hidden">
+    <div class="card">
+      <h2>Paused</h2>
+      <button id="btn-resume" class="btn-primary">RESUME</button>
+      <p class="hint">P / Esc to resume &middot; M to mute</p>
+    </div>
+  </div>
+
+  <div id="screen-over" class="screen hidden">
+    <div class="card over">
+      <h2>Game Over</h2>
+      <p id="over-cause" class="cause"></p>
+      <div class="stats">
+        <div><span>Score</span><b id="over-score">0</b></div>
+        <div><span>Best</span><b id="over-best">0</b></div>
+      </div>
+      <div id="over-new" class="badge hidden">NEW BEST!</div>
+      <p id="over-coins" class="over-coins"></p>
+      <button id="btn-again" class="btn-primary">PLAY AGAIN</button>
+      <p class="hint">or press Space</p>
+    </div>
+  </div>
+</div>
+
+<script src="js/util.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/effects.js"></script>
+<script src="js/draw.js"></script>
+<script src="js/world.js"></script>
+<script src="js/vehicles.js"></script>
+<script src="js/player.js"></script>
+<script src="js/powerups.js"></script>
+<script src="js/camera.js"></script>
+<script src="js/renderer.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/game.js"></script>
+</body>
+</html>
