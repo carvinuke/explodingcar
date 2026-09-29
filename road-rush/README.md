@@ -168,6 +168,20 @@ report. Your choices are saved in the browser.
     wrecks, fuel tanks exploding afterwards, nearby cars wrecked by the blast,
     burning debris raining down, and scorched, bleeding chicks.
 
+## Admin panel
+
+A cheat menu for testing and messing around. Tap the "EXIT 1" tab on the
+title sign 7 times quickly to open it; after that it's also on the pause menu
+for the rest of the session. From there you can:
+
+- set your coins or level, or unlock every skin, hat, trail and trophy
+- turn on god mode (nothing can kill you) or switch off the danger line
+- grant any power-up, start any secret event, or summon a tornado, lightning,
+  a drunk driver, a reckless driver, a cow, deer or a seagull
+- force the weather or jump to morning, sunset or night
+- jump to any biome, or skip 25 or 100 rows ahead
+- reset all progress (it asks twice)
+
 ## Look
 
 The interface borrows from real road signage: a green guide sign for the
@@ -202,6 +216,7 @@ Plain scripts that share a few global objects, loaded in order by `index.html`:
 | `js/renderer.js` | `Renderer`: frame composition, depth sorting, overlays |
 | `js/replay.js` | `Replay`: records the last seconds and plays the death back |
 | `js/input.js` | `Input`: keyboard bindings, touch and game controllers |
+| `js/admin.js` | `Admin`: the hidden admin panel |
 | `js/ui.js` | `UI`: HUD, toasts, screens, shop, trophy room, missions, settings |
 | `js/game.js` | `Game`: state, modes, loop, scoring, deaths, weather and biomes |
 

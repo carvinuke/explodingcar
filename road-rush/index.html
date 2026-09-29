@@ -79,6 +79,7 @@
           <button id="btn-resume" class="btn-yellow">RESUME</button>
           <button id="btn-pause-settings" class="btn-plate">Settings</button>
           <button id="btn-pause-menu" class="btn-plate">Quit to menu</button>
+          <button id="btn-pause-admin" class="btn-plate admin-open hidden">Admin</button>
         </div>
         <ul id="pause-missions" class="missions dark"></ul>
         <p class="hint">P or Esc to resume &middot; M to mute</p>
@@ -206,6 +207,20 @@
     </div>
   </div>
 
+  <div id="screen-admin" class="screen modal hidden" role="dialog" aria-modal="true" aria-labelledby="admin-title">
+    <div class="admin-card">
+      <div class="admin-stripes" aria-hidden="true"></div>
+      <div class="admin-inner">
+        <div class="admin-top">
+          <h2 id="admin-title">ADMIN</h2>
+          <button id="admin-close" class="btn-yellow small">DONE</button>
+        </div>
+        <p id="admin-status" class="admin-status" aria-live="polite"></p>
+        <div id="admin-body"></div>
+      </div>
+    </div>
+  </div>
+
   <div id="screen-warning" class="screen modal hidden" role="alertdialog" aria-modal="true" aria-labelledby="warn-title" aria-describedby="warn-body">
     <div class="warn-card">
       <div class="warn-inner">
@@ -243,6 +258,7 @@
 <script src="js/replay.js"></script>
 <script src="js/input.js"></script>
 <script src="js/ui.js"></script>
+<script src="js/admin.js"></script>
 <script src="js/game.js"></script>
 </body>
 </html>

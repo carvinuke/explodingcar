@@ -64,6 +64,7 @@ const UI = {
     on('btn-settings-done', () => this.closeModal());
     on('btn-shop-done', () => this.closeModal());
     on('btn-trophies-done', () => this.closeModal());
+    on('admin-close', () => this.closeModal());
     on('set-sound', () => this.toggleMute());
     const flip = key => () => {
       Settings[key] = !Settings[key];
@@ -166,8 +167,10 @@ const UI = {
       this.$('set-gore').focus({ preventScroll: true });
       return;
     }
-    for (const id of ['screen-settings', 'screen-shop', 'screen-trophies']) this.show(id, false);
+    const was = this.modal;
+    for (const id of ['screen-settings', 'screen-shop', 'screen-trophies', 'screen-admin']) this.show(id, false);
     this.modal = null;
+    if (was === 'admin') Admin.closed();
     this.refreshMeta();
     if (this.returnFocus && this.returnFocus.focus) this.returnFocus.focus({ preventScroll: true });
   },
@@ -521,6 +524,7 @@ const UI = {
     this.show('screen-pause', on);
     if (on) {
       this.renderMissions(this.$('pause-missions'), true);
+      this.show('btn-pause-admin', Admin.unlocked);
       this.show('pause-missions', Game.tracksProgress());
       this.$('btn-resume').focus({ preventScroll: true });
     }

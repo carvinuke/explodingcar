@@ -57,16 +57,30 @@ const Vehicles = {
       if (row && row.type === 'road' && !row.flood && !row.lane.pending) rows.push(row);
     }
     if (!rows.length) { this.drunkT = 2; return; }
-    const row = pick(rows), L = row.lane;
-    const v = this.spawnAtEdge(row, pick(['sedan', 'pickup', 'small', 'sedan']));
-    if (!v) { this.drunkT = 2; return; }
-    v.drunk = { t: rand(6), next: rand(1.2, 2.4), from: 0, to: 0, k: 1 };
-    v.desired = v.speed = L.speed * 1.2 + 30;
-    v.dark = chance(0.5);
+    if (!this.spawnDrunk(pick(rows))) { this.drunkT = 2; return; }
     if (!this.warnedDrunk) {
       this.warnedDrunk = true;
       UI.toast('t-weather', 'DRUNK DRIVERS OUT', 'Swerving cars can change lanes without warning', 3600);
     }
+  },
+
+  // A drunk driver enters a lane (a random one near the player if none is given).
+  spawnDrunk(row) {
+    if (!row) {
+      const lead = Game.leader(), rows = [];
+      for (let r = lead.row + 1; r <= lead.row + 6; r++) {
+        const R = World.rows.get(r);
+        if (R && R.type === 'road' && !R.flood) rows.push(R);
+      }
+      if (!rows.length) return null;
+      row = pick(rows);
+    }
+    const v = this.spawnAtEdge(row, pick(['sedan', 'pickup', 'small', 'sedan']));
+    if (!v) return null;
+    v.drunk = { t: rand(6), next: rand(1.2, 2.4), from: 0, to: 0, k: 1 };
+    v.desired = v.speed = row.lane.speed * 1.2 + 30;
+    v.dark = chance(0.5);
+    return v;
   },
 
   // Put a vehicle just outside the view in a gap in traffic (or null if there's no room).
