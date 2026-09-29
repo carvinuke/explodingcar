@@ -313,6 +313,41 @@ const Admin = {
     this.flash('Goodbye, chicken');
   },
 
+  reverseDay() {
+    if (Game.players.length > 1 || Game.mode === 'time') { this.flash('Reverse Day is for Endless and Hardcore'); return; }
+    if (!this.ensureRun()) return;
+    this.after(() => { if (!Reverse.active) Reverse.start(); });
+    this.flash('The world is about to flip');
+  },
+
+  giveEgg() {
+    if (Game.players.length > 1) { this.flash('Eggs are single-player only'); return; }
+    if (!this.ensureRun()) return;
+    this.after(() => {
+      for (let r = Player.row + 1; r <= Player.row + 4; r++) {
+        const R = World.rows.get(r);
+        if (!R || R.type === 'river') continue;
+        const cols = [0, 1, -1, 2, -2, 3, -3].map(d => Player.col + d).filter(c => c >= 0 && c < COLS && !World.isBlocked(c, r) && !(R.type === 'work' && R.pit[c]));
+        if (cols.length) { Items.add('egg', cols[0], r); return; }
+      }
+    });
+    this.flash('An egg, just ahead of you');
+  },
+
+  hatchNow() {
+    if (Game.players.length > 1) { this.flash('Eggs are single-player only'); return; }
+    if (!this.ensureRun()) return;
+    this.after(() => { Egg.carry = Egg.carry || { start: Player.maxRow, rows: 0, cracks: 0 }; Egg.hatch(Player); });
+    this.flash('Hatching...');
+  },
+
+  maxRage() {
+    if (!this.ensureRun()) return;
+    if (!Player.skin().rage) { Shop.grant('skins', 'bigj'); Shop.equip('skins', 'bigj'); }
+    this.after(() => { Player.rage = 0.9; Rage.add(Player, 0.1); });
+    this.flash('Big J is FURIOUS');
+  },
+
   givePet(id) {
     if (!Shop.owned.pets.includes(id)) { Shop.owned.pets.push(id); Store.set('pets', Shop.owned.pets); }
     Shop.equip('pets', id);
@@ -421,6 +456,12 @@ const Admin = {
     btn(r, 'Coin shower', () => this.coinShower(), 'gold');
     btn(r, 'Blow up every car', () => this.blowUpEverything(), 'danger');
     btn(r, 'Kill me (see the replay)', () => this.killMe(), 'danger');
+
+    r = section('Specials');
+    btn(r, 'Reverse Day', () => this.reverseDay(), 'gold');
+    btn(r, 'Drop an egg', () => this.giveEgg());
+    btn(r, 'Hatch an egg now', () => this.hatchNow(), 'gold');
+    btn(r, 'Max rage (Big J stomp)', () => this.maxRage(), 'danger');
 
     r = section('Pets');
     for (const k in PETS) btn(r, PETS[k].name, () => this.givePet(k));

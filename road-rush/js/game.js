@@ -98,6 +98,9 @@ const Game = {
     Storms.reset();
     Lighting.reset();
     Replay.reset();
+    Rage.reset();
+    Egg.reset();
+    Reverse.reset();
     World.reset(seed, { speedMul: M.speedMul, gapMul: M.gapMul, powerups: M.powerups });
     if (this.players.length > 1) { Player.reset(3); Player2.reset(7); }
     else Player.reset(START_COL);
@@ -215,13 +218,14 @@ const Game = {
     this.updateScore();
   },
 
-  addCoin(it, p = Player) {
-    const k = this.modeDef().coinMult || 1;
+  // `n`: how many coins it's worth (the golden goose's eggs are worth 10).
+  addCoin(it, p = Player, n = 1) {
+    const k = (this.modeDef().coinMult || 1) * (p.id === 0 && Pets.has('unicorn') ? 2 : 1) * n;
     p.coins += k;
     if (p.id === 0) this.coins = p.coins;
-    this.addBonus(25, p);
+    this.addBonus(25 * n, p);
     FX.coin(it.x, it.y);
-    FX.text(it.x, it.y + 6, this.mode === 'time' ? '+1s' : k > 1 ? `+25  x${k}` : '+25', '#ffd23f', 15);
+    FX.text(it.x, it.y + 6, this.mode === 'time' ? '+1s' : k > 1 ? `+${k} COINS` : '+25', '#ffd23f', k > 1 ? 16 : 15);
     if (this.mode === 'time' && this.timerOn) this.timeLeft = Math.min(99, this.timeLeft + 1);
     Sound.coin();
     if (p.id === 0) {
@@ -239,6 +243,7 @@ const Game = {
     this.addBonus(pts, p);
     FX.text(p.x, p.y + 26, p.combo > 1 ? `CLOSE CALL x${p.combo}  +${pts}` : `CLOSE CALL +${pts}`, '#7fe0ff', 14 + Math.min(8, p.combo));
     Sound.near(p.combo);
+    Rage.add(p, 0.25); // Big J: every close call makes him angrier
     if (p.id === 0) {
       Missions.max('combo', p.combo);
       Trophies.max('combo', p.combo);
@@ -265,6 +270,7 @@ const Game = {
     if (this.state === 'playing') {
       if (dist < (violent ? 9 : 7) && !repeat) this.slowmo(violent ? 0.22 : 0.3, violent ? 0.55 : 0.35);
       for (const p of this.players) {
+        if (p.alive && Math.hypot(p.x - x, p.y - y) / TILE < 7) Rage.add(p, 0.1);
         p.blast(x, y, power);
         if (p.id === 0 && p.alive && Math.hypot(p.x - x, p.y - y) / TILE < 6) {
           Missions.add('crashes');
@@ -302,7 +308,7 @@ const Game = {
 
   // Traffic speed multiplier: freeze power-up and snow.
   trafficFactor() {
-    return Powers.traffic * (this.weather.type === 'snow' ? 1 - 0.3 * this.weather.amt : 1);
+    return Powers.traffic * (this.weather.type === 'snow' ? 1 - 0.3 * this.weather.amt : 1) * (Pets.has('owl') ? 0.72 : 1);
   },
 
   checkHits() {
@@ -310,7 +316,7 @@ const Game = {
   },
 
   checkPlayer(p) {
-    if (p.z > 0.45 * TILE) return;
+    if (p.z > 0.45 * TILE || p.stomp) return; // mid-stomp Big J is untouchable
     const fz = this.trafficFactor();
     const pr = Math.round(p.y / TILE);
     for (let r = pr - 1; r <= pr + 1; r++) {
@@ -383,6 +389,7 @@ const Game = {
     const dir = opts.dir || 0;
     const v = opts.vehicle || null;
     const skin = p.skin();
+    Egg.lose(p);
     const cause = source === 'vehicle' ? CAUSES.vehicle(gore, v) : CAUSES[source](gore, opts.rail);
     p.die(source, dir, gore);
 
@@ -569,6 +576,14 @@ const Game = {
     this.time += dt;
     Renderer.metrics();
     const playing = this.state === 'playing';
+    // Reverse Day: the real road is frozen while you drive
+    if (playing || Reverse.active) Reverse.update(dt);
+    if (Reverse.active) {
+      FX.update(dt);
+      Cam.update(dt, realDt);
+      UI.update();
+      return;
+    }
     if (playing) {
       Powers.update(dt);
       if (this.tracksProgress()) Stats.data.time += dt;
@@ -585,6 +600,8 @@ const Game = {
     Animals.update(dt);
     Pets.update(dt);
     Storms.update(dt);
+    Rage.update(dt);
+    Egg.update();
     Vehicles.drunkDirector(dt);
     if ((playing || this.state === 'title') && Powers.freeze <= 0) Vehicles.director(dt, this.leader().row, fz);
     if (playing) {

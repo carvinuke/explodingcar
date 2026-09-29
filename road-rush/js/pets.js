@@ -9,6 +9,12 @@
 // - Parrot: squawks a warning before trains and reckless drivers arrive
 // - Turtle: surfaces under you if you fall in the water, then needs a rest
 // - Mini Tornado: vacuums up every coin nearby
+// Hatched from eggs only (see specials.js):
+// - Phoenix Chick: once per run, brings you back from any death in a burst of fire
+// - Baby Dragon: breathes fire on cars that are about to hit you
+// - Unicorn: rainbow steps let you walk on water; coins are worth double
+// - Golden Goose: lays golden eggs worth 10 coins; double XP
+// - Time Owl: slower traffic, and bullet time when a car is about to hit you
 
 const Pets = {
   pet: null,
@@ -20,7 +26,17 @@ const Pets = {
       kind: 'pet', type, x: Player.x - 0.7 * TILE, y: Player.y - 0.6 * TILE, z: 0,
       hopT: 0, face: 1, fetch: null, catUsed: false, ph: rand(6), blink: rand(3),
       dropT: rand(4, 7), turtleT: 0, warned: new Set(),
+      reborn: false, fireT: 0, breath: 0, flame: null, layT: rand(5, 7), owlT: 0, rainbows: [],
     };
+  },
+
+  // A pet just hatched right here: start it at the egg, not somewhere behind you.
+  pop(x, y) {
+    this.reset();
+    if (!this.pet) return;
+    this.pet.x = x;
+    this.pet.y = y;
+    this.pet.z = 20;
   },
 
   has(type) { return !!(this.pet && this.pet.type === type) && Game.players.length === 1; },
@@ -30,7 +46,7 @@ const Pets = {
     if (!pet) return;
     const p = Player;
     pet.ph += dt;
-    const flying = pet.type === 'drone' || pet.type === 'pigeon' || pet.type === 'parrot' || pet.type === 'twister';
+    const flying = ['drone', 'pigeon', 'parrot', 'twister', 'phoenix', 'dragon', 'owl'].includes(pet.type);
     const active = Game.state === 'playing' && p.alive;
     if (pet.turtleT > 0) pet.turtleT -= dt;
     // the pigeon drops coins
@@ -68,6 +84,47 @@ const Pets = {
             Sound.squawk();
           }
         }
+      }
+    }
+    // the dragon torches cars that are about to hit you
+    if (pet.type === 'dragon') this.dragon(pet, p, dt, active);
+    // the golden goose lays golden eggs
+    if (pet.type === 'goose' && active) {
+      pet.layT -= dt;
+      if (pet.layT <= 0) {
+        pet.layT = rand(6, 9);
+        const r = p.row + randInt(1, 2), R = World.rows.get(r);
+        if (R && R.type !== 'river') {
+          const free = [];
+          for (let c = 0; c < COLS; c++) if (!World.isBlocked(c, r) && !(R.type === 'work' && R.pit[c]) && Math.abs(c - p.col) <= 2) free.push(c);
+          if (free.length) {
+            Items.add('goldegg', pick(free), r);
+            FX.text(pet.x, pet.y + 30, 'HONK! A GOLDEN EGG!', '#ffd23f', 13);
+            Sound.honk();
+          }
+        }
+      }
+      if (Math.random() < dt * 6) FX.spawn('glow', pet.x + rand(-8, 8), pet.y + rand(-4, 4), rand(4, 18), { vz: 20, life: 0.5, size: 2, size2: 0.4, color: '#ffe98a' });
+    }
+    // the owl slows time when a car is about to hit you
+    if (pet.type === 'owl') {
+      if (pet.owlT > 0) pet.owlT -= dt;
+      else if (active && !p.hop && this.threat(p, 0.5)) {
+        pet.owlT = 4;
+        Game.slowmo(0.25, 0.75);
+        FX.text(pet.x, pet.y + 36, 'HOO! LOOK OUT!', '#9fe7ff', 14);
+        Sound.whoosh(0.6, 0);
+      }
+    }
+    // the unicorn's rainbow steps fade once you've left them
+    for (let i = pet.rainbows.length - 1; i >= 0; i--) {
+      const rb = pet.rainbows[i];
+      if (p.ride === rb.log && p.alive) { rb.log.fade = Math.min(1, rb.log.fade + dt * 4); continue; }
+      rb.log.fade -= dt * 1.6;
+      if (rb.log.fade <= 0) {
+        const logs = rb.row.river.logs, k = logs.indexOf(rb.log);
+        if (k >= 0) logs.splice(k, 1);
+        pet.rainbows.splice(i, 1);
       }
     }
     // the mini tornado vacuums coins
@@ -132,8 +189,120 @@ const Pets = {
     }
   },
 
-  // Cat: nine lives. Returns true if the cat took the hit instead.
+  // The closest car in your own row heading at you and less than `secs` away.
+  threat(p, secs) {
+    const R = World.rows.get(p.row);
+    if (!R || R.type !== 'road') return null;
+    const fz = Game.trafficFactor();
+    let best = null, bd = Infinity;
+    for (const v of R.lane.vehicles) {
+      if (v.wreck || v.animal || v.abducted || v.speed * fz < 25) continue;
+      const gap = (p.x - v.x) * v.dir - v.len / 2; // distance from its front bumper to you
+      if (gap < -0.2 * TILE || gap > v.speed * fz * secs + 0.3 * TILE) continue;
+      if (gap < bd) { bd = gap; best = v; }
+    }
+    return best;
+  },
+
+  dragon(pet, p, dt, active) {
+    if (pet.breath > 0) pet.breath -= dt;
+    if (pet.fireT > 0) pet.fireT -= dt;
+    const f = pet.flame;
+    if (f) { // the stream of fire races to the car, then it goes up
+      f.t += dt;
+      const k = Math.min(1, f.t / 0.22), v = f.v;
+      const hx = lerp(pet.x + pet.face * 12, v.x, k), hy = lerp(pet.y, v.y, k), hz = lerp(pet.z + 6, 14, k);
+      for (let n = 0; n < 4; n++) FX.spawn('fire', hx + rand(-4, 4), hy + rand(-3, 3), hz + rand(-3, 3), { vx: rand(-30, 30), vz: rand(10, 50), g: -40, drag: 2, life: rand(0.2, 0.4), size: rand(6, 11), size2: 2 });
+      if (k >= 1) {
+        pet.flame = null;
+        if (!v.wreck && !v.abducted) {
+          Vehicles.toss(v, pet.x, 1.1);
+          v.secondary = Settings.gore ? rand(0.3, 0.5) : 0;
+          FX.carCrash(v.x, v.y, [v.base, '#2a2a2e']);
+          Cam.addTrauma(0.3);
+          FX.flashScreen(0.15, '255,150,60');
+          Sound.explosion(0.5, Vehicles.pan(v.x));
+          FX.text(v.x, v.y + 24, 'TORCHED!', '#ff7a1a', 18);
+          Game.addBonus(40, p);
+          if (Game.tracksProgress()) Stats.add('wrecks');
+        }
+      }
+      return;
+    }
+    if (!active || pet.fireT > 0) return;
+    // anything about to hit you (mid-hop, `row` is already the row you're landing in)
+    const v = this.threat(p, 0.9);
+    if (!v) return;
+    pet.fireT = 2.2;
+    pet.breath = 0.4;
+    pet.face = sign(v.x - pet.x) || 1;
+    pet.flame = { v, t: 0 };
+    Sound.fire(Vehicles.pan(v.x));
+    FX.text(pet.x, pet.y + 34, 'FWOOSH!', '#ff9a2a', 14);
+  },
+
+  // Unicorn: wherever you land on water, a rainbow step appears under you.
+  waterWalk(p, row) {
+    if (p.id !== 0 || !this.has('unicorn') || !p.alive) return null;
+    const step = { kind: 'log', id: ++River.ids, len: 0.9 * TILE, x: p.x, y: row.y, bob: 0, dir: row.river.dir, style: 'rainbow', still: true, fade: 0.4 };
+    row.river.logs.push(step);
+    this.pet.rainbows.push({ log: step, row });
+    for (let i = 0; i < 10; i++) FX.spawn('glow', p.x + rand(-14, 14), p.y + rand(-6, 6), rand(2, 10), { vz: rand(20, 60), life: 0.6, size: 2.5, size2: 0.4, color: `hsl(${rand(360)},100%,75%)` });
+    return step;
+  },
+
+  // Phoenix Chick: whatever killed you, you rise again (once per run).
+  rebirth(p) {
+    const pet = this.pet;
+    pet.reborn = true;
+    const ox = p.x, oy = p.y;
+    // somewhere safe: the first grass row from here on, clear of the danger line
+    const from = Math.max(p.row, Math.ceil(Game.danger.y / TILE) + 3);
+    World.ensure(from + 16);
+    let row = from;
+    for (let r = from; r < from + 14; r++) {
+      const R = World.rows.get(r);
+      if (R && R.type === 'grass') { row = r; break; }
+    }
+    let col = clamp(p.col, 0, COLS - 1);
+    for (let d = 0; d < COLS * 2 && World.isBlocked(col, row); d++) {
+      const c2 = p.col + (d % 2 ? -(d + 1) / 2 : d / 2);
+      if (c2 >= 0 && c2 < COLS && !World.isBlocked(c2, row)) col = c2;
+    }
+    p.hop = p.knock = p.queue = p.abduct = p.rag = null;
+    p.ride = null;
+    p.stun = p.sink = 0;
+    p.z = p.rot = 0;
+    p.flat = p.gone = false;
+    p.col = col;
+    p.row = row;
+    p.x = cellX(col);
+    p.y = row * TILE;
+    p.grace = 2.5;
+    p.squash = 1;
+    if (row > p.maxRow) Game.onPlayerMove(p);
+    pet.x = p.x;
+    pet.y = p.y - 0.5 * TILE;
+    // ashes where you fell, fire where you rise
+    for (let i = 0; i < 16; i++) FX.spawn('smoke', ox + rand(-8, 8), oy + rand(-5, 5), rand(4, 16), { vz: rand(20, 60), g: -15, drag: 1, life: rand(1, 1.6), size: 4, size2: 14, color: '#4a4a50', alpha: 0.6 });
+    for (let i = 0; i < 60; i++) {
+      const a = rand(6.2832), sp = rand(40, 200);
+      FX.spawn('fire', p.x + Math.cos(a) * 6, p.y + Math.sin(a) * 4, rand(0, 30), { vx: Math.cos(a) * sp, vy: Math.sin(a) * sp * 0.6, vz: rand(40, 220), g: -40, drag: 1.8, life: rand(0.4, 0.9), size: rand(8, 16), size2: 2 });
+    }
+    FX.spawn('glow', p.x, p.y, 20, { life: 0.5, size: 40, size2: 160, color: '#ffb040', alpha: 0.9 });
+    const n = Vehicles.blastVehicles(p.x, p.y, 3.2 * TILE);
+    FX.flashScreen(0.65, '255,150,40');
+    Cam.addTrauma(0.6);
+    Game.slowmo(0.3, 0.7);
+    Sound.rebirth();
+    FX.text(p.x, p.y + 44, 'REBORN FROM THE ASHES!', '#ffb040', 20);
+    UI.toast('t-hatch', 'THE PHOENIX BROUGHT YOU BACK', n ? `and torched ${n} car${n > 1 ? 's' : ''} while it was at it` : 'Once per run. Make it count', 3600);
+    Trophies.add('reborn');
+  },
+
+  // Cat: nine lives. Phoenix: rebirth. Returns true if the pet saved you.
   saves(p, source) {
+    if (p.id === 0 && this.has('phoenix') && !this.pet.reborn) { this.rebirth(p); return true; }
     if (p.id !== 0 || !this.has('cat') || this.pet.catUsed) return false;
     if (source === 'danger' || source === 'drown' || source === 'swept' || source === 'pit') return false;
     this.pet.catUsed = true;

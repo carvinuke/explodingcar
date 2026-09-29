@@ -374,6 +374,63 @@ const Sound = (() => {
       tone('sine', 1319, 2637, 0.5, 0.06, 0.36);
     },
 
+    growl(k) { // Big J getting angrier
+      if (!ok()) return;
+      tone('sawtooth', 90 + 60 * k, 60 + 40 * k, 0.25, 0.05 + 0.05 * k);
+      noise('lowpass', 500, 200, 0.2, 0.08 + 0.1 * k);
+    },
+
+    rageStomp() {
+      if (!ok()) return;
+      tone('sine', 55, 22, 0.8, 0.8);
+      tone('square', 110, 40, 0.3, 0.12);
+      noise('lowpass', 900, 50, 0.7, 0.7);
+      noise('highpass', 3000, 800, 0.25, 0.12, { delay: 0.02 });
+    },
+
+    crack() { // the egg is about to hatch
+      if (!ok()) return;
+      noise('highpass', 5000, 2500, 0.05, 0.2);
+      tone('square', 1500, 800, 0.04, 0.03, 0.03);
+    },
+
+    hatch() {
+      if (!ok()) return;
+      noise('highpass', 6000, 2000, 0.12, 0.25);
+      [659, 784, 988, 1319, 1568].forEach((f, i) => tone('triangle', f, 0, 0.22, 0.13, 0.1 + i * 0.08));
+      tone('sine', 1568, 3136, 0.6, 0.06, 0.5);
+    },
+
+    fire(pan = 0) { // dragon breath
+      if (!ok()) return;
+      noise('bandpass', 900, 300, 0.5, 0.35, { q: 0.6, attack: 0.03, pan });
+      noise('lowpass', 400, 120, 0.4, 0.2, { pan });
+    },
+
+    rebirth() { // the phoenix brings you back
+      if (!ok()) return;
+      noise('bandpass', 400, 2400, 0.8, 0.25, { q: 0.8, attack: 0.1 });
+      [392, 523, 659, 784, 1047].forEach((f, i) => tone('triangle', f, f * 1.5, 0.3, 0.1, 0.25 + i * 0.07));
+    },
+
+    flip() { // reverse day starts or ends
+      if (!ok()) return;
+      tone('sine', 300, 1200, 0.35, 0.12);
+      tone('sine', 1200, 300, 0.35, 0.08, 0.3);
+      noise('bandpass', 800, 3000, 0.5, 0.12, { q: 1, attack: 0.1 });
+    },
+
+    thud(vol = 1, pan = 0) { // your car hits a chicken
+      if (!ok()) return;
+      tone('sine', 160, 60, 0.18, 0.4 * vol, 0, pan);
+      noise('lowpass', 900, 200, 0.15, 0.3 * vol, { pan });
+    },
+
+    dodge(k) { // a chicken made it across
+      if (!ok()) return;
+      tone('triangle', 700 + k * 60, 1100 + k * 80, 0.08, 0.08);
+    },
+
     gameOver() {
       if (!ok()) return;
       [523, 440, 349, 262].forEach((f, i) => tone('triangle', f, 0, 0.24, 0.14, 0.16 * i));

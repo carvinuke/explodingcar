@@ -34,6 +34,11 @@ const Items = {
       free.push(c);
     }
     if (!free.length) return;
+    // a mystery egg, now and then (the roll always happens, so the road stays the same for a seed)
+    if (Gen.chance(0.014) && Egg.canSpawn(row.i) && !this.list.some(it => it.type === 'egg')) {
+      this.add('egg', Gen.pick(free), row.i);
+      return;
+    }
     if (row.i > 8 && World.powerups && Gen.chance(0.05)) {
       this.add(Gen.weighted(Object.keys(POWERUPS).map(k => [k, POWERUPS[k].weight])), Gen.pick(free), row.i);
       return;
@@ -56,6 +61,7 @@ const Items = {
     const magnet = p.pw.magnet > 0;
     for (let i = this.list.length - 1; i >= 0; i--) {
       const it = this.list[i];
+      if (!it) continue; // picking up an egg clears the other eggs mid-loop
       const dx = p.x - it.x, dy = p.y - it.y;
       const dist = Math.hypot(dx, dy);
       if (magnet && dist < MAGNET_RANGE && (!it.pulled || it.pulled === p)) {
@@ -64,8 +70,11 @@ const Items = {
         if (dist > 0) { it.x += (dx / dist) * step; it.y += (dy / dist) * step; }
       }
       if (dist < 0.55 * TILE && p.alive && p.z < 24) {
+        if (it.type === 'egg' && (p.id !== 0 || Egg.carry)) continue; // one egg at a time
         this.list.splice(i, 1);
         if (it.type === 'coin') Game.addCoin(it, p);
+        else if (it.type === 'goldegg') Game.addCoin(it, p, 10);
+        else if (it.type === 'egg') Egg.pickup(p, it);
         else Powers.grant(it.type, it, p);
       }
     }

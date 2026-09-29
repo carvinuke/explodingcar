@@ -29,10 +29,10 @@ const SKINS = {
   zombie:  { name: 'Zombie Chick', price: 0, unlock: 'again', kind: 'bird', zombie: true,
              top: '#b5c9a3', front: '#86a077', wingTop: '#9fb68f', wingFront: '#6f8a62',
              comb: ['#8a4545', '#6a3030'], beak: ['#c9a36a', '#a27f48'], feet: '#7a8a5a' },
-  bigj:    { name: 'Big J', price: 67, kind: 'bigj',
+  bigj:    { name: 'Big J', price: 67, kind: 'bigj', rage: true,
              top: '#9a9ea8', front: '#7b7f89', wingTop: null, wingFront: null,
              comb: null, beak: null, feet: '#6c7079' },
-  bigs:    { name: 'Big S', price: 67, kind: 'bigj', face: '#1a6bff',
+  bigs:    { name: 'Big S', price: 67, kind: 'bigj', face: '#1a6bff', neutral: true,
              top: '#9a9ea8', front: '#7b7f89', wingTop: null, wingFront: null,
              comb: null, beak: null, feet: '#6c7079' },
   // level rewards
@@ -87,7 +87,14 @@ const PETS = {
   parrot: { name: 'Parrot', price: 300, perk: 'Squawks a warning before trains and reckless drivers arrive' },
   turtle: { name: 'Turtle', price: 450, perk: 'Surfaces under you if you fall in the water (then needs a rest)' },
   twister: { name: 'Mini Tornado', price: 600, perk: 'A little whirlwind that vacuums up every coin nearby' },
+  // egg-only: can't be bought, only hatched (carry an egg 50 rows without dying)
+  phoenix: { name: 'Phoenix Chick', price: 0, egg: true, rare: 'LEGENDARY', perk: 'Once per run, brings you back from any death and torches every car around you' },
+  dragon:  { name: 'Baby Dragon', price: 0, egg: true, rare: 'EPIC', perk: 'Breathes fire on any car about to hit you' },
+  unicorn: { name: 'Unicorn', price: 0, egg: true, rare: 'EPIC', perk: 'You can walk on water, and every coin is worth double' },
+  goose:   { name: 'Golden Goose', price: 0, egg: true, rare: 'RARE', perk: 'Lays a golden egg worth 10 coins every few seconds, and doubles your XP' },
+  owl:     { name: 'Time Owl', price: 0, egg: true, rare: 'RARE', perk: 'All traffic moves slower, and time slows down when a car is about to hit you' },
 };
+const EGG_PETS = Object.keys(PETS).filter(k => PETS[k].egg);
 
 const SHOP_TABS = { skins: SKINS, hats: HATS, trails: TRAILS, pets: PETS };
 
@@ -135,13 +142,20 @@ const Shop = {
 
   buy(tab, id) {
     const item = SHOP_TABS[tab][id];
-    if (!item || item.unlock || item.level || this.has(tab, id) || Game.bank < item.price) return false;
+    if (!item || item.unlock || item.level || item.egg || this.has(tab, id) || Game.bank < item.price) return false;
     Game.bank -= item.price;
     Store.set('coins', Game.bank);
     this.owned[tab].push(id);
     Store.set(tab, this.owned[tab]);
     this.equip(tab, id);
     return true;
+  },
+
+  // Hatched from an egg: yours for good.
+  grant(tab, id) {
+    if (this.owned[tab].includes(id)) return;
+    this.owned[tab].push(id);
+    Store.set(tab, this.owned[tab]);
   },
 
   equip(tab, id) {

@@ -49,6 +49,8 @@ const PlayerProto = {
     this.bonus = 0;
     this.coins = 0;
     this.sheet = 0; // graphic mode: paramedics covered the body
+    this.rage = 0;  // Big J only: 0..1, stomps at 1
+    this.stomp = null;
   },
 
   get score() { return this.maxRow * 10 + this.bonus; },
@@ -64,8 +66,9 @@ const PlayerProto = {
   invincible() { return this.pw.invincible > 0; },
 
   input(dx, dy) {
+    if (Reverse.active && this.id === 0) { Reverse.input(dx, dy); return; } // you're the car right now
     if (!this.alive || this.knock || this.abduct || this.stun > 0) return;
-    if (this.hop) { this.queue = [dx, dy]; return; } // buffer one move for snappy input
+    if (this.hop || this.stomp) { this.queue = [dx, dy]; return; } // buffer one move for snappy input
     this.move(dx, dy);
   },
 
@@ -126,7 +129,8 @@ const PlayerProto = {
       if (Math.random() < dt * 7) FX.puff(this.x, this.y, this.z + 26);
     }
 
-    if (this.abduct) this.updateAbduct(dt);
+    if (this.stomp) this.updateStomp(dt);
+    else if (this.abduct) this.updateAbduct(dt);
     else if (this.knock) {
       const k = this.knock;
       k.t = Math.min(1, k.t + dt / k.dur);
@@ -209,7 +213,7 @@ const PlayerProto = {
     const row = this.rowObj();
     if (!row) return;
     if (row.type === 'river') {
-      const log = River.logAt(row, this.x) || (!Admin.god && Pets.turtleCatch(this, row));
+      const log = River.logAt(row, this.x) || Pets.waterWalk(this, row) || (!Admin.god && Pets.turtleCatch(this, row));
       if (!log) { Game.kill('drown', { p: this }); return; }
       this.ride = log;
       if (log.id !== this.lastLog) {
@@ -243,11 +247,48 @@ const PlayerProto = {
     const log = River.logAt(row, this.x);
     if (!log) { Game.kill('drown', { p: this }); return; }
     this.ride = log;
-    this.x += row.river.dir * row.river.speed * Game.trafficFactor() * dt;
+    if (!log.still) this.x += row.river.dir * row.river.speed * Game.trafficFactor() * dt;
     this.col = clamp(Math.round(this.x / TILE - 0.5), 0, COLS - 1);
     this.slideT -= dt;
     if (this.slideT <= 0 && this.id === 0) { this.slideT = 0.2; Ghost.mark(Game.time, this.x, this.y, 's'); }
     if (this.x < -0.25 * TILE || this.x > WORLD_W + 0.25 * TILE) Game.kill('swept', { p: this });
+  },
+
+  // Big J at maximum rage: jump, then slam the ground.
+  startStomp() {
+    this.stomp = { t: 0, hit: false };
+    this.queue = null;
+    this.stun = 0;
+    this.facing = 'down';
+    Sound.growl(1);
+  },
+
+  updateStomp(dt) {
+    const s = this.stomp;
+    s.t += dt;
+    const UP = 0.34, DOWN = 0.09;
+    if (s.t < UP) {
+      this.z = 30 * easeOutQuad(s.t / UP);
+      this.squash = -0.15;
+      this.rot = Math.sin(s.t * 50) * 0.06;
+    } else if (!s.hit) {
+      const k = Math.min(1, (s.t - UP) / DOWN);
+      this.z = 30 * (1 - k * k);
+      if (k >= 1) {
+        s.hit = true;
+        this.z = 0;
+        this.rot = 0;
+        this.squash = 1.1;
+        Rage.slam(this);
+      }
+    } else if (s.t > UP + DOWN + 0.28) {
+      this.stomp = null;
+      if (this.queue && this.alive) {
+        const q = this.queue;
+        this.queue = null;
+        this.move(q[0], q[1]);
+      }
+    }
   },
 
   // Jetpack: blast off and land on safe ground about 5 rows ahead.
@@ -392,11 +433,13 @@ const PlayerProto = {
     }
     this.stun = Math.max(this.stun, stun + (this.knock ? this.knock.dur : 0));
     Sound.stun();
+    Rage.add(this, 0.2); // getting thrown around makes Big J madder
   },
 
   // How the run ends decides what's left to see.
   die(how, dir, gore) {
     this.alive = false;
+    this.stomp = null;
     this.hop = this.knock = this.queue = this.abduct = null;
     this.ride = null;
     this.stun = 0;
