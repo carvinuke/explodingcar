@@ -682,7 +682,8 @@ const Draw = (() => {
     const sq = p.squash + (p.breath || 0), lift = 3;
     const blink = ((time + (p.blinkSeed || 0)) % 3.3) < 0.12;
     const G = sk.top, GF = sk.front, dark = shade(GF, -0.25);
-    const red = soot ? mix('#ff1a1a', '#2a2522', soot) : '#ff1a1a', ink = '#1d1b3a';
+    const faceCol = sk.face || '#ff1a1a';
+    const red = soot ? mix(faceCol, '#2a2522', soot) : faceCol, ink = '#1d1b3a';
     c.save();
     c.translate(0, P(0, p.z));
     if (p.rot) {
@@ -1382,6 +1383,77 @@ const Draw = (() => {
     c.fillText('LIFEGUARD', 0, P(-2, 42));
   }
 
+
+  // ---- Pets ----------------------------------------------------------------------
+  function pet(c, o, time) {
+    c.save();
+    c.translate(0, P(0, o.z));
+    if (o.type === 'minij') { // a tiny, equally unimpressed Big J
+      c.scale(0.5, 0.5);
+      bigJ(c, { facing: o.face > 0 ? 'right' : 'left', squash: 0, z: 0, rot: 0, flap: 0, char: 0, blinkSeed: o.blink }, time, SKINS.bigj, null, 0);
+      c.restore();
+      return;
+    }
+    if (o.type === 'drone') {
+      box(c, -6, 6, -5, 5, 0, 4, '#3a3d44', '#26282d');
+      box(c, -2.5, 2.5, -2, 2, 4, 6, '#5a5f69', '#3a3d44');
+      const spin = time * 40;
+      for (const [rx, ry] of [[-8, -6], [8, -6], [-8, 6], [8, 6]]) {
+        c.fillStyle = '#26282d';
+        c.fillRect(rx - 1, P(ry, 4) - 1, 2, 2);
+        c.fillStyle = 'rgba(200,210,225,0.55)';
+        const w = 5 * Math.abs(Math.cos(spin + rx));
+        c.fillRect(rx - w, P(ry, 5) - 0.6, w * 2, 1.2);
+      }
+      c.fillStyle = Math.sin(time * 6) > 0 ? '#4df0ff' : '#1b6a78';
+      c.fillRect(-1, P(-5, 2) - 1, 2, 2);
+      c.restore();
+      return;
+    }
+    c.scale(o.face, 1);
+    if (o.type === 'duck') {
+      for (const fx of [-3, 1]) { c.fillStyle = '#ff9f1c'; c.fillRect(fx, P(-2, 1.5), 2.5, 1.5 * GZ + 1); }
+      box(c, -5, 5, -4, 4, 1.5, 9, '#ffe66d', '#f2c230');
+      box(c, 1, 6, -3, 3, 7, 13, '#ffe66d', '#f2c230');
+      box(c, 6, 9, -1.5, 1.5, 9, 10.5, '#ff9f1c', '#e07b00');
+      c.fillStyle = '#1d1d1f';
+      c.fillRect(4, P(-3, 11.5), 1.4, 1.4);
+      box(c, -7, -4, -2, 2, 6, 8, '#fff1a8', '#f2c230');
+    } else if (o.type === 'dog') {
+      const wag = Math.sin(time * 16) * 3;
+      for (const lx of [-6, -3, 3, 6]) box(c, lx - 1, lx + 1, -3, -1, 0, 5, '#9c6b3f', '#7a512c');
+      box(c, -8, 8, -4, 4, 5, 11, '#b07c4a', '#8a5d33');
+      c.fillStyle = '#f2e6d4';
+      c.fillRect(-4, P(-4, 8), 7, 3 * GZ);
+      box(c, 6, 13, -3.5, 3.5, 9, 16, '#b07c4a', '#8a5d33');
+      box(c, 12, 15, -2, 2, 10, 13, '#8a5d33', '#6b4526');
+      c.fillStyle = '#1d1d1f';
+      c.fillRect(14, P(-2, 13), 1.6, 1.6);
+      c.fillRect(10, P(-3.5, 15), 1.4, 1.4);
+      box(c, 7, 9, -3.5, -2, 14, 17, '#6b4526', '#4d311b'); // ear
+      c.strokeStyle = '#8a5d33';
+      c.lineWidth = 2;
+      c.beginPath(); c.moveTo(-8, P(0, 10)); c.lineTo(-12, P(wag, 15)); c.stroke();
+    } else if (o.type === 'cat') {
+      const tail = Math.sin(time * 3) * 2;
+      for (const lx of [-5, 4]) box(c, lx - 1, lx + 1, -3, -1, 0, 4, '#e0913a', '#b8702a');
+      box(c, -7, 7, -4, 4, 4, 10, '#f0a24a', '#c9802f');
+      c.fillStyle = '#b8702a';
+      for (const sx of [-4, 0]) c.fillRect(sx, P(4, 10) - 0.5, 2, 5 * GY);
+      box(c, 4, 11, -3.5, 3.5, 8, 15, '#f0a24a', '#c9802f');
+      c.fillStyle = '#c9802f';
+      for (const ex of [5, 9]) { c.beginPath(); c.moveTo(ex, P(0, 15)); c.lineTo(ex + 1, P(0, 19)); c.lineTo(ex + 2, P(0, 15)); c.closePath(); c.fill(); }
+      c.fillStyle = '#2e7d32';
+      c.fillRect(8, P(-3.5, 13), 1.6, 1.6);
+      c.fillStyle = '#ffb3c7';
+      c.fillRect(10.5, P(-3.5, 11), 1.2, 1);
+      c.strokeStyle = '#c9802f';
+      c.lineWidth = 2;
+      c.beginPath(); c.moveTo(-7, P(0, 8)); c.quadraticCurveTo(-11, P(0, 12), -10 + tail, P(0, 17)); c.stroke();
+    }
+    c.restore();
+  }
+
   // ---- Road work -----------------------------------------------------------------
   function pit(c, x, y) {
     const hw = TILE / 2 - 3, yt = P(y + TILE / 2 - 4, 0), h = (TILE - 8) * GY;
@@ -1669,6 +1741,6 @@ const Draw = (() => {
     trainCar, log, xing,
     cactus, deadbush, skull, mesa, planter, hydrant, bin, mailbox, bench, snowman, building, buildingWindows,
     pit, cone, barrier, worksign, excavator, welcome, cow, deer, weed, medic, tag,
-    umbrella, chair, sandcastle, palm, lifeguard, gull,
+    umbrella, chair, sandcastle, palm, lifeguard, gull, pet,
   };
 })();

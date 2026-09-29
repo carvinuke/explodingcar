@@ -247,6 +247,12 @@ const UI = {
       const name = document.createElement('b');
       name.textContent = item.name;
       card.append(cv, name);
+      if (item.perk) {
+        const perk = document.createElement('span');
+        perk.className = 'unlock perk';
+        perk.textContent = item.perk;
+        card.appendChild(perk);
+      }
       const btn = document.createElement('button');
       if (equipped) {
         btn.className = 'btn-plate small';
@@ -290,8 +296,17 @@ const UI = {
     const skin = tab === 'skins' ? SKINS[id] : Shop.skin();
     const hat = tab === 'hats' ? (id === 'none' ? null : id) : tab === 'skins' ? null : Shop.hat;
     if (tab === 'trails') this.trailPreview(g, id);
+    if (tab === 'pets' && id !== 'none') g.translate(-9, 0);
     Draw.shadow(g, 0, 0, 30, 24, 0.9);
     Draw.player(g, { facing: 'down', squash: 0, z: 0, rot: 0, flap: 0, char: 0 }, 0, skin, hat);
+    if (tab === 'pets' && id !== 'none') {
+      const pet = { type: id, face: -1, z: id === 'drone' ? 30 : 0, blink: 0 };
+      g.save();
+      g.translate(22, 4);
+      Draw.shadow(g, 0, 0, 20, 14, 0.7);
+      Draw.pet(g, pet, 1);
+      g.restore();
+    }
     g.restore();
     if (tab === 'skins' && (SKINS[id].unlock || SKINS[id].level) && !Shop.has('skins', id)) { // locked: a padlock over a silhouette
       g.globalCompositeOperation = 'source-atop';

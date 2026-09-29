@@ -297,6 +297,7 @@ const Animals = {
     } else { // dive at a player, aiming where they stand now
       const p = Game.target();
       if (!p.alive) return;
+      if (p.id === 0 && Pets.has('minij')) { FX.text(p.x, p.y + 40, 'GLARE', '#ff6b6b', 13); return; } // too scared
       tx = p.x;
       ty = p.y;
     }

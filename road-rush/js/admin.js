@@ -8,6 +8,9 @@ const Admin = {
   god: false,
   noDanger: false,
   weather: null, // forced weather type, or null
+  speed: 1,      // game speed multiplier
+  hitboxes: false,
+  freeCam: false,
   taps: 0,
   lastTap: 0,
   pausedIt: false,
@@ -215,8 +218,106 @@ const Admin = {
 
   toggle(key) {
     this[key] = !this[key];
+    if (key === 'freeCam') {
+      UI.$('freecam-banner').classList.toggle('hidden', !this.freeCam);
+      if (this.freeCam) { this.ensureRun(); this.camX = Cam.x; this.camY = Cam.y; }
+    }
     this.refresh();
-    this.flash(`${key === 'god' ? 'God mode' : 'No danger line'} ${this[key] ? 'on' : 'off'}`);
+    const names = { god: 'God mode', noDanger: 'No danger line', hitboxes: 'Hitboxes', freeCam: 'Free camera' };
+    this.flash(`${names[key]} ${this[key] ? 'on' : 'off'}`);
+  },
+
+  setSpeed(v) {
+    this.speed = clamp(v, 0.25, 3);
+    UI.$('admin-speed-val').textContent = `${this.speed.toFixed(2).replace(/0$/, '')}x`;
+  },
+
+  // Free camera: arrow keys or WASD move the view; the game keeps going.
+  camKey(code) {
+    const step = TILE * 1.5;
+    const d = { ArrowUp: [0, 1], KeyW: [0, 1], ArrowDown: [0, -1], KeyS: [0, -1], ArrowLeft: [-1, 0], KeyA: [-1, 0], ArrowRight: [1, 0], KeyD: [1, 0] }[code];
+    if (!d) return false;
+    this.camX = clamp(this.camX + d[0] * step, -6 * TILE, WORLD_W + 6 * TILE);
+    this.camY = Math.max((World.minRow + 8) * TILE, this.camY + d[1] * step);
+    World.ensure(Math.ceil(this.camY / TILE) + 30);
+    return true;
+  },
+
+  moveCam(dt) {
+    Cam.x = damp(Cam.x, this.camX, 8, dt);
+    Cam.y = damp(Cam.y, this.camY, 8, dt);
+  },
+
+  spawnVehicle(type) {
+    if (!this.ensureRun()) return;
+    this.after(() => {
+      const rows = [];
+      for (let r = Player.row + 1; r <= Player.row + 5; r++) { const R = World.rows.get(r); if (R && R.type === 'road') rows.push(R); }
+      if (!rows.length) { this.flash('No road just ahead'); return; }
+      const v = Vehicles.spawnAtEdge(rows[0], type);
+      if (v && VEHICLE_TYPES[type].responder) v.desired = v.speed = 260;
+    });
+    this.flash(`${VEHICLE_TYPES[type].name.replace(/^an? /, '')} incoming`);
+  },
+
+  clearTraffic() {
+    if (!this.ensureRun()) return;
+    for (const row of World.rows.values()) {
+      if (row.type === 'road') row.lane.vehicles = row.lane.vehicles.filter(v => v.animal);
+      if (row.type === 'rail') { row.rail.state = 'idle'; row.rail.t = 8; row.rail.cars = null; row.rail.stalled = null; }
+    }
+    this.flash('Every road and track cleared (for a moment)');
+  },
+
+  coinShower() {
+    if (!this.ensureRun()) return;
+    for (let r = Player.row + 1; r <= Player.row + 8; r++) {
+      const R = World.rows.get(r);
+      if (!R || R.type === 'river') continue;
+      for (let c = 0; c < COLS; c++) {
+        if ((R.type === 'grass' || R.type === 'work') && R.blocked[c]) continue;
+        if (R.type === 'work' && R.pit[c]) continue;
+        if (!Items.list.some(it => it.row === r && Math.abs(it.x - cellX(c)) < 4)) Items.add('coin', c, r);
+      }
+    }
+    this.flash('Coins everywhere');
+  },
+
+  blowUpEverything() {
+    if (!this.ensureRun()) return;
+    this.after(() => {
+      let n = 0;
+      for (const row of World.rows.values()) {
+        if (row.type !== 'road' || row.y < Renderer.yBot || row.y > Renderer.yTop) continue;
+        for (const v of row.lane.vehicles) {
+          if (v.wreck || !Renderer.inViewX(v.x)) continue;
+          setTimeout(() => { if (!v.wreck) Vehicles.smash(v, v.x + rand(-20, 20), 1.2); }, n++ * 90);
+        }
+      }
+    });
+    this.flash('Stand back');
+  },
+
+  killMe() {
+    if (!this.ensureRun()) return;
+    this.after(() => {
+      const god = this.god;
+      this.god = false;
+      Player.pw.invincible = 0;
+      Player.grace = 0;
+      if (Pets.pet) Pets.pet.catUsed = true;
+      const v = Vehicles.make({ speed: 300, dir: 1 }, 'bus', Player.y);
+      Game.kill('vehicle', { p: Player, dir: 1, vehicle: v });
+      this.god = god;
+    });
+    this.flash('Goodbye, chicken');
+  },
+
+  givePet(id) {
+    if (!Shop.owned.pets.includes(id)) { Shop.owned.pets.push(id); Store.set('pets', Shop.owned.pets); }
+    Shop.equip('pets', id);
+    Pets.reset();
+    this.flash(id === 'none' ? 'Pet removed' : `${PETS[id].name} is following you`);
   },
 
   // Called every frame by the game.
@@ -270,6 +371,27 @@ const Admin = {
     let r = section('Toggles');
     this.godBtn = btn(r, 'God mode', () => this.toggle('god'), 'flip');
     this.dangerBtn = btn(r, 'No danger line', () => this.toggle('noDanger'), 'flip');
+    this.hitBtn = btn(r, 'Show hitboxes', () => this.toggle('hitboxes'), 'flip');
+    this.camBtn = btn(r, 'Free camera', () => this.toggle('freeCam'), 'flip');
+
+    r = section('Game speed');
+    const slider = document.createElement('input');
+    slider.type = 'range';
+    slider.min = '0.25';
+    slider.max = '3';
+    slider.step = '0.25';
+    slider.value = '1';
+    slider.id = 'admin-speed';
+    slider.className = 'admin-slider';
+    slider.setAttribute('aria-label', 'Game speed');
+    slider.addEventListener('input', () => this.setSpeed(Number(slider.value)));
+    slider.addEventListener('keydown', e => e.stopPropagation());
+    const val = document.createElement('b');
+    val.id = 'admin-speed-val';
+    val.className = 'admin-speed-val';
+    val.textContent = '1x';
+    r.append(slider, val);
+    btn(r, 'Normal', () => { slider.value = '1'; this.setSpeed(1); });
 
     r = section('Coins');
     numberField(r, 'admin-coins', 'e.g. 5000', 'Amount', n => this.setCoins(n));
@@ -289,6 +411,20 @@ const Admin = {
     r = section('Hazards');
     for (const [k, label] of [['tornado', 'Tornado'], ['lightning', 'Lightning'], ['drunk', 'Drunk driver'], ['crash', 'Reckless driver'], ['cow', 'Cow'], ['deer', 'Deer'], ['gull', 'Seagull']]) btn(r, label, () => this.hazard(k));
 
+    r = section('Spawn a vehicle (just ahead)');
+    for (const k of Object.keys(VEHICLE_TYPES).filter(k => k !== 'cow')) {
+      btn(r, VEHICLE_TYPES[k].name.replace(/^an? /, '').replace(/^\w/, ch => ch.toUpperCase()), () => this.spawnVehicle(k));
+    }
+
+    r = section('Chaos');
+    btn(r, 'Clear all traffic', () => this.clearTraffic());
+    btn(r, 'Coin shower', () => this.coinShower(), 'gold');
+    btn(r, 'Blow up every car', () => this.blowUpEverything(), 'danger');
+    btn(r, 'Kill me (see the replay)', () => this.killMe(), 'danger');
+
+    r = section('Pets');
+    for (const k in PETS) btn(r, PETS[k].name, () => this.givePet(k));
+
     r = section('Weather and time');
     for (const w of ['auto', 'clear', 'rain', 'snow', 'dust']) btn(r, w === 'auto' ? 'Weather: auto' : w[0].toUpperCase() + w.slice(1), () => this.setWeather(w));
     for (const [ph, label] of [[0.2, 'Morning'], [0.5, 'Sunset'], [0.7, 'Night']]) btn(r, label, () => this.setTime(ph));
@@ -305,6 +441,8 @@ const Admin = {
   refresh() {
     this.godBtn.setAttribute('aria-pressed', this.god ? 'true' : 'false');
     this.dangerBtn.setAttribute('aria-pressed', this.noDanger ? 'true' : 'false');
+    this.hitBtn.setAttribute('aria-pressed', this.hitboxes ? 'true' : 'false');
+    this.camBtn.setAttribute('aria-pressed', this.freeCam ? 'true' : 'false');
     UI.$('admin-coins').value = Game.bank;
     UI.$('admin-level').value = Levels.level;
     UI.$('admin-status').textContent = `Coins ${Game.bank.toLocaleString()} · Level ${Levels.level}`;

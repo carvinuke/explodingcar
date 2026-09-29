@@ -101,6 +101,7 @@ const Game = {
     World.reset(seed, { speedMul: M.speedMul, gapMul: M.gapMul, powerups: M.powerups });
     if (this.players.length > 1) { Player.reset(3); Player2.reset(7); }
     else Player.reset(START_COL);
+    Pets.reset();
     Cam.reset();
     Cam.ox = 0;
     Renderer.metrics();
@@ -147,6 +148,7 @@ const Game = {
       Store.set('runs', this.runs);
       Stats.add('runs');
     }
+    Pets.reset();
     Missions.startRun();
     Trophies.startRun(mode);
     const M = this.modeDef();
@@ -370,6 +372,7 @@ const Game = {
   kill(source, opts = {}) {
     const p = opts.p || Player;
     if (!p.alive || Admin.god) return;
+    if (this.state === 'playing' && Pets.saves(p, source)) return; // the cat takes the hit
     const sameMoment = this.state === 'dying' && this.deathT === 0 && this.players.length > 1;
     if (this.state !== 'playing' && !sameMoment) return;
     const gore = Settings.gore && source !== 'danger' && source !== 'pit';
@@ -567,6 +570,7 @@ const Game = {
     Rail.update(dt, fz);
     Work.update(dt);
     Animals.update(dt);
+    Pets.update(dt);
     Storms.update(dt);
     Vehicles.drunkDirector(dt);
     if ((playing || this.state === 'title') && Powers.freeze <= 0) Vehicles.director(dt, this.leader().row, fz);
@@ -621,8 +625,9 @@ const Game = {
       } else {
         this.timeScale = damp(this.timeScale, 1, 6, realDt);
       }
-      this.update(realDt * this.timeScale, realDt);
+      this.update(realDt * this.timeScale * Admin.speed, realDt);
     }
+    if (Admin.freeCam) Admin.moveCam(realDt);
     Renderer.frame(this.time, realDt);
     if (this.state === 'replay' && Replay.update(realDt)) this.gameOver();
     requestAnimationFrame(t => this.loop(t));

@@ -32,6 +32,9 @@ const SKINS = {
   bigj:    { name: 'Big J', price: 67, kind: 'bigj',
              top: '#9a9ea8', front: '#7b7f89', wingTop: null, wingFront: null,
              comb: null, beak: null, feet: '#6c7079' },
+  bigs:    { name: 'Big S', price: 67, kind: 'bigj', face: '#1a6bff',
+             top: '#9a9ea8', front: '#7b7f89', wingTop: null, wingFront: null,
+             comb: null, beak: null, feet: '#6c7079' },
   // level rewards
   silver:  { name: 'Silver Chick', price: 0, level: 3, kind: 'bird', shine: true,
              top: '#eef1f5', front: '#b3bac4', wingTop: '#dde2e8', wingFront: '#9aa2ad',
@@ -72,13 +75,24 @@ const TRAILS = {
   rainbow:  { name: 'Rainbow', price: 300 },
 };
 
-const SHOP_TABS = { skins: SKINS, hats: HATS, trails: TRAILS };
+// Pets follow you around, and each one has a trick.
+const PETS = {
+  none:  { name: 'No pet', price: 0 },
+  duck:  { name: 'Duckling', price: 120, perk: '+25% XP every run' },
+  dog:   { name: 'Dog', price: 200, perk: 'Fetches coins near you' },
+  cat:   { name: 'Cat', price: 400, perk: 'Blocks one hit per run (nine lives)' },
+  minij: { name: 'Mini Big J', price: 250, perk: 'Glares at seagulls so they leave you alone' },
+  drone: { name: 'Drone', price: 500, perk: 'Lights up the night and pulls in coins' },
+};
+
+const SHOP_TABS = { skins: SKINS, hats: HATS, trails: TRAILS, pets: PETS };
 
 const Shop = {
-  owned: { skins: ['chick'], hats: ['none'], trails: ['none'] },
+  owned: { skins: ['chick'], hats: ['none'], trails: ['none'], pets: ['none'] },
   current: 'chick',
   hat: null,
   trail: null,
+  pet: null,
 
   load() {
     const list = (key, table, base) => {
@@ -87,12 +101,14 @@ const Shop = {
       if (!out.includes(base)) out.unshift(base);
       return out;
     };
-    this.owned = { skins: list('skins', SKINS, 'chick'), hats: list('hats', HATS, 'none'), trails: list('trails', TRAILS, 'none') };
+    this.owned = { skins: list('skins', SKINS, 'chick'), hats: list('hats', HATS, 'none'), trails: list('trails', TRAILS, 'none'), pets: list('pets', PETS, 'none') };
     const cur = Store.get('skin', 'chick');
     this.current = SKINS[cur] && this.has('skins', cur) ? cur : 'chick';
     const hat = Store.get('hat', 'none'), trail = Store.get('trail', 'none');
     this.hat = HATS[hat] && this.has('hats', hat) && hat !== 'none' ? hat : null;
     this.trail = TRAILS[trail] && this.has('trails', trail) && trail !== 'none' ? trail : null;
+    const pet = Store.get('pet', 'none');
+    this.pet = PETS[pet] && this.has('pets', pet) && pet !== 'none' ? pet : null;
   },
 
   skin() { return SKINS[this.current]; },
@@ -109,6 +125,7 @@ const Shop = {
   equipped(tab, id) {
     if (tab === 'skins') return this.current === id;
     if (tab === 'hats') return (this.hat || 'none') === id;
+    if (tab === 'pets') return (this.pet || 'none') === id;
     return (this.trail || 'none') === id;
   },
 
@@ -127,6 +144,7 @@ const Shop = {
     if (!this.has(tab, id)) return;
     if (tab === 'skins') { this.current = id; Store.set('skin', id); }
     else if (tab === 'hats') { this.hat = id === 'none' ? null : id; Store.set('hat', id); }
+    else if (tab === 'pets') { this.pet = id === 'none' ? null : id; Store.set('pet', id); if (Game.state === 'playing' || Game.state === 'paused') Pets.reset(); }
     else { this.trail = id === 'none' ? null : id; Store.set('trail', id); }
   },
 };

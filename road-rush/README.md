@@ -127,9 +127,17 @@ Rare events that happen every minute or two:
   Diamond Chick (12), Golden Chicken (16) and a Phoenix that's always on fire
   (20). The report shows the XP you earned and your progress.
 - **Shop:** spend coins on skins (Hard Hat Chick, Duck, Frog, Raccoon, and
-  Big J, a grey body under a round helmet with a very unimpressed red face), hats
+  Big J, a grey body under a round helmet with a very unimpressed red face, and
+  Big S, the same but with a blue face), pets (see below), hats
   (party hat, sunglasses, traffic cone, cowboy hat, top hat, crown) and hop
   trails (sparkles, bubbles, confetti, fire, rainbow).
+- **Pets:** a companion that follows you around, each with a trick:
+  - *Duckling:* +25% XP every run.
+  - *Dog:* runs off to fetch coins near you.
+  - *Cat:* nine lives, blocking one hit per run.
+  - *Mini Big J:* glares at seagulls so they won't dive at you.
+  - *Drone:* hovers overhead, lights up the road at night and pulls in nearby
+    coins.
 - **Trophies:** 24 achievements, such as surviving three explosions in one run,
   a close call with a train, getting trampled by a deer, or getting picked up
   by a tornado and living. Three of them unlock skins you can't buy: the Crash
@@ -175,7 +183,12 @@ title sign 7 times quickly to open it; after that it's also on the pause menu
 for the rest of the session. From there you can:
 
 - set your coins or level, or unlock every skin, hat, trail and trophy
-- turn on god mode (nothing can kill you) or switch off the danger line
+- turn on god mode (nothing can kill you), switch off the danger line, show
+  hitboxes, or use a free camera (arrow keys or WASD, Esc to exit)
+- change the game speed from 0.25x to 3x
+- spawn any vehicle just ahead, clear all traffic, fill the road with coins,
+  blow up every car on screen, or kill yourself to see the replay
+- give yourself any pet
 - grant any power-up, start any secret event, or summon a tornado, lightning,
   a drunk driver, a reckless driver, a cow, deer or a seagull
 - force the weather or jump to morning, sunset or night
@@ -205,6 +218,7 @@ Plain scripts that share a few global objects, loaded in order by `index.html`:
 | `js/vehicles.js` | `Vehicles`: types, lanes, braking, skids, crashes, blasts, responders, crash director |
 | `js/hazards.js` | `River` (logs), `Rail` (signals, trains, trams, stalled cars), `Work` (excavators) |
 | `js/animals.js` | `Animals`: cows, deer, tumbleweeds, seagulls, paramedics |
+| `js/pets.js` | `Pets`: the companion that follows you |
 | `js/player.js` | `Player` / `Player2`: hops, ice, log riding, knockback, stun, abduction, deaths |
 | `js/powerups.js` | `Items` + `Powers`: coins, pickups and power-up timers |
 | `js/progress.js` | `SKINS`, `HATS`, `TRAILS` + `Shop`, `Missions`, `Ghost` |

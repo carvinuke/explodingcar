@@ -259,6 +259,11 @@ const Lighting = {
     for (const p of Game.players) {
       if (!p.gone) fn(p.x, p.y, 0, 2.3 * TILE, 'player');
     }
+    if (Pets.has('drone') && Pets.pet) { // the drone's searchlight
+      const d = Pets.pet;
+      fn(d.x, d.y + 1.2 * TILE, 0, 4.2 * TILE, 'player');
+      fn(d.x, d.y, d.z, 8, 'head');
+    }
     FX.lights((x, y, r) => fn(x, y, 0, r, 'fire'));
     Events.lights(fn);
     Storms.lights(fn);
