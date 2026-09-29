@@ -35,7 +35,7 @@ uses `W A S D` and player two the arrow keys.
 
 ## Modes
 
-- **Endless:** the classic run.
+- **Endless:** the classic run (the big PLAY button). The other modes sit in a row under it; hover or focus one to see what it does.
 - **Daily challenge:** the same road for everyone each day (by UTC date).
 - **Hardcore:** starts further up the difficulty curve, with faster and denser
   traffic, a faster danger line, no power-ups, and double coins.

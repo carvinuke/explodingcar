@@ -605,31 +605,40 @@ kbd {
 }
 
 
-/* ---- Modes: a row of smaller signs under PLAY ------------------------------------ */
-.play-row { align-items: stretch; }
-.modes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
-.mode-sign {
+/* ---- Title menu: PLAY, a row of modes, and a small row of extras ------------------- */
+.title-stack { width: min(460px, 100%); gap: 14px; }
+.play-main { width: 100%; }
+.modes { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.mode-btn {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
   min-width: 0;
-  padding: 10px 12px 9px;
+  min-height: 56px;
+  padding: 8px 6px 6px;
   border: 0;
   border-radius: 8px;
   cursor: pointer;
-  text-align: left;
+  text-align: center;
   transition: transform 0.1s ease;
 }
-.mode-sign b { font-size: 16px; font-weight: 900; letter-spacing: 0.08em; }
-.mode-sign span { font-size: 12px; font-weight: 700; line-height: 1.25; }
-.mode-sign em { font-style: normal; font: 700 12px var(--font-mono); opacity: 0.85; margin-top: auto; }
-.mode-sign:hover { transform: translateY(-2px); }
-.mode-sign:active { transform: translateY(3px); }
-.m-hardcore { background: var(--ink); color: var(--sign-white); box-shadow: inset 0 0 0 2px var(--ink), inset 0 0 0 4px var(--sign-red), 0 4px 0 #000, 0 10px 18px rgba(0, 0, 0, 0.3); }
-.m-hardcore b { color: #ff5a6e; }
-.m-time { background: var(--sign-white); color: var(--ink); box-shadow: inset 0 0 0 2px var(--sign-white), inset 0 0 0 4px var(--ink), 0 4px 0 #9a9a94, 0 10px 18px rgba(0, 0, 0, 0.3); }
-.m-versus { background: var(--sign-green); color: var(--sign-white); box-shadow: inset 0 0 0 2px var(--sign-green), inset 0 0 0 4px var(--sign-white), 0 4px 0 #004a31, 0 10px 18px rgba(0, 0, 0, 0.3); }
+.mode-btn b { font-size: 14px; font-weight: 900; letter-spacing: 0.04em; line-height: 1.1; }
+.mode-btn em { font-style: normal; font: 700 11px var(--font-mono); opacity: 0.8; }
+.mode-btn em:empty { display: none; }
+.mode-btn:hover { transform: translateY(-2px); }
+.mode-btn:active { transform: translateY(3px); }
+.m-daily { background: var(--sign-purple); color: var(--sign-white); box-shadow: inset 0 0 0 2px var(--sign-purple), inset 0 0 0 4px var(--sign-white), 0 4px 0 #3b2470; }
+.m-hardcore { background: var(--ink); color: #ff5a6e; box-shadow: inset 0 0 0 2px var(--ink), inset 0 0 0 4px var(--sign-red), 0 4px 0 #000; }
+.m-hardcore em { color: var(--sign-white); }
+.m-time { background: var(--sign-white); color: var(--ink); box-shadow: inset 0 0 0 2px var(--sign-white), inset 0 0 0 4px var(--ink), 0 4px 0 #9a9a94; }
+.m-versus { background: var(--sign-green); color: var(--sign-white); box-shadow: inset 0 0 0 2px var(--sign-green), inset 0 0 0 4px var(--sign-white), 0 4px 0 #004a31; }
+.mode-hint { margin: -4px 0 0; min-height: 1.3em; font-size: 13px; font-weight: 700; text-align: center; color: var(--sign-white); text-shadow: 0 2px 6px rgba(0, 0, 0, 0.7); }
+.menu-row { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; }
+.title-stack > .meta { display: flex; align-items: center; justify-content: center; gap: 6px; text-align: center; }
+.title-stack > .meta .coin-ico { display: inline-block; }
+.title-stack > .meta .gore-badge { margin-left: 8px; }
 .count { font: 700 13px var(--font-mono); opacity: 0.7; margin-left: 4px; }
 
 /* ---- HUD extras ---------------------------------------------------------------- */
@@ -777,10 +786,7 @@ kbd {
   .toasts { top: calc(max(14px, env(safe-area-inset-top)) + 150px); }
   .toast b { font-size: 15px; }
   .timer { top: calc(max(14px, env(safe-area-inset-top)) + 82px); }
-  .modes { grid-template-columns: minmax(0, 1fr); }
-  .mode-sign { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; column-gap: 10px; }
-  .mode-sign span { grid-column: 1 / -1; grid-row: 2; }
-  .mode-sign em { grid-column: 2; grid-row: 1; }
+  .modes { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .keys { grid-template-columns: minmax(0, 1fr); }
 }
 

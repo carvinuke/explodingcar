@@ -32,15 +32,10 @@ const UI = {
     this.combo = $('combo');
     this.toasts = $('toasts');
 
-    // power-up legend on the title screen + HUD chips
-    const legend = $('legend');
+    // HUD power-up chips
     this.chips = {};
     for (const k in POWERUPS) {
       const def = POWERUPS[k], url = Draw.iconURL(k);
-      const li = document.createElement('li');
-      li.innerHTML = `<img src="${url}" alt=""><span>${def.name}</span>`;
-      legend.appendChild(li);
-
       const el = document.createElement('div');
       el.className = 'pw hidden';
       el.style.setProperty('--c', def.color);
@@ -106,6 +101,15 @@ const UI = {
       this.syncSettings();
       Sound.click();
     });
+    const hint = $('mode-hint');
+    for (const m of document.querySelectorAll('.mode-btn')) {
+      const showHint = () => { hint.textContent = m.dataset.hint; };
+      const clear = () => { hint.innerHTML = '&nbsp;'; };
+      m.addEventListener('pointerenter', showHint);
+      m.addEventListener('focus', showHint);
+      m.addEventListener('pointerleave', clear);
+      m.addEventListener('blur', clear);
+    }
     for (const t of document.querySelectorAll('[data-tab]')) {
       t.addEventListener('click', () => { this.shopTab = t.dataset.tab; Sound.click(); this.renderShop(); });
     }
@@ -439,17 +443,15 @@ const UI = {
   refreshMeta() {
     this.$('title-best').textContent = Game.best;
     this.$('title-coins').textContent = Game.bank;
-    this.$('daily-date').textContent = dayLabel(dayKey());
     const db = Store.get(Game.dailyKey(), 0);
-    this.$('daily-best').textContent = db ? `Best ${db}` : 'Not played yet';
+    this.$('daily-best').textContent = db ? `Best ${db}` : dayLabel(dayKey());
     const hb = Game.bestFor('hardcore'), tb = Game.bestFor('time');
-    this.$('best-hardcore').textContent = hb ? `Best ${hb}` : 'Unplayed';
-    this.$('best-time').textContent = tb ? `Best ${tb}` : 'Unplayed';
+    this.$('best-hardcore').textContent = hb ? `Best ${hb}` : '';
+    this.$('best-time').textContent = tb ? `Best ${tb}` : '';
     const w = Game.versusWins;
-    this.$('vs-record').textContent = w[0] + w[1] ? `P1 ${w[0]} : ${w[1]} P2` : 'Keyboard or 2 controllers';
+    this.$('vs-record').textContent = w[0] + w[1] ? `${w[0]} : ${w[1]}` : '';
     this.$('trophy-count').textContent = `${Trophies.count}/${TROPHIES.length}`;
     this.$('gore-badge').classList.toggle('hidden', !Settings.gore);
-    this.renderMissions(this.$('title-missions'), false);
   },
 
   // ---- Toasts ---------------------------------------------------------------------
