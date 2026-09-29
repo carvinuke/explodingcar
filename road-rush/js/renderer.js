@@ -480,10 +480,25 @@ const Renderer = {
     }
     Draw.player(c, p, time, sk, p.hat());
     c.globalAlpha = 1;
-    if (p.shield) {
+    if (p.shield) { // one bubble per stacked shield, each a little bigger
       c.save();
       c.translate(0, P(0, p.z));
-      Draw.bubble(c, time);
+      for (let k = Math.min(p.shield, 4) - 1; k >= 0; k--) {
+        c.save();
+        const s = 1 + k * 0.18;
+        c.translate(0, P(0, 14));
+        c.scale(s, s);
+        c.translate(0, -P(0, 14));
+        if (k) c.globalAlpha = 0.6;
+        Draw.bubble(c, time + k * 0.7);
+        c.restore();
+      }
+      if (p.shield > 1) {
+        c.font = `900 9px ${UI_FONT}`;
+        c.textAlign = 'center';
+        c.fillStyle = '#bfe3ff';
+        c.fillText('x' + p.shield, 0, P(0, 50 + Math.min(p.shield, 4) * 4));
+      }
       c.restore();
     }
     if (p.stun > 0 && p.alive) Draw.stars(c, time, p.z + 36);

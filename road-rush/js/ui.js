@@ -656,7 +656,12 @@ const UI = {
     for (const k in this.chips) {
       const ch = this.chips[k];
       const left = Powers.left(k);
-      const on = k === 'shield' ? Player.shield : left > 0;
+      const on = k === 'shield' ? Player.shield > 0 : left > 0;
+      if (k === 'shield' && Player.shield !== ch.count) {
+        ch.count = Player.shield;
+        const pips = ch.el.querySelector('.pw-pips');
+        if (pips) pips.textContent = Player.shield > 1 ? `x${Player.shield} HITS` : '1 HIT';
+      }
       if (on !== ch.on) { ch.el.classList.toggle('hidden', !on); ch.on = on; }
       if (on && ch.fill) {
         ch.fill.style.transform = `scaleX(${(left / POWERUPS[k].dur).toFixed(3)})`;

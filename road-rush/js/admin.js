@@ -127,7 +127,7 @@ const Admin = {
     if (!this.ensureRun()) return;
     for (const p of Game.players) {
       if (!p.alive) continue;
-      p.shield = true;
+      p.shield += 1;
       for (const k of ['speed', 'magnet', 'invincible']) p.pw[k] = 60;
     }
     this.flash('Every power-up for 60 seconds');

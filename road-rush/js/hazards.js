@@ -247,7 +247,7 @@ const Work = {
         if (Math.abs(p.y - row.y) > 0.5 * TILE || Math.abs(p.x - o.bx) > 0.6 * TILE) continue;
         o.hit.push(p);
         if (p.invincible() || p.grace > 0) continue;
-        if (p.shield) { p.shield = false; p.grace = 1.2; FX.shieldBreak(p.x, p.y); Sound.shieldBreak(); continue; }
+        if (p.shield) { p.shield--; p.grace = 1.2; FX.shieldBreak(p.x, p.y); Sound.shieldBreak(); continue; }
         Sound.clang(0.9, Vehicles.pan(p.x));
         Cam.addTrauma(0.35);
         FX.text(p.x, p.y + 12, 'WHACK!', '#ffb000', 18);

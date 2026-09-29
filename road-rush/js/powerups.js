@@ -82,7 +82,10 @@ const Powers = {
 
   grant(type, it, p = Player) {
     const def = POWERUPS[type];
-    if (type === 'shield') p.shield = true;
+    if (type === 'shield') { // shields stack
+      p.shield++;
+      if (p.shield > 1) { FX.text(it.x, it.y + 32, `x${p.shield} SHIELDS`, def.color, 16); }
+    }
     else if (type === 'freeze') { this.freeze = def.dur; FX.ice(it.x, it.y); Sound.freeze(); }
     else p.pw[type] = def.dur;
     Sound.powerup();

@@ -18,6 +18,7 @@ const FX = (() => {
   const clouds = [];      // blood clouds drifting in rivers (graphic mode)
   const lasers = [];
   const lens = [];        // blood on the "camera lens" (graphic mode)
+  const fountains = [];   // blood that keeps gushing after a death (graphic mode)
   const texts = [];
   const flash = { a: 0, rgb: '255,250,235' };
   const redPulse = { a: 0 };
@@ -117,7 +118,20 @@ const FX = (() => {
       if (d.grow && d.t < d.grow) d.r = d.r0 + (d.r1 - d.r0) * easeOutCubic(d.t / d.grow);
       if (d.t > d.life) gore.splice(i, 1);
     }
-    for (let i = bloodPools.length - 1; i >= 0; i--) if ((bloodPools[i].t += dt) > 20) bloodPools.splice(i, 1);
+    for (let i = bloodPools.length - 1; i >= 0; i--) if ((bloodPools[i].t += dt) > 40) bloodPools.splice(i, 1);
+    for (let i = fountains.length - 1; i >= 0; i--) { // blood still gushing from what's left
+      const f = fountains[i];
+      f.t += dt;
+      if (f.t > f.life) { fountains.splice(i, 1); continue; }
+      const k = 1 - f.t / f.life;
+      for (let n = dt * 70 * k; n > 0; n--) {
+        if (Math.random() > n) break;
+        spawn('blood', f.x + rand(-4, 4), f.y + rand(-3, 3), 4, {
+          vx: rand(-70, 70) + f.dir * 40, vy: rand(-50, 50), vz: rand(160, 340) * (0.5 + k * 0.5),
+          g: 950, drag: 0.4, life: 3, size: rand(1.6, 3.6), color: pick(BLOOD),
+        });
+      }
+    }
     for (let i = ripples.length - 1; i >= 0; i--) if ((ripples[i].t += dt) > ripples[i].life) ripples.splice(i, 1);
     for (let i = clouds.length - 1; i >= 0; i--) {
       const c = clouds[i];
@@ -165,7 +179,7 @@ const FX = (() => {
 
   function reset() {
     while (live.length) free.push(live.pop());
-    for (const a of [blasts, decals, gore, bloodPools, pools, ripples, clouds, lasers, lens, texts]) a.length = 0;
+    for (const a of [blasts, decals, gore, bloodPools, pools, ripples, clouds, lasers, lens, texts, fountains]) a.length = 0;
     flash.a = 0;
     redPulse.a = 0;
   }
@@ -627,13 +641,20 @@ const FX = (() => {
 
   // Graphic mode: a much bigger, messier blast.
   function carCrashViolent(x, y, colors) {
-    blasts.push({ x, y, t: 0, power: 1.75 });
-    scorchMark(x, y, 2.4 * TILE, 22, 0.6);
-    sparks(x, y, 18, 110, ['#fff3b0', '#ffd166', '#ffb703', '#ffffff', '#ff8a2a'], 760);
-    burst(x, y, colors, 1.9);
-    parts(x, y, colors, 1);
-    debrisRain(x, y, 14, 2 * TILE);
-    pools.push({ x, y, r: 0, maxR: 1.8 * TILE, t: 0, life: 7 });
+    blasts.push({ x, y, t: 0, power: 2.1 });
+    blasts.push({ x: x + rand(-18, 18), y, t: -0.1, power: 1.2 }); // a second fireball right after
+    scorchMark(x, y, 2.9 * TILE, 30, 0.7);
+    sparks(x, y, 18, 150, ['#fff3b0', '#ffd166', '#ffb703', '#ffffff', '#ff8a2a'], 860);
+    burst(x, y, colors, 2.3);
+    parts(x, y, colors, 1.5, 1.2);
+    debrisRain(x, y, 22, 2.6 * TILE);
+    for (let i = 0; i < 18; i++) { // black smoke billowing up
+      spawn('smoke', x + rand(-16, 16), y + rand(-8, 8), rand(16, 50), {
+        vz: rand(70, 140), g: -10, drag: 0.5, life: rand(2.2, 3.6), size: rand(10, 16), size2: rand(40, 64),
+        color: pick(['#1a1a1d', '#26262a']), alpha: 0.7,
+      });
+    }
+    pools.push({ x, y, r: 0, maxR: 2.2 * TILE, t: 0, life: 10 });
     if (pools.length > 5) pools.shift();
     spawn('glow', x, y, 18, { life: 0.35, size: 90, size2: 150, color: '#fff2c0', alpha: 1 });
   }
@@ -751,21 +772,21 @@ const FX = (() => {
       dots.push([Math.cos(a) * d + dir * stretch * r * 0.6, Math.sin(a) * d * 0.8, r * rand(0.12, 0.4)]);
     }
     const r0 = grow ? r * 0.35 : r;
-    gore.push({ x, y, z: groundZ(y), r: r0, r0: r, r1: r, dots, stretch, dir, t: 0, life: 34, a: rand(0.82, 0.95), color: pick(BLOOD_DECAL), grow });
+    gore.push({ x, y, z: groundZ(y), r: r0, r0: r, r1: r, dots, stretch, dir, t: 0, life: 60, a: rand(0.85, 0.97), color: pick(BLOOD_DECAL), grow });
     if (grow) gore[gore.length - 1].r0 = r0;
-    if (gore.length > 280) gore.shift();
+    if (gore.length > 450) gore.shift();
   }
 
   // A big pool that spreads; cars that drive through it get bloody tyres.
   function pool(x, y, r) {
-    splat(x, y, r, 0, 1, 1.4);
-    bloodPools.push({ x, y, r, t: 0 });
-    if (bloodPools.length > 8) bloodPools.shift();
+    splat(x, y, r * 1.35, 0, 1, 1.8);
+    bloodPools.push({ x, y, r: r * 1.35, t: 0 });
+    if (bloodPools.length > 14) bloodPools.shift();
   }
 
   function track(x, y, a, color = '#7d0612', len = 10) {
-    gore.push({ track: true, x, y, z: groundZ(y), t: 0, life: 12, a: 0.85 * a, color, dots: null, len });
-    if (gore.length > 280) gore.shift();
+    gore.push({ track: true, x, y, z: groundZ(y), t: 0, life: 20, a: 0.85 * a, color, dots: null, len });
+    if (gore.length > 450) gore.shift();
   }
 
   function cloud(x, y, r, vx) {
@@ -782,12 +803,14 @@ const FX = (() => {
         const a = rand(6.2832), d = r * rand(1.1, 2);
         dots.push([Math.cos(a) * d, Math.sin(a) * d, r * rand(0.1, 0.3)]);
       }
-      lens.push({ x: rand(0.05, 0.95), y: rand(0.05, 0.7), r, dots, drip: chance(0.7) ? rand(18, 60) : 0, len: 0, t: 0, life: rand(2.6, 4) });
+      lens.push({ x: rand(0.03, 0.97), y: rand(0.03, 0.8), r, dots, drip: chance(0.85) ? rand(24, 80) : 0, len: 0, t: 0, life: rand(4, 6.5) });
     }
-    redPulse.a = 1;
+    while (lens.length > 40) lens.shift();
+    redPulse.a = 1.25;
   }
 
   function spray(x, y, z, dir, n, speed = 1) {
+    n = Math.round(n * 1.8);
     for (let i = 0; i < n; i++) {
       const fwd = chance(0.75) ? 1 : -0.35;
       spawn('blood', x + rand(-6, 6), y + rand(-5, 5), z + rand(0, 12), {
@@ -800,6 +823,14 @@ const FX = (() => {
   // Cartoon body parts: chunks in the skin's colours plus a head, feet and wings.
   function bodyParts(x, y, dir, skin, n, speed = 1) {
     const cols = [skin.top, skin.front, '#b8111f', '#8a0b16', '#6a0510'];
+    n = Math.round(n * 1.7);
+    for (let i = 0; i < Math.round(n * 0.25); i++) { // cartoon bone shards
+      spawn('gib', x, y, rand(6, 14), {
+        vx: (dir * rand(60, 360) + rand(-80, 80)) * speed, vy: rand(-140, 140) * speed, vz: rand(180, 460),
+        g: 1000, bounce: 0.4, drag: 0.5, life: rand(3, 4.5), size: rand(3, 6),
+        color: pick(['#f4efe2', '#e8dfc8']), rot: rand(6.28), rotV: rand(-20, 20),
+      });
+    }
     for (let i = 0; i < n; i++) {
       spawn('gib', x, y, rand(6, 16), {
         vx: (dir * rand(40, 340) + rand(-70, 70)) * speed, vy: rand(-130, 130) * speed, vz: rand(150, 440),
@@ -817,6 +848,7 @@ const FX = (() => {
   }
 
   function mist(x, y, dir, n) {
+    n = Math.round(n * 1.6);
     for (let i = 0; i < n; i++) {
       spawn('smoke', x, y, rand(6, 18), {
         vx: dir * rand(20, 140), vy: rand(-40, 40), vz: rand(10, 60), drag: 2,
@@ -825,8 +857,15 @@ const FX = (() => {
     }
   }
 
+  // Blood keeps gushing out of the remains for a while.
+  function fountain(x, y, dir = 0, life = 2.2) {
+    fountains.push({ x, y, dir, t: 0, life });
+    if (fountains.length > 6) fountains.shift();
+  }
+
   // Run over by a car.
   function roadkill(x, y, dir, skin) {
+    fountain(x + dir * 6, y, dir * 0.5, 2.6);
     spray(x, y, 4, dir, 230);
     mist(x, y, dir, 14);
     bodyParts(x, y, dir, skin, 26);
@@ -844,6 +883,8 @@ const FX = (() => {
 
   // Hit by a train: nothing much is left.
   function trainRoadkill(x, y, dir, skin) {
+    fountain(x, y, dir, 1.4);
+    for (let k = 1; k <= 3; k++) pool(x + dir * k * 60, y + rand(-5, 5), rand(10, 16)); // smeared down the track
     spray(x, y, 8, dir, 320, 1.8);
     mist(x, y, dir, 22);
     bodyParts(x, y, dir, skin, 34, 1.8);
@@ -854,6 +895,7 @@ const FX = (() => {
 
   // Crushed by something enormous (the giant chicken).
   function crushed(x, y, skin) {
+    fountain(x, y, 0, 2.4);
     spray(x, y, 2, 1, 120);
     spray(x, y, 2, -1, 120);
     mist(x, y, 1, 10);
@@ -873,7 +915,7 @@ const FX = (() => {
   }
 
   // Graphic mode: bleeding a little after being blasted (never lethal).
-  function bleed(x, y, n = 20) {
+  function bleed(x, y, n = 30) {
     spray(x, y, 12, chance(0.5) ? 1 : -1, n, 0.4);
     splat(x, y, rand(5, 8));
   }
@@ -1037,7 +1079,7 @@ const FX = (() => {
     sparks, carCrash, carCrashViolent, secondaryBlast, tankerBlast, trainCrash, meteorImpact, debrisRain, scorchMark,
     wreckFire, wreckSmoke, laser, ripple, splash, bubbles,
     splat, pool, track, cloud, lensSplat, roadkill, trainRoadkill, crushed, piranhas, bleed, scorch, puff,
-    dust, pickup, coin, feathers, ice, shieldBreak, text, flashScreen, beef, whack, hopTrail, twigs, lights,
+    dust, pickup, coin, feathers, ice, shieldBreak, text, flashScreen, beef, whack, hopTrail, twigs, lights, fountain,
     bloodPools,
     get count() { return live.length; },
     get quality() { return quality; },
