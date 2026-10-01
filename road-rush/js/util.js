@@ -107,6 +107,7 @@ const Settings = {
   replay: true,
   motion: false,     // reduced motion
   colorblind: false,
+  forks: true,       // pick your next biome at road forks (off: be surprised)
   keys: { ...DEFAULT_KEYS },
   load() {
     const s = Store.get('settings', {}) || {};
@@ -120,6 +121,7 @@ const Settings = {
     this.lowGfx = s.lowGfx === true;
     this.motion = s.motion === undefined ? prefersReduced : s.motion === true;
     this.colorblind = s.colorblind === true;
+    this.forks = s.forks !== false;
     this.keys = { ...DEFAULT_KEYS };
     if (s.keys && typeof s.keys === 'object') {
       for (const k in DEFAULT_KEYS) if (typeof s.keys[k] === 'string') this.keys[k] = s.keys[k];
@@ -128,7 +130,7 @@ const Settings = {
   save() {
     Store.set('settings', {
       gore: this.gore, shake: this.shake, ghost: this.ghost, replay: this.replay, graves: this.graves, lowGfx: this.lowGfx,
-      motion: this.motion, colorblind: this.colorblind, keys: this.keys,
+      motion: this.motion, colorblind: this.colorblind, forks: this.forks, keys: this.keys,
     });
   },
   // Camera shake is off when the player turned it off or asked for reduced motion.

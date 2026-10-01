@@ -115,7 +115,7 @@ const Game = {
     SecretRoom.reset();
     River.steps.length = 0;
     Reverse.reset();
-    World.reset(seed, { speedMul: M.speedMul, gapMul: M.gapMul, powerups: M.powerups, forks: M.players !== 2 });
+    World.reset(seed, { speedMul: M.speedMul, gapMul: M.gapMul, powerups: M.powerups, forks: M.players !== 2 && Settings.forks });
     if (this.players.length > 1) { Player.reset(3); Player2.reset(7); }
     else Player.reset(START_COL);
     Pets.reset();
@@ -159,7 +159,8 @@ const Game = {
     Sound.init();
     Sound.click();
     const gapNow = (this.modeDef(mode).gapMul || 1) * Upgrades.gap(); // a Fewer Cars level bought on the title screen needs a new road
-    const fresh = this.state !== 'title' || mode !== this.mode || Math.abs(World.gapMul - gapNow) > 1e-6;
+    const forksNow = this.modeDef(mode).players !== 2 && Settings.forks; // the road-forks setting changed on the title screen
+    const fresh = this.state !== 'title' || mode !== this.mode || Math.abs(World.gapMul - gapNow) > 1e-6 || World.forkOn !== forksNow;
     this.mode = mode;
     if (fresh) this.reset((Math.random() * 4294967296) >>> 0);
     this.state = 'playing';

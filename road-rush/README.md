@@ -55,8 +55,15 @@ uses `W A S D` and player two the arrow keys.
   signpost with a green board pointing each way, each to a different biome.
   Walk past the sign on the side you want and that's the biome you get next
   (the board you picked lights up). Forks are in single-player runs; two
-  players get the normal order.
-- **Biomes.** The first 80 rows are countryside, then every 90 rows the world
+  players get the normal order. Turn **Road forks** off in Settings if you'd
+  rather be surprised.
+- **Every run is different.** Biomes last 80 to 130 rows (the opening
+  countryside 80 to 100), and each run has its own mood: more rivers in one,
+  more railroads or road work in another, busier or quieter roads. Grass
+  strips can be dense little woods or open fields, there are the odd fast and
+  slow lanes, rare wide highways, double railroads and long open meadows.
+  There's always a way through.
+- **Biomes.** The first 80 to 100 rows are countryside, then the world
   changes to one of nine biomes, with a green "Entering…" sign at the border:
   - *Countryside:* trees and meadows; cows wander onto the road and stop
     traffic, and deer bolt across it.
@@ -88,7 +95,8 @@ uses `W A S D` and player two the arrow keys.
 - **Combo fever.** Reach a x10 close-call combo and the screen glows gold:
   every coin is worth triple until the combo breaks.
 - **Graveyard markers.** A little cross marks the spot where your last run
-  ended (you can turn it off in Settings).
+  ended, always on solid ground: if that spot is a river or a road this time,
+  it stands on the nearest grass instead (you can turn it off in Settings).
 - **Day and night.** A full day lasts about three minutes. At night the road
   goes dark and only lights cut through it: headlights, street lamps, train
   lamps, fires, lit windows and a small glow around you. Tail lights and
@@ -419,6 +427,8 @@ report. Your choices are saved in the browser.
 - **Ghost of best run** and **Death replay** (a slow-motion instant replay of
   how you died, which any key or tap skips).
 - **Graveyard markers:** show where you died last run.
+- **Road forks:** pick your next biome at forks in the road, or turn it off
+  to be surprised.
 - **Performance mode:** lower resolution and fewer particles for slower
   computers and phones. Even with it off, the game drops its resolution by
   itself if frames start running slow, and steps back up when they're smooth.

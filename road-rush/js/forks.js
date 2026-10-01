@@ -18,15 +18,17 @@ const Forks = {
 
   reset() { this.list = []; },
 
+  // A fork stands FORK_LEAD rows before each biome starts.
   isForkRow(i) {
-    const f0 = FIRST_ZONE - FORK_LEAD;
-    return World.forkOn && i >= 6 && i >= f0 && (i - f0) % ZONE_LEN === 0;
+    if (!World.forkOn || i < 6) return false;
+    const k = World.zoneIndex(i + FORK_LEAD);
+    return k >= 0 && World.bounds[k] === i + FORK_LEAD;
   },
 
   // Build the fork on this (grass) row: both sides open, the signpost in the middle.
   setup(row) {
     const W = World, boundary = row.i + FORK_LEAD;
-    const idx = Math.floor((boundary - FIRST_ZONE) / ZONE_LEN) % W.zoneSeq.length;
+    const idx = W.zoneIndex(boundary) % W.zoneSeq.length;
     const cur = W.zoneAt(boundary - 1);
     let planned = W.zoneSeq[idx];
     const others = Object.keys(ZONES).filter(z => z !== cur);
@@ -83,11 +85,15 @@ const Forks = {
       c.fillStyle = '#f7f7f2';
       c.textAlign = 'center';
       c.textBaseline = 'middle';
-      const label = ZONE_SHORT[z];
-      c.font = `900 ${label.length > 9 ? 6 : 7}px ${UI_FONT}`;
-      c.fillText(label, (x0 + x1) / 2 + s * 3, P(-2.5, 43));
-      c.font = `900 8px ${UI_FONT}`;
-      c.fillText(s < 0 ? '◀' : '▶', s < 0 ? x0 + 7 : x1 - 7, P(-2.5, 43));
+      // the arrow sits at the outer end; the name fills the rest, shrunk until it fits
+      const label = ZONE_SHORT[z], room = x1 - x0 - 19;
+      const mid = (x0 + x1) / 2 - s * 4.5;
+      let size = 7.5;
+      c.font = `900 ${size}px ${UI_FONT}`;
+      while (c.measureText(label).width > room && size > 4) { size -= 0.25; c.font = `900 ${size}px ${UI_FONT}`; }
+      c.fillText(label, mid, P(-2.5, 43));
+      c.font = `900 7px ${UI_FONT}`;
+      c.fillText(s < 0 ? '◀' : '▶', s < 0 ? x0 + 6.5 : x1 - 6.5, P(-2.5, 43));
       if (f.side === side) { // the way you went
         c.strokeStyle = '#ffd23f';
         c.lineWidth = 1.6;

@@ -263,15 +263,36 @@ const Graves = {
 
   update() {
     const m = this.mark;
-    if (!m || m.seen || Game.state !== 'playing') return;
+    if (!m || m.seen || m.gone || !m.placed || Game.state !== 'playing') return;
     if (Player.maxRow >= m.row) {
       m.seen = true;
       FX.text(m.x, m.y + 30, 'YOU DIED HERE LAST TIME', '#e8e8f0', 12);
     }
   },
 
+  // The road is different every run, so last run's spot may now be a river or
+  // a road: stand the marker on the nearest open grass instead (or skip it).
+  place(m) {
+    for (const dr of [0, -1, 1, -2, 2, -3, 3]) {
+      const R = World.rows.get(m.row + dr);
+      if (!R) return false; // not built yet: try again next frame
+      if (R.type !== 'grass') continue;
+      const c0 = clamp(Math.round(m.x / TILE - 0.5), 0, COLS - 1);
+      for (const dc of [0, -1, 1, -2, 2, -3, 3]) {
+        const c = c0 + dc;
+        if (c < 0 || c >= COLS || R.blocked[c]) continue;
+        m.row = R.i; m.y = R.y; m.x = cellX(c);
+        return true;
+      }
+    }
+    m.gone = true;
+    return true;
+  },
+
   drawables(list) {
     const m = this.mark;
-    if (m && Settings.graves && Game.state !== 'title') { m.key = m.y - 6; list.push(m); }
+    if (!m || !Settings.graves || Game.state === 'title') return;
+    if (!m.placed) m.placed = this.place(m);
+    if (m.placed && !m.gone) { m.key = m.y - 6; list.push(m); }
   },
 };

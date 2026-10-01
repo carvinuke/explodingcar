@@ -99,6 +99,7 @@ const UI = {
     on('set-ghost', flip('ghost'));
     on('set-replay', flip('replay'));
     on('set-graves', flip('graves'));
+    on('set-forks', flip('forks'));
     on('set-lowgfx', () => { Settings.lowGfx = !Settings.lowGfx; Settings.save(); this.syncSettings(); Renderer.resScale = 1; Renderer.resize(); Sound.click(); });
     on('set-motion', flip('motion'));
     on('set-colorblind', flip('colorblind'));
@@ -247,6 +248,7 @@ const UI = {
     set('set-ghost', Settings.ghost);
     set('set-replay', Settings.replay);
     set('set-graves', Settings.graves);
+    set('set-forks', Settings.forks);
     set('set-lowgfx', Settings.lowGfx);
     set('set-motion', Settings.motion);
     set('set-colorblind', Settings.colorblind);
