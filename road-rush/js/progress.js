@@ -318,6 +318,46 @@ Object.assign(PETS, {
   mimic: { name: 'Mimic', price: 0, box: true, rare: 'MYSTERY', perk: 'A hungry treasure chest that eats the coins you hop past (and gives them to you)' },
 });
 
+// Rewards for long-term goals: biome mastery (all three stars), Roadex pages,
+// prestige, and the new trophies.
+Object.assign(SKINS, {
+  hen:        bird('Country Hen', 0, '#c46a32', '#9a4a1f', '#b0582a', '#7f3a16', { mastery: 'country' }),
+  lizard:     critter('Desert Lizard', 0, '#d9b45a', '#b08a3a', '#8a6a2a', { mastery: 'desert', spikes: '#c46a32', tail: 'dino', eyes: 'big' }),
+  yeti:       critter('Yeti', 0, '#f4f8ff', '#cfdcef', '#9fb2cc', { mastery: 'snow', ears: 'round', earIn: '#9fd0ff', snout: 'monkey', snoutColor: '#bfe2ff', glow: 'rgba(200,235,255,0.3)' }),
+  harvest:    bird('Harvest Chick', 0, '#f2d27a', '#d9a83a', '#e8c460', '#b8902a', { mastery: 'farm', comb: ['#7fb84a', '#5f9437'], beak: ['#ff9f1c', '#e07a00'] }),
+  bogfrog:    { name: 'Bog Frog', price: 0, mastery: 'swamp', kind: 'frog', top: '#7a9a3a', front: '#4f6b2a', wingTop: null, wingFront: null, comb: null, beak: null, feet: '#3a5220', eyeColor: '#ffd23f' },
+  harborgull: bird('Harbor Gull', 0, '#ffffff', '#dfe3ea', '#c9ced8', '#9aa2ad', { mastery: 'harbor', comb: null, beak: ['#ffd23f', '#e0a800'], feet: '#ffb000' }),
+  lamb:       critter('Little Lamb', 0, '#f7f5ee', '#dcd8cc', '#2b2522', { roadex: 'critters', ears: 'round', earIn: '#ffc4c4', snout: 'cat', nose: '#2b2522', tail: 'puff', cheeks: true }),
+  treasure:   bird('Treasure Chick', 0, '#ffe066', '#c79bff', '#ffd23f', '#a95cff', { roadex: 'specials', shine: true, glow: 'rgba(200,150,255,0.3)', comb: ['#ff5c8a', '#d63a6a'] }),
+  prestigechick: bird('Prestige Chick', 0, '#ffffff', '#e8e0ff', '#fff2b0', '#ffd23f', { prestige: 3, stars: true, shine: true, glow: 'rgba(255,240,180,0.45)', comb: ['#ffd23f', '#e0a800'], beak: ['#ffe98a', '#f0b400'] }),
+  hologram:   bird('Hologram Chick', 0, '#bff8ff', '#5fd8f0', '#9ff0ff', '#3cb8d8', { unlock: 'roadexall', shine: true, glow: 'rgba(120,240,255,0.45)', comb: ['#9ff0ff', '#5fd8f0'], beak: ['#e8fdff', '#9ff0ff'], feet: '#5fd8f0' }),
+});
+Object.assign(TRAILS, {
+  neoncity: { name: 'Neon City', price: 0, mastery: 'city' },
+  seaspray: { name: 'Sea Spray', price: 0, mastery: 'beach' },
+  maple:    { name: 'Maple Storm', price: 0, mastery: 'autumn' },
+  surge:    { name: 'Power Surge', price: 0, roadex: 'powerups' },
+  storm:    { name: 'Storm Chaser', price: 0, roadex: 'weather' },
+  prestige: { name: 'Prestige Stars', price: 0, prestige: 5 },
+});
+Object.assign(TITLES, {
+  gearhead:  { name: 'Gearhead', price: 0, roadex: 'vehicles' },
+  weirdo:    { name: 'Weirdo Magnet', price: 0, roadex: 'events' },
+  globe:     { name: 'Globetrotter', price: 0, roadex: 'biomes' },
+  minmaxer:  { name: 'Min-Maxer', price: 0, roadex: 'upgrades' },
+  reborn:    { name: 'Reborn', price: 0, prestige: 1 },
+  immortal:  { name: 'Immortal', price: 0, prestige: 10 },
+  goldchild: { name: 'Golden Child', price: 0, unlock: 'golden' },
+  sewerrat:  { name: 'Sewer Rat', price: 0, unlock: 'spelunker' },
+  theory:    { name: 'Theorycrafter', price: 0, unlock: 'buildmaster' },
+  ranger:    { name: 'Park Ranger', price: 0, unlock: 'biomemaster' },
+  carto:     { name: 'Cartographer', price: 0, unlock: 'cartographer' },
+  evolver:   { name: 'Evolutionist', price: 0, unlock: 'evolution' },
+});
+
+// Earned, not bought.
+const earnedOnly = it => !!(it.unlock || it.level || it.egg || it.box || it.mastery || it.roadex || it.prestige);
+
 // What each pet's perk becomes at level 5 (shown in the shop).
 const PET_MAX = {
   duck: '+40% XP', dog: 'Fetches from much further away', cat: 'Blocks two hits per run', minij: 'UFOs are too scared to take you either',
@@ -389,7 +429,10 @@ const Shop = {
     const item = SHOP_TABS[tab][id];
     if (!item) return false;
     if (item.unlock) return Trophies.has(item.unlock);
-    if (item.level) return Levels.level >= item.level;
+    if (item.level) return Levels.level >= item.level || Prestige.n > 0; // prestige keeps your level rewards
+    if (item.mastery) return Mastery.done(item.mastery);
+    if (item.roadex) return Roadex.pageDone(item.roadex);
+    if (item.prestige) return Prestige.n >= item.prestige;
     return this.owned[tab].includes(id);
   },
 
@@ -397,7 +440,7 @@ const Shop = {
 
   buy(tab, id) {
     const item = SHOP_TABS[tab][id];
-    if (!item || item.unlock || item.level || item.egg || item.box || this.has(tab, id) || Game.bank < item.price) return false;
+    if (!item || earnedOnly(item) || this.has(tab, id) || Game.bank < item.price) return false;
     Game.bank -= item.price;
     Store.set('coins', Game.bank);
     this.owned[tab].push(id);

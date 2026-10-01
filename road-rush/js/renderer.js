@@ -158,6 +158,7 @@ const Renderer = {
     const c = this.c;
     this.metrics();
     if (Reverse.arena) { Reverse.draw(c, time); return; }
+    if (SecretRoom.shown) { SecretRoom.draw(c, time); return; }
     c.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     c.fillStyle = ZONES[World.zoneAt(Math.round(Cam.y / TILE))].bg;
     c.fillRect(0, 0, this.W, this.H);
@@ -238,6 +239,8 @@ const Renderer = {
 
     Lighting.draw(c, time);
     this.screen(c, time, dt);
+    c.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    SecretRoom.drawFade(c, this.W, this.H); // dropping into (or climbing out of) a secret room
   },
 
   // ---- Ground ------------------------------------------------------------------------
@@ -498,7 +501,7 @@ const Renderer = {
         Draw.shadow(c, o.x, o.y, 0.35 * TILE, 0.3 * TILE, 0.6); break;
       case 'barrier': Draw.shadow(c, o.x, o.y, 0.9 * TILE, 0.4 * TILE, 0.6); break;
       case 'excavator': Draw.shadow(c, o.x, o.y, 2.1 * TILE, 0.95 * TILE, 0.9); break;
-      case 'item': Draw.shadow(c, o.x, o.y, 0.5 * TILE, 0.4 * TILE, 0.45); break;
+      case 'item': if (o.type !== 'manhole') Draw.shadow(c, o.x, o.y, 0.5 * TILE, 0.4 * TILE, 0.45); break;
       case 'deer': Draw.shadow(c, o.x, o.y, 0.9 * TILE, 0.5 * TILE, 0.6 * o.alpha); break;
       case 'weed': Draw.shadow(c, o.x, o.y, o.r * 2.4, o.r * 1.8, 0.5); break;
       case 'medic': Draw.shadow(c, o.x, o.y, 0.45 * TILE, 0.35 * TILE, 0.6); break;
@@ -528,8 +531,12 @@ const Renderer = {
         if (o.rot) c.rotate(o.rot);
         c.save();
         if (o.dir < 0) c.scale(-1, 1);
-        if (o.animal) Draw.cow(c, o, time);
-        else Draw.vehicle(c, o, Powers.frost, time);
+        if (o.animal) { Draw.cow(c, o, time); Roadex.see('critters', o.sheep ? 'sheep' : 'cow'); }
+        else {
+          Draw.vehicle(c, o, Powers.frost, time);
+          Roadex.see('vehicles', o.type);
+          if (o.drunk) Roadex.see('events', 'drunk');
+        }
         c.restore();
         if (o.reckless && !o.police) Draw.warning(c, time, VEHICLE_TYPES[o.type].h * TILE + 34);
         break;
@@ -537,6 +544,7 @@ const Renderer = {
       case 'traincar':
         if (o.dir < 0) c.scale(-1, 1);
         Draw.trainCar(c, o, time, (o.type === 'loco' || o.front) && o.rail.bloody);
+        Roadex.see('vehicles', o.rail.tram ? 'tram' : 'train');
         break;
       case 'log': Draw.log(c, o, time, Game.players.some(p => p.ride === o)); break;
       case 'xing': Draw.xing(c, o, time); break;
@@ -547,22 +555,32 @@ const Renderer = {
       case 'hay': case 'corn': case 'scarecrow': case 'reeds': case 'stump': case 'crate': case 'barrel': case 'bollard': case 'container':
         Sprites.draw(c, o, 0);
         break;
-      case 'gull': Draw.gull(c, o, time); break;
+      case 'gull': Draw.gull(c, o, time); Roadex.see('critters', 'gull'); break;
       case 'mesa': Draw.mesa(c, o); break;
       case 'building': Draw.building(c, o); break;
       case 'barrier': Draw.barrier(c, time); break;
       case 'worksign': Draw.worksign(c, time); break;
       case 'excavator': Draw.excavator(c, o, time); break;
       case 'welcome': Draw.welcome(c, o); break;
-      case 'deer': c.globalAlpha = Math.max(0, o.alpha); Draw.deer(c, o, time); break;
-      case 'weed': Draw.weed(c, o); break;
+      case 'deer': c.globalAlpha = Math.max(0, o.alpha); Draw.deer(c, o, time); Roadex.see('critters', 'deer'); break;
+      case 'weed': Draw.weed(c, o); Roadex.see('critters', 'weed'); break;
       case 'medic': Draw.medic(c, o, time); break;
-      case 'pet': Draw.pet(c, o, time); break;
+      case 'pet':
+        if (Evolve.has(o.type) && Game.players.length === 1) { // an evolved pet: bigger, with a golden glow
+          Evolve.aura(c, o, time);
+          c.save();
+          c.scale(1.3, 1.3);
+          Draw.pet(c, o, time);
+          c.restore();
+          Evolve.sparkles(c, o, time);
+        } else Draw.pet(c, o, time);
+        break;
       case 'item':
         if (o.type === 'coin') Draw.coin(c, o, time);
         else if (o.type === 'egg' || o.type === 'goldegg') Draw.egg(c, o, time);
         else if (o.type === 'stand') Draw.stand(c, o, time);
         else if (o.type === 'box') Draw.mysteryBox(c, o, time);
+        else if (o.type === 'manhole') SecretRoom.drawHole(c, o, time);
         else Draw.powerItem(c, o, time);
         break;
       case 'ghost': Draw.bestGhost(c, o.z, o.alpha); break;
@@ -807,6 +825,7 @@ const Renderer = {
       c.fillRect(0, 0, W, H);
       this.vignette(c, `rgba(60,30,120,${0.5 * k})`);
     }
+    Golden.drawScreen(c, W, H, time);
     if (Game.fever && Game.state === 'playing') { // combo fever: golden edges
       this.vignette(c, `rgba(255,200,40,${0.32 + 0.12 * Math.sin(time * 9)})`);
       c.fillStyle = 'rgba(255,215,80,0.06)';

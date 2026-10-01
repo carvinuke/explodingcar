@@ -188,6 +188,73 @@ coins instead. A Ghostie pet makes eggs show up twice as often.
 - *Robo Pup* (rare): fetches power-ups from far away, and they last 50% longer.
 - *Lucky Cat* (rare): far more coins show up on the road.
 
+## Run upgrades
+
+Every 40 rows the road stops at a checkpoint and you pick one of three
+upgrades for the rest of the run (click a card or press 1, 2 or 3). There are
+34 of them in seven groups, in common, rare and epic tiers, and most stack:
+
+- **Power-ups:** Power Surge (more power-ups), Long Lasting, Overcharged
+  (power-ups pay coins), Care Package (a free power-up every 30 rows), Rocket
+  Boots (a free jetpack every 45 rows).
+- **Traffic:** Speed Bumps (cars 10% slower), Late Trains, Air Horn (you honk
+  every 15 rows), Sunday Drivers (no reckless drivers).
+- **Coins:** Loose Change (more coins), Piggy Bank (double coins), Pocket
+  Magnet, Interest (10% of your run's coins at each checkpoint), Odometer,
+  Haggler (half-price roadside stands).
+- **Defense:** Bodyguard (two shields), Shield Factory (a shield per biome),
+  Second Wind (come back from one death), Slim Fit (a smaller hitbox), Life
+  Jacket (stay afloat once per biome), Lucky Charm (secret events can't kill
+  you).
+- **Movement:** Quick Feet (faster hops), Head Start (a slower danger line).
+- **Score:** Bookworm (+30% XP), Steady Hands (longer combos), Fever Pitch
+  (combo fever at x6), Daredevil (close calls pay coins).
+- **Luck:** Treasure Hunter (more mystery boxes), Egg Scout, Treasure Map
+  (more secret manholes), Best Friend (your pet acts like it's level 5),
+  Sunny Days, Gambler (two random upgrades at once), and Extra Time in Time
+  Attack.
+
+Hardcore never offers the power-up upgrades (it has no power-ups). The pause
+screen and the report list what you picked.
+
+## Golden runs and secret rooms
+
+- **Golden runs:** about 1 run in 40 starts golden. Every car turns gold, gold
+  dust drifts across the screen and every coin is worth double.
+- **Secret rooms:** now and then there's a manhole on the grass with a glint of
+  gold under it. Step on it and you drop into a secret vault with 9 seconds to
+  grab coins, gold bars and a big gem. One in four is a treasure room with a
+  mystery box at the back. The road waits for you while you're down there.
+
+## Long-term goals
+
+The Goals button on the title screen has three pages:
+
+- **Biome mastery:** every biome has three stars: cross it in one run, cross
+  it without grabbing a power-up, and get a x8 close-call combo in it. All
+  three stars unlock that biome's reward: Country Hen, Neon City trail, Desert
+  Lizard, Yeti, Sea Spray trail, Harvest Chick, Bog Frog, Maple Storm trail
+  and Harbor Gull.
+- **Roadex:** a collection book of everything you've seen on the road:
+  vehicles, critters, secret events, power-ups, biomes, weather, run upgrades
+  and specials (103 entries). Every new entry pays 10 coins, every finished
+  page pays 250 and unlocks a reward (Gearhead, Little Lamb, Weirdo Magnet,
+  Power Surge trail, Globetrotter, Storm Chaser trail, Min-Maxer and the
+  Treasure Chick), and finishing the whole book unlocks the Hologram Chick.
+- **Prestige:** at level 50 you can prestige. You go back to level 1 and keep
+  everything you've unlocked, and you get a star next to your level and a
+  permanent +5% coins and XP, up to 10 times. Prestige 1, 3, 5 and 10 unlock
+  the Reborn title, the Prestige Chick, the Prestige Stars trail and the
+  Immortal title.
+
+Two more things keep going between runs:
+
+- **Box shards:** every mystery box has a shard in it, and a mystery-box
+  exclusive you already own turns into 5 more. Spend 20 shards in the shop to
+  craft any exclusive you're missing.
+- **Pet evolutions:** a level 5 pet can evolve for 1,500 coins. Mega pets are
+  bigger, glow gold with sparkles around them, and give +20% XP and +10% coins.
+
 ## Progression
 
 - **Levels and XP:** every run earns XP (rows, coins, close calls, events
@@ -200,7 +267,7 @@ coins instead. A Ghostie pet makes eggs show up twice as often.
   Crown of Fire (38), Shadow Cat (40), the Aurora trail (42), Cosmic Big J (45),
   and at level 50, Golden Big J and the Pure Gold trail. The report shows the
   XP you earned and what the next level unlocks.
-- **Shop:** 215 cosmetics in seven tabs, with a collection counter at the top.
+- **Shop:** 243 cosmetics in seven tabs, with a collection counter at the top.
   Unlocking everything takes a day or two of playing.
   - **Death effects (15):** how you go when you get hit, on top of the
     crash: Party Popper, Heartbreak, Game Over pixels, Bubble Pop, Jackpot,
@@ -281,7 +348,7 @@ coins instead. A Ghostie pet makes eggs show up twice as often.
     still on the water, it pops.
   - *Decoy:* leaves a fake you behind for 10 seconds. The giant goose, UFOs,
     meteors and lightning go after it instead of you.
-- **Trophies:** 39 achievements, such as surviving three explosions in one run,
+- **Trophies:** 49 achievements, such as surviving three explosions in one run,
   a close call with a train, getting trampled by a deer, getting picked up
   by a tornado and living, playing 500 runs, reaching row 500, or owning 40,
   90 and finally every cosmetic. Many unlock things you can't buy: the Crash
@@ -345,8 +412,10 @@ for the rest of the session. From there you can:
   blow up every car on screen, or kill yourself to see the replay
 - give yourself any pet (including the egg-only ones)
 - start a Reverse Day, drop an egg in front of you, hatch one on the spot,
-  max out Big J's rage, spawn a roadside stand or a mystery box, start combo
-  fever, or max out your pet's level
+  max out Big J's rage, spawn a roadside stand, a mystery box or a secret
+  manhole, start combo fever, open an upgrade checkpoint, make your next run
+  golden, max out your pet's level, add box shards, or earn every biome star
+  and fill the Roadex
 - grant any power-up, start any secret event, or summon a tornado, lightning,
   a drunk driver, a reckless driver, a cow, deer or a seagull
 - force the weather or jump to morning, sunset or night
@@ -384,6 +453,8 @@ Plain scripts that share a few global objects, loaded in order by `index.html`:
 | `js/events.js` | `Events`: secret events |
 | `js/storms.js` | `Storms`: lightning and tornadoes |
 | `js/extras.js` | `DeathFX`, `Prints` (footprints), `Boxes` (mystery boxes) and `PetLevels` |
+| `js/upgrades.js` | `Upgrades` (run upgrades at checkpoints), `Golden` (golden runs) and `SecretRoom` |
+| `js/goals.js` | `Mastery` (biome stars), `Roadex`, `Prestige`, `Shards` and `Evolve` (pet evolutions) |
 | `js/specials.js` | `Rage` (Big J's rage stomp and Big S's calm), `Egg` (carrying and hatching) and `Graves` (where you died last run) |
 | `js/reverse.js` | `Reverse`: Reverse Day, where you drive and the chickens cross |
 | `js/camera.js` | `Cam`: follow (one or two players), shake, zoom |

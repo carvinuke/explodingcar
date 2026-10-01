@@ -61,6 +61,7 @@ const Storms = {
       y = (p.row + randInt(0, 3)) * TILE;
     }
     this.bolts.push({ x, y, t: 0, warn: 1.15, struck: false, seed: rand(1000) });
+    Roadex.see('events', 'lightning');
     FX.flashScreen(0.1, '200,215,255'); // distant flicker
     if (!this.stormWarned) {
       this.stormWarned = true;
@@ -101,6 +102,7 @@ const Storms = {
       speed: rand(55, 75), t: 0, spin: 0, rumble: 0, carried: [],
     });
     UI.toast('t-event', 'TORNADO!', 'Stay out of its path', 3600);
+    Roadex.see('events', 'tornado');
     Sound.eventSting();
   },
 

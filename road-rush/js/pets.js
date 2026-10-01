@@ -39,7 +39,7 @@ const Pets = {
   },
 
   // Level 5: the pet's perk gets stronger.
-  maxed() { return !!this.pet && PetLevels.maxed(this.pet.type); },
+  maxed() { return !!this.pet && (PetLevels.maxed(this.pet.type) || (Upgrades.has('bestfriend') && Game.players.length === 1)); },
   up(normal, max) { return this.maxed() ? max : normal; },
 
   // A pet's passive perk from its PETS entry (luck, xp, grip...), if one is out.
@@ -163,7 +163,7 @@ const Pets = {
     // the robo pup fetches power-ups from far away
     if (pet.type === 'robopup' && active) {
       for (const it of Items.list) {
-        if (it.type === 'coin' || it.type === 'egg' || it.type === 'goldegg' || it.type === 'stand') continue;
+        if (it.type === 'coin' || it.type === 'egg' || it.type === 'goldegg' || it.type === 'stand' || it.type === 'manhole') continue;
         const dx = p.x - it.x, dy = p.y - it.y, d = Math.hypot(dx, dy);
         if (d < this.up(6, 9) * TILE && d > 1) { const s = Math.min(d, 260 * dt); it.x += (dx / d) * s; it.y += (dy / d) * s; }
       }
@@ -306,6 +306,28 @@ const Pets = {
     const pet = this.pet;
     pet.reborn = (pet.reborn || 0) + 1; // twice per run at level 5
     const ox = p.x, oy = p.y;
+    this.respawn(p);
+    pet.x = p.x;
+    pet.y = p.y - 0.5 * TILE;
+    // ashes where you fell, fire where you rise
+    for (let i = 0; i < 16; i++) FX.spawn('smoke', ox + rand(-8, 8), oy + rand(-5, 5), rand(4, 16), { vz: rand(20, 60), g: -15, drag: 1, life: rand(1, 1.6), size: 4, size2: 14, color: '#4a4a50', alpha: 0.6 });
+    for (let i = 0; i < 60; i++) {
+      const a = rand(6.2832), sp = rand(40, 200);
+      FX.spawn('fire', p.x + Math.cos(a) * 6, p.y + Math.sin(a) * 4, rand(0, 30), { vx: Math.cos(a) * sp, vy: Math.sin(a) * sp * 0.6, vz: rand(40, 220), g: -40, drag: 1.8, life: rand(0.4, 0.9), size: rand(8, 16), size2: 2 });
+    }
+    FX.spawn('glow', p.x, p.y, 20, { life: 0.5, size: 40, size2: 160, color: '#ffb040', alpha: 0.9 });
+    const n = Vehicles.blastVehicles(p.x, p.y, 3.2 * TILE);
+    FX.flashScreen(0.65, '255,150,40');
+    Cam.addTrauma(0.6);
+    Game.slowmo(0.3, 0.7);
+    Sound.rebirth();
+    FX.text(p.x, p.y + 44, 'REBORN FROM THE ASHES!', '#ffb040', 20);
+    UI.toast('t-hatch', 'THE PHOENIX BROUGHT YOU BACK', n ? `and torched ${n} car${n > 1 ? 's' : ''} while it was at it` : 'Once per run. Make it count', 3600);
+    Trophies.add('reborn');
+  },
+
+  // Back on your feet somewhere safe (the phoenix, and the Second Wind upgrade).
+  respawn(p) {
     // somewhere safe: the first grass row from here on, clear of the danger line
     const from = Math.max(p.row, Math.ceil(Game.danger.y / TILE) + 3);
     World.ensure(from + 16);
@@ -331,23 +353,6 @@ const Pets = {
     p.grace = 2.5;
     p.squash = 1;
     if (row > p.maxRow) Game.onPlayerMove(p);
-    pet.x = p.x;
-    pet.y = p.y - 0.5 * TILE;
-    // ashes where you fell, fire where you rise
-    for (let i = 0; i < 16; i++) FX.spawn('smoke', ox + rand(-8, 8), oy + rand(-5, 5), rand(4, 16), { vz: rand(20, 60), g: -15, drag: 1, life: rand(1, 1.6), size: 4, size2: 14, color: '#4a4a50', alpha: 0.6 });
-    for (let i = 0; i < 60; i++) {
-      const a = rand(6.2832), sp = rand(40, 200);
-      FX.spawn('fire', p.x + Math.cos(a) * 6, p.y + Math.sin(a) * 4, rand(0, 30), { vx: Math.cos(a) * sp, vy: Math.sin(a) * sp * 0.6, vz: rand(40, 220), g: -40, drag: 1.8, life: rand(0.4, 0.9), size: rand(8, 16), size2: 2 });
-    }
-    FX.spawn('glow', p.x, p.y, 20, { life: 0.5, size: 40, size2: 160, color: '#ffb040', alpha: 0.9 });
-    const n = Vehicles.blastVehicles(p.x, p.y, 3.2 * TILE);
-    FX.flashScreen(0.65, '255,150,40');
-    Cam.addTrauma(0.6);
-    Game.slowmo(0.3, 0.7);
-    Sound.rebirth();
-    FX.text(p.x, p.y + 44, 'REBORN FROM THE ASHES!', '#ffb040', 20);
-    UI.toast('t-hatch', 'THE PHOENIX BROUGHT YOU BACK', n ? `and torched ${n} car${n > 1 ? 's' : ''} while it was at it` : 'Once per run. Make it count', 3600);
-    Trophies.add('reborn');
   },
 
   // Cat: nine lives. Golem: a block every 20 seconds. Phoenix: rebirth.

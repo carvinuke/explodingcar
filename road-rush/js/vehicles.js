@@ -163,7 +163,7 @@ const Vehicles = {
     const T = VEHICLE_TYPES[type];
     const base = pick(T.colors);
     const desired = L.speed * T.speed * rand(0.93, 1.07);
-    return {
+    const v = {
       kind: 'vehicle', type, len: T.len * TILE, x: 0, y, dir: L.dir,
       speed: desired, desired, base, pal: Draw.vehiclePalette(base),
       wreck: false, bounced: false, reckless: false, police: type === 'police', stalled: false, dead: false,
@@ -175,6 +175,8 @@ const Vehicles = {
       dark: !T.responder && !T.animal && type !== 'police' && chance(0.18), // no headlights (you only notice at night)
       drunk: null,
     };
+    if (Golden.active) Golden.paint(v); // a golden run: gold cars
+    return v;
   },
 
   // Distance gap kept between newly spawned vehicles (never spawn overlapping).
@@ -678,6 +680,7 @@ const Vehicles = {
   director(dt, playerRow, fz) {
     this.directorT -= dt;
     if (this.directorT > 0) return;
+    if (Upgrades.has('sunday')) { this.directorT = 2; return; } // Sunday Drivers: nobody speeds
     const d = difficulty(Game.leader().maxRow);
     const cands = [];
     const lenR = VEHICLE_TYPES.sports.len * TILE;

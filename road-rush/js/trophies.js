@@ -81,6 +81,16 @@ const TROPHIES = [
   { id: 'completionist', name: 'Completionist', desc: 'Own every single cosmetic', test: () => { const c = Shop.collection(); return c.have >= c.total - 1; } },
   { id: 'legend', name: 'Legend', desc: 'Reach level 50', test: () => Levels.level >= 50 },
   { id: 'unboxer', name: 'Unboxer', desc: 'Open 10 mystery boxes', test: (r, s) => (s.boxes || 0) >= 10 },
+  { id: 'golden', name: 'Midas Run', desc: 'Get a golden run', test: r => r.golden >= 1 },
+  { id: 'spelunker', name: 'Spelunker', desc: 'Find 3 secret rooms', test: (r, s) => (s.rooms || 0) >= 3 },
+  { id: 'buildmaster', name: 'Build Master', desc: 'Pick 6 upgrades in one run', test: r => r.upgrades >= 6 },
+  { id: 'biomemaster', name: 'Biome Master', desc: 'Earn all 3 stars in a biome', test: () => Mastery.anyDone() },
+  { id: 'cartographer', name: 'Cartographer', desc: 'Earn every biome star', test: () => Mastery.total() >= Mastery.max },
+  { id: 'evolution', name: 'Evolution', desc: 'Evolve a pet', test: () => Evolve.list.length >= 1 },
+  { id: 'fieldnotes', name: 'Field Notes', desc: 'Complete a page of the Roadex', test: () => Object.keys(ROADEX).some(p => Roadex.pageDone(p)) },
+  { id: 'roadexall', name: 'Encyclopedia', desc: 'Complete the whole Roadex', test: () => Roadex.allDone() },
+  { id: 'prestige', name: 'Born Again', desc: 'Prestige for the first time', test: () => Prestige.n >= 1 },
+  { id: 'crafty', name: 'Crafty', desc: 'Craft a mystery box exclusive from shards', test: (r, s) => (s.crafted || 0) >= 1 },
   { id: 'gentle', name: 'Careful Driver', desc: 'Get through a Reverse Day without hitting a single chicken', test: r => r.revClean >= 1 },
 ];
 
@@ -162,7 +172,8 @@ const Levels = {
   // XP for a finished run.
   forRun(mode, row, coins, run) {
     const base = row + coins * 2 + (run.closeCalls || 0) * 3 + (run.events || 0) * 10 + Trophies.fresh.length * 25;
-    return Math.round(base * (mode === 'hardcore' ? 1.5 : mode === 'time' ? 1.2 : 1) * (Pets.perk('xp') || 1));
+    const extra = Upgrades.xp() * Prestige.bonus() * (Evolve.active() ? 1.2 : 1); // run upgrades, prestige, an evolved pet
+    return Math.round(base * (mode === 'hardcore' ? 1.5 : mode === 'time' ? 1.2 : 1) * (Pets.perk('xp') || 1) * extra);
   },
 
   // Add XP; returns what happened, including any level-up rewards.
@@ -184,12 +195,14 @@ const Levels = {
   // Everything (skins, hats, trails) that unlocks at exactly level l.
   levelItems(l) {
     const out = [];
+    if (Prestige.n > 0) return out; // already yours
     for (const tab in SHOP_TABS) for (const id in SHOP_TABS[tab]) if (SHOP_TABS[tab][id].level === l) out.push(SHOP_TABS[tab][id].name);
     return out;
   },
 
   // The next level that unlocks something, for the "next reward" hint.
   nextUnlock() {
+    if (Prestige.n > 0) return null;
     for (let l = this.level + 1; l <= 60; l++) { const items = this.levelItems(l); if (items.length) return { level: l, items }; }
     return null;
   },

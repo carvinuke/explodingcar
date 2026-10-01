@@ -240,6 +240,7 @@ const Boxes = {
     FX.pickup(it.x, it.y, '#a95cff');
     FX.text(it.x, it.y + 22, 'MYSTERY BOX!', '#c79bff', 18);
     Sound.powerup();
+    Roadex.see('specials', 'box');
     if (Game.tracksProgress()) Stats.add('boxes');
   },
 
@@ -261,21 +262,28 @@ const Boxes = {
       }
       return out;
     };
+    Shards.add(1); // every box has a shard in it
     const r = Math.random();
-    const exclusive = unowned(it => it.box);
-    if (r < 0.22 && exclusive.length) return this.give(pick(exclusive), true);
+    if (r < 0.22) { // a mystery exclusive: a duplicate turns into shards
+      const all = [];
+      for (const tab in SHOP_TABS) for (const id in SHOP_TABS[tab]) if (SHOP_TABS[tab][id].box) all.push([tab, id]);
+      const [tab, id] = pick(all);
+      if (!Shop.has(tab, id)) return this.give([tab, id], true);
+      Shards.add(5);
+      return { dupe: SHOP_TABS[tab][id].name, shards: 6 };
+    }
     const normal = unowned(it => !it.box && !it.egg && !it.level && !it.unlock && it.price > 0 && it.price <= 2000);
     if (r < 0.6 && normal.length) return this.give(pick(normal), false);
     const coins = randInt(5, 30) * 10;
     Game.bank += coins;
     Store.set('coins', Game.bank);
-    return { coins };
+    return { coins, shards: 1 };
   },
 
   give([tab, id], rare) {
     Shop.grant(tab, id);
     const tabName = { skins: 'skin', hats: 'hat', trails: 'trail', pets: 'pet', deaths: 'death effect', prints: 'footprints', titles: 'title' }[tab];
-    return { tab, id, name: SHOP_TABS[tab][id].name, kind: tabName, rare };
+    return { tab, id, name: SHOP_TABS[tab][id].name, kind: tabName, rare, shards: 1 };
   },
 };
 
