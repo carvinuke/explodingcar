@@ -26,8 +26,12 @@ const Mastery = {
   anyDone() { return Object.keys(ZONES).some(z => this.done(z)); },
   reward(z) { for (const tab in SHOP_TABS) for (const id in SHOP_TABS[tab]) if (SHOP_TABS[tab][id].mastery === z) return [tab, id]; return null; },
 
+  fresh: [], // stars earned this run (listed on the report, not popped up mid-run)
+
   startRun() {
     this.cur = Game.players.length === 1 && Game.tracksProgress() ? { zone: 'country', pw: 0 } : null;
+    this.fresh = [];
+    Roadex.fresh = [];
   },
 
   power() { if (this.cur) this.cur.pw++; },
@@ -48,14 +52,11 @@ const Mastery = {
     this.data[z] = s;
     Store.set('mastery', this.data);
     const n = this.count(z);
-    if (n >= 3) {
-      const r = this.reward(z);
-      UI.toast('t-mastery', `${zoneName(z).toUpperCase()} MASTERED!`, r ? `Unlocked: ${SHOP_TABS[r[0]][r[1]].name}` : 'All three stars', 4200);
-      Sound.trophy();
-    } else {
-      UI.toast('t-mastery', `★ ${zoneName(z).toUpperCase()} ${n}/3`, MASTERY_STARS[i], 3000);
-      Sound.mission();
-    }
+    const r = n >= 3 ? this.reward(z) : null;
+    this.fresh.push(n >= 3 ? `${zoneName(z)} mastered!` + (r ? ` Unlocked: ${SHOP_TABS[r[0]][r[1]].name}` : '')
+      : `★ ${zoneName(z)} ${n}/3: ${MASTERY_STARS[i]}`);
+    if (Game.state === 'playing') FX.text(Player.x, Player.y + 60, `★ ${n}/3`, '#ffd23f', 15); // a quiet note where you are
+    Sound.mission();
     Trophies.check();
   },
 };
@@ -87,6 +88,7 @@ const ROADEX_PAGE_COINS = 250;
 
 const Roadex = {
   seen: {},
+  fresh: [], // what this run added (shown on the report)
 
   load() {
     const v = Store.get('roadex', {});
@@ -128,12 +130,10 @@ const Roadex = {
       Game.bank += ROADEX_PAGE_COINS;
       Store.set('coins', Game.bank);
       const r = this.reward(page);
-      UI.toast('t-roadex', `ROADEX PAGE COMPLETE: ${ROADEX[page].name.toUpperCase()}`, `+${ROADEX_PAGE_COINS} coins` + (r ? `. Unlocked: ${SHOP_TABS[r[0]][r[1]].name}` : ''), 4200);
-      Sound.trophy();
+      this.fresh.push({ page: true, text: `Roadex page complete: ${ROADEX[page].name} (+${ROADEX_PAGE_COINS} coins` + (r ? `, unlocked ${SHOP_TABS[r[0]][r[1]].name})` : ')') });
       Trophies.check();
-    } else {
-      UI.roadexToast(ROADEX[page].list[id], `${ROADEX[page].name} ${s.size}/${this.pageCount(page).total} · +${ROADEX_COINS} coins`);
     }
+    this.fresh.push({ name: ROADEX[page].list[id] });
   },
 };
 

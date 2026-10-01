@@ -1062,22 +1062,6 @@ const UI = {
     return el;
   },
 
-  // New Roadex entries share one toast: a burst of them updates it instead of piling up.
-  roadexToast(name, sub) {
-    const live = this.rxToast && this.rxToast.isConnected && !this.rxToast.classList.contains('out');
-    if (!live) {
-      this.rxN = 0;
-      this.rxToast = this.toast('t-roadex', ' ', ' ', 2600);
-    }
-    this.rxN++;
-    const el = this.rxToast;
-    el.firstChild.textContent = this.rxN > 1 ? `NEW IN THE ROADEX: ${name.toUpperCase()} (+${this.rxN - 1} MORE)` : `NEW IN THE ROADEX: ${name.toUpperCase()}`;
-    el.lastChild.textContent = sub;
-    clearTimeout(el.t1); clearTimeout(el.t2); // keep it up a little longer
-    el.t1 = setTimeout(() => el.classList.add('out'), 2200);
-    el.t2 = setTimeout(() => el.remove(), 2600);
-  },
-
   eventToast(name, sub) { this.toast('t-event', name, sub, 3600); },
   weatherToast(type) { const [t, s] = WEATHER_SIGNS[type]; this.toast('t-weather', t, s); },
   missionDone(m, pay = m.reward) { this.toast('t-mission', `MISSION COMPLETE  +${pay}`, Missions.text(m)); },
@@ -1126,6 +1110,8 @@ const UI = {
 
   showPause(on) {
     this.show('screen-pause', on);
+    this.toasts.classList.toggle('hidden', on); // nothing on top of the pause card
+    if (on) this.show('powers', false);
     if (on) {
       this.renderMissions(this.$('pause-missions'), true);
       this.show('btn-pause-admin', Admin.unlocked);
@@ -1226,6 +1212,17 @@ const UI = {
     }
     bx.classList.toggle('hidden', !bx.children.length);
     if ((info.boxes || []).length) Sound.hatch();
+    // what you discovered this run: Roadex entries and biome stars
+    const found = this.$('over-found');
+    found.textContent = '';
+    if (!vs) {
+      const add = (txt, cls) => { const li = document.createElement('li'); li.textContent = txt; if (cls) li.className = cls; found.appendChild(li); };
+      const names = Roadex.fresh.filter(e => e.name).map(e => e.name);
+      if (names.length) add(`New in the Roadex (+${names.length * ROADEX_COINS} coins): ${names.slice(0, 6).join(', ')}${names.length > 6 ? ` and ${names.length - 6} more` : ''}`);
+      for (const e of Roadex.fresh) if (e.page) add(e.text, 'big');
+      for (const t of Mastery.fresh) add(t, 'star');
+    }
+    found.classList.toggle('hidden', !found.children.length);
     const close = this.$('over-close');
     close.textContent = '';
     for (const line of vs ? [] : SoClose.lines(info)) {
@@ -1274,7 +1271,7 @@ const UI = {
     this.combo.classList.toggle('hidden', !comboOn);
     if (comboOn) this.combo.firstElementChild.textContent = 'x' + Player.combo;
 
-    this.show('powers', !versus && (Game.state === 'playing' || Game.state === 'paused'));
+    this.show('powers', !versus && Game.state === 'playing');
     for (const k in this.chips) {
       const ch = this.chips[k];
       const left = Powers.left(k);
