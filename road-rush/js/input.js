@@ -22,6 +22,7 @@ const Input = {
 
   init() {
     addEventListener('keydown', e => this.key(e));
+    addEventListener('keyup', e => { if (UI.modal === 'claw') UI.clawKey(e, false); });
 
     // Touch / mouse: swipe to move in that direction, tap to hop forward.
     const root = document.getElementById('game');
@@ -67,6 +68,7 @@ const Input = {
       else this.capture(null);
       return;
     }
+    if (UI.modal === 'claw' && !e.repeat && UI.clawKey(e, true)) return; // steering the claw
     if (UI.modal) { // dialogs own the keyboard while open
       if (e.code === 'Escape') { e.preventDefault(); UI.closeModal(); }
       return;

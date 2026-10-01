@@ -969,3 +969,18 @@ kbd {
 .close-list { list-style: none; margin: 10px 20px 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
 .close-list li { padding: 5px 10px 4px; border-radius: 4px; background: #e8f6ee; color: #1f5c3a; font: 700 13px var(--font-mono); box-shadow: inset 3px 0 0 #2fa84f; }
 .close-list li::before { content: 'SO CLOSE  '; color: #2fa84f; }
+.claw-stage { position: relative; align-self: center; width: 100%; max-width: 360px; }
+.claw-stage .claw-canvas { width: 100%; touch-action: none; cursor: crosshair; }
+.claw-btns.steer .steer-btn { min-width: 64px; font-size: 20px; touch-action: none; }
+.claw-btns.steer .drop-btn { min-width: 120px; font-size: 20px; letter-spacing: 0.1em; }
+.claw-win { position: absolute; inset: 0; display: grid; place-items: center; padding: 8px; border-radius: 8px; background: rgba(12, 6, 26, 0.72); animation: fade-in 0.2s ease; }
+.claw-win-card { display: flex; flex-direction: column; align-items: center; gap: 4px; width: min(300px, 100%); padding: 12px 14px 14px; border-radius: 12px; background: var(--paper); color: var(--ink); text-align: center; box-shadow: 0 0 0 3px #ffd23f, 0 12px 30px rgba(0, 0, 0, 0.5); animation: pop-in 0.35s ease-out; }
+.claw-win.cosmetic .claw-win-card { box-shadow: 0 0 0 3px #a95cff, 0 0 30px rgba(169, 92, 255, 0.6); }
+.claw-win.jackpot .claw-win-card { box-shadow: 0 0 0 3px #ffd23f, 0 0 0 6px #ff4fe0, 0 0 40px rgba(255, 210, 60, 0.8); }
+.claw-win-kicker { margin: 0; font: 700 11px var(--font-mono); letter-spacing: 0.2em; color: #a95cff; }
+.claw-win-art { display: grid; place-items: center; width: 92px; height: 92px; border-radius: 50%; background: radial-gradient(circle, #fff6d0 0, #f1ecfb 60%, transparent 72%); }
+.claw-win-art canvas { width: 92px; height: 92px; }
+.big-coin { width: 60px; height: 60px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #fff4b8 0 18%, #ffd23f 22% 60%, #9c6a00 64%); box-shadow: 0 0 0 3px var(--ink), 0 0 24px rgba(255, 200, 40, 0.8); animation: coin-spin 1.4s ease-in-out infinite; }
+@keyframes coin-spin { 0%, 100% { transform: scaleX(1); } 50% { transform: scaleX(0.25); } }
+.claw-win-card h3 { margin: 2px 0 0; font-size: 19px; font-weight: 900; line-height: 1.15; text-wrap: balance; }
+.claw-win-card p:not(.claw-win-kicker) { margin: 0 0 6px; font-size: 13px; font-weight: 600; line-height: 1.35; color: var(--ink-soft); text-wrap: balance; }
