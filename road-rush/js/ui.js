@@ -309,113 +309,133 @@ const UI = {
     for (const t of document.querySelectorAll('[data-tab]')) {
       t.setAttribute('aria-selected', t.dataset.tab === tab ? 'true' : 'false');
       const n = t.dataset.tab === 'upgrades' ? Upgrades.totals() : Shop.tabCount(t.dataset.tab);
-      t.innerHTML = `${labels[t.dataset.tab]} <small>${n.have}/${n.total}</small>`;
+      t.innerHTML = `<span>${labels[t.dataset.tab]}</span><small>${n.have}/${n.total}</small>`;
     }
     const grid = this.$('shop-grid');
     grid.textContent = '';
     grid.classList.toggle('upg-grid', tab === 'upgrades');
     if (tab === 'upgrades') { this.renderUpgrades(grid); return; }
+    // three groups: what you own (equipped first), what's for sale (cheapest
+    // first), and everything still locked at the bottom
+    const yours = [], sale = [], locked = [];
     for (const id in table) {
       const item = table[id];
-      const owned = Shop.has(tab, id), equipped = Shop.equipped(tab, id);
-      const card = document.createElement('div');
-      const special = earnedOnly(item);
-      card.className = 'skin' + (equipped ? ' equipped' : '') + (special && !owned ? ' locked' : '') + (item.egg ? ' egg' : '') + (item.box ? ' boxed' : '');
-      const cv = document.createElement('canvas');
-      cv.width = cv.height = 120;
-      this.preview(cv, tab, id);
-      const name = document.createElement('b');
-      name.textContent = tab === 'pets' && id !== 'none' ? Evolve.name(id) : item.name;
-      if (tab === 'pets' && Evolve.has(id)) card.classList.add('evolved');
-      card.append(cv, name);
-      if (item.rare) {
-        const tag = document.createElement('span');
-        tag.className = 'rarity r-' + item.rare.toLowerCase();
-        tag.textContent = item.box ? 'MYSTERY BOX ONLY' : item.claw ? (tab === 'pets' ? 'JACKPOT · CLAW ONLY' : 'CLAW MACHINE ONLY') : item.rare + ' · EGG ONLY';
-        card.appendChild(tag);
-      }
-      if (item.perk) {
-        const perk = document.createElement('span');
-        perk.className = 'unlock perk';
-        perk.textContent = item.perk;
-        card.appendChild(perk);
-      }
-      if (tab === 'pets' && id !== 'none') { // pet level
-        const lv = document.createElement('span');
-        lv.className = 'unlock petlv';
-        const info = PetLevels.info(id);
-        const up = PET_MAX[id] ? `Level 5: ${PET_MAX[id]}` : '';
-        lv.textContent = !owned ? up : Evolve.has(id) ? `EVOLVED · ${PET_MAX[id] || ''} · +20% XP and +10% coins`
-          : info.max ? `LEVEL 5 (MAX) · ${PET_MAX[id] || ''}` : `Level ${info.level} · ${info.into}/${info.need} XP` + (up ? ` · ${up}` : '');
-        if (lv.textContent) card.appendChild(lv);
-      }
-      const btn = document.createElement('button');
-      if (tab === 'pets' && owned && Evolve.can(id)) { // level 5: it can evolve
-        const ev = document.createElement('button');
-        ev.className = 'btn-yellow small evolve-btn';
-        ev.innerHTML = `Evolve <span class="coin-ico"></span> ${EVOLVE_COST}`;
-        ev.disabled = Game.bank < EVOLVE_COST;
-        ev.title = 'Evolved pets grow, glow, and give +20% XP and +10% coins';
-        ev.addEventListener('click', () => {
-          if (!Evolve.go(id)) return;
-          Sound.levelUp();
-          this.toast('t-hatch', `${PETS[id].name.toUpperCase()} EVOLVED!`, `Meet Mega ${PETS[id].name}: +20% XP and +10% coins`, 3600);
-          this.renderShop();
-          this.refreshMeta();
-        });
-        ev.addEventListener('pointerdown', e => e.stopPropagation());
-        card.appendChild(ev);
-      }
-      if (equipped) {
-        btn.className = 'btn-plate small';
-        btn.textContent = 'Equipped';
-        btn.disabled = true;
-      } else if (owned) {
-        btn.className = 'btn-plate small';
-        btn.textContent = 'Equip';
-        btn.addEventListener('click', () => { Shop.equip(tab, id); Sound.click(); this.renderShop(); });
-      } else if (special) {
-        const t = item.unlock && TROPHIES.find(x => x.id === item.unlock);
-        const how = document.createElement('span');
-        how.className = 'unlock';
-        how.textContent = item.egg ? 'Find an egg on the road and carry it 50 rows to hatch it'
-          : item.claw ? 'Win it from the claw machine on the title screen'
-          : item.box ? `Found in mystery boxes, or craft it from ${SHARD_COST} box shards`
-          : item.mastery ? `Earn all 3 stars in ${zoneName(item.mastery)} (Goals)`
-          : item.roadex ? `Complete the ${ROADEX[item.roadex].name} page of the Roadex (Goals)`
-          : item.prestige ? `Reach prestige ${item.prestige} (Goals)`
-          : item.level ? `Reach level ${item.level} (you're level ${Levels.level})` : `Trophy: ${t ? t.desc : 'secret'}`;
-        card.appendChild(how);
-        if (item.box) { // craft it from shards
-          btn.className = 'btn-yellow small';
-          btn.innerHTML = `<span class="shard-ico"></span> ${SHARD_COST} Craft`;
-          btn.disabled = Shards.n < SHARD_COST;
-          btn.setAttribute('aria-label', `Craft ${item.name} for ${SHARD_COST} shards`);
-          btn.addEventListener('click', () => {
-            if (!Shards.craft(tab, id)) return;
-            Sound.hatch();
-            Shop.equip(tab, id);
-            this.renderShop();
-          });
-        } else {
-          btn.className = 'btn-plate small';
-          btn.textContent = 'Locked';
-          btn.disabled = true;
-        }
-      } else {
-        const afford = Game.bank >= item.price;
-        btn.className = 'btn-yellow small';
-        btn.innerHTML = `<span class="coin-ico"></span> ${item.price}`;
-        btn.disabled = !afford;
-        btn.setAttribute('aria-label', `Buy ${item.name} for ${item.price} coins`);
-        btn.addEventListener('click', () => {
-          if (Shop.buy(tab, id)) { Sound.powerup(); this.renderShop(); this.refreshMeta(); }
-        });
-      }
-      btn.addEventListener('pointerdown', e => e.stopPropagation());
-      card.appendChild(btn);
-      grid.appendChild(card);
+      if (Shop.has(tab, id)) yours.push(id);
+      else if (earnedOnly(item)) locked.push(id);
+      else sale.push(id);
     }
+    yours.sort((a, b) => Shop.equipped(tab, b) - Shop.equipped(tab, a));
+    sale.sort((a, b) => table[a].price - table[b].price);
+    const rank = it => it.level ? [0, it.level] : it.mastery ? [1, 0] : it.roadex ? [2, 0] : it.unlock ? [3, 0] : it.prestige ? [4, it.prestige] : it.egg ? [5, 0] : it.box ? [6, 0] : [7, 0];
+    locked.sort((a, b) => { const ra = rank(table[a]), rb = rank(table[b]); return ra[0] - rb[0] || ra[1] - rb[1]; });
+    for (const [title, ids] of [['Yours', yours], ['For sale', sale], ['Locked', locked]]) {
+      if (!ids.length) continue;
+      const head = document.createElement('p');
+      head.className = 'shop-section' + (title === 'Locked' ? ' locked' : '');
+      head.innerHTML = `<span></span><small>${ids.length}</small>`;
+      head.firstChild.textContent = title;
+      grid.appendChild(head);
+      for (const id of ids) grid.appendChild(this.shopCard(tab, id));
+    }
+  },
+
+  // One item in the shop.
+  shopCard(tab, id) {
+    const item = SHOP_TABS[tab][id];
+    const owned = Shop.has(tab, id), equipped = Shop.equipped(tab, id);
+    const special = earnedOnly(item);
+    const card = document.createElement('div');
+    card.className = 'skin' + (equipped ? ' equipped' : '') + (special && !owned ? ' locked' : '') + (item.egg ? ' egg' : '') + (item.box ? ' boxed' : '') + (item.claw ? ' clawed' : '');
+    if (tab === 'pets' && Evolve.has(id)) card.classList.add('evolved');
+    if (item.rare) {
+      const tag = document.createElement('span');
+      tag.className = 'rarity r-' + item.rare.toLowerCase();
+      tag.textContent = item.box ? 'MYSTERY BOX' : item.claw ? (tab === 'pets' ? 'JACKPOT' : 'CLAW MACHINE') : item.rare + ' · EGG';
+      card.appendChild(tag);
+    }
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = 120;
+    this.preview(cv, tab, id);
+    const name = document.createElement('b');
+    name.textContent = tab === 'pets' && id !== 'none' ? Evolve.name(id) : item.name;
+    card.append(cv, name);
+    // one short line about it (the full text is in the tooltip)
+    const info = document.createElement('span');
+    info.className = 'card-info';
+    if (tab === 'pets' && id !== 'none' && owned) { // your pet's level, above what it does
+      const lv = PetLevels.info(id), pl = document.createElement('span');
+      pl.className = 'card-info petlv';
+      pl.textContent = Evolve.has(id) ? 'Evolved · max level' : lv.max ? 'Level 5 (max)' : `Level ${lv.level} · ${lv.into}/${lv.need} XP`;
+      card.appendChild(pl);
+    }
+    if (item.perk) info.textContent = item.perk;
+    if (item.perk || PET_MAX[id]) card.title = [item.perk, PET_MAX[id] && tab === 'pets' ? `Level 5: ${PET_MAX[id]}` : ''].filter(Boolean).join('\n');
+    if (info.textContent) card.appendChild(info);
+    const foot = document.createElement('div');
+    foot.className = 'card-foot';
+    const stop = el => el.addEventListener('pointerdown', e => e.stopPropagation());
+    if (tab === 'pets' && owned && Evolve.can(id)) { // level 5: it can evolve
+      const ev = document.createElement('button');
+      ev.className = 'btn-yellow small evolve-btn';
+      ev.innerHTML = `Evolve <span class="coin-ico"></span> ${EVOLVE_COST}`;
+      ev.disabled = Game.bank < EVOLVE_COST;
+      ev.title = 'Evolved pets grow, glow, and give +20% XP and +10% coins';
+      ev.addEventListener('click', () => {
+        if (!Evolve.go(id)) return;
+        Sound.levelUp();
+        this.toast('t-hatch', `${PETS[id].name.toUpperCase()} EVOLVED!`, `Meet Mega ${PETS[id].name}: +20% XP and +10% coins`, 3600);
+        this.renderShop();
+        this.refreshMeta();
+      });
+      stop(ev);
+      foot.appendChild(ev);
+    }
+    const btn = document.createElement('button');
+    if (equipped) {
+      btn.className = 'btn-plate small';
+      btn.textContent = 'Equipped';
+      btn.disabled = true;
+    } else if (owned) {
+      btn.className = 'btn-plate small';
+      btn.textContent = 'Equip';
+      btn.addEventListener('click', () => { Shop.equip(tab, id); Sound.click(); this.renderShop(); });
+    } else if (special) {
+      const t = item.unlock && TROPHIES.find(x => x.id === item.unlock);
+      const how = document.createElement('span');
+      how.className = 'how';
+      how.textContent = item.egg ? 'Hatch it from an egg'
+        : item.claw ? 'Win it from the claw machine'
+        : item.box ? 'From mystery boxes'
+        : item.mastery ? `Master ${zoneName(item.mastery)} (Goals)`
+        : item.roadex ? `Roadex: ${ROADEX[item.roadex].name} page`
+        : item.prestige ? `Reach prestige ${item.prestige}`
+        : item.level ? `Reach level ${item.level}` : `Trophy: ${t ? t.name : 'secret'}`;
+      if (t) how.title = t.desc;
+      foot.appendChild(how);
+      if (!item.box) { card.appendChild(foot); return card; }
+      btn.className = 'btn-yellow small'; // mystery-box items can be crafted from shards
+      btn.innerHTML = `<span class="shard-ico"></span> ${SHARD_COST} Craft`;
+      btn.disabled = Shards.n < SHARD_COST;
+      btn.setAttribute('aria-label', `Craft ${item.name} for ${SHARD_COST} shards`);
+      btn.addEventListener('click', () => {
+        if (!Shards.craft(tab, id)) return;
+        Sound.hatch();
+        Shop.equip(tab, id);
+        this.renderShop();
+      });
+    } else {
+      btn.className = 'btn-yellow small';
+      btn.innerHTML = `<span class="coin-ico"></span> ${item.price}`;
+      btn.disabled = Game.bank < item.price;
+      btn.setAttribute('aria-label', `Buy ${item.name} for ${item.price} coins`);
+      btn.addEventListener('click', () => {
+        if (Shop.buy(tab, id)) { Sound.powerup(); this.renderShop(); this.refreshMeta(); }
+      });
+    }
+    stop(btn);
+    foot.appendChild(btn);
+    card.appendChild(foot);
+    return card;
   },
 
   preview(cv, tab, id) {
