@@ -190,18 +190,29 @@ coins instead. A Ghostie pet makes eggs show up twice as often.
 
 ## Claw machine
 
-The Claw Machine button on the title screen. A **Grab** costs 500 coins and a
-**Gold Grab** costs 1,000 (double the odds). Watch the claw drop, grab and
-carry its prize to the chute:
+The Claw Machine button on the title screen. Pay for a go, a **Grab** for 500
+coins or a **Gold Grab** for 1,000 (a stronger, wider claw), then steer the
+claw yourself: hold ◀ ▶ (or the arrow keys, or tap the glass where you want it)
+and press **DROP** (or Space) before the 15-second clock runs out.
 
-- **0.5%** (1% on a Gold Grab): a **Jackpot pet** you can't get anywhere else.
-  The **Magnet Bot** is a permanent magnet that pulls in every coin and
-  power-up nearby; the **Lucky Star** makes every coin worth double and gives
-  you a shield at the start of every run.
-- **10%** (20%): a claw-only cosmetic: Plushie Chick, Arcade Chick, Claw Hat,
-  Prize Tickets trail, Arcade Lights and Jackpot auras, Arcade Tokens
-  footprints, and the High Roller and Claw Master titles.
-- Otherwise you get 100 coins back (200 on a Gold Grab).
+Everything in the machine is real 2D physics: the capsules fall, roll and pile
+up, the claw pushes into the pile and only picks up a capsule that's actually
+between its jaws, then carries it to the chute. What lands in the chute is what
+you win:
+
+- **Glowing purple capsules** hold a claw-only cosmetic: Plushie Chick, Arcade
+  Chick, Claw Hat, Prize Tickets trail, Arcade Lights and Jackpot auras, Arcade
+  Tokens footprints, and the High Roller and Claw Master titles. They start
+  buried in the middle of the pile, so you have to dig for them.
+- **Rainbow capsules** are rare and hold a **Jackpot pet**: the **Magnet Bot**
+  (a permanent magnet that pulls in every coin and power-up nearby) or the
+  **Lucky Star** (double coins, and a shield at the start of every run).
+- **Any other capsule** pays 100 coins back (200 on a Gold Grab).
+- Miss, and the claw comes up empty.
+
+A "You won!" card shows what you got (the coin, or the item's shop picture);
+press **Claim** to go back to the machine. The pile only restocks when it gets
+low, so every grab changes what's on top.
 
 ## So close
 

@@ -229,8 +229,8 @@ const Auras = {
 // A grab costs coins. Most grabs win coins back; some win a claw-only cosmetic,
 // and a very lucky few win a claw-only Jackpot pet.
 const CLAW_TIERS = {
-  normal: { name: 'Grab', price: 500, pet: 0.005, cosmetic: 0.10, coins: 100 },
-  gold:   { name: 'Gold Grab', price: 1000, pet: 0.01, cosmetic: 0.20, coins: 200 },
+  normal: { name: 'Grab', price: 500, coins: 100, slip: 0.2, reach: 12 },
+  gold:   { name: 'Gold Grab', price: 1000, coins: 200, slip: 0.07, reach: 16 }, // a stronger, wider claw
 };
 
 const Claw = {
@@ -244,23 +244,32 @@ const Claw = {
   },
   unowned(petsOnly) { return this.prizes(petsOnly).filter(([t, id]) => !Shop.has(t, id)); },
 
-  // Pay and roll. Returns what you won (or null if you can't afford it).
-  grab(tier) {
+  // Pay for a go. Returns false if you can't afford it.
+  pay(tier) {
     const T = CLAW_TIERS[tier];
-    if (!T || Game.bank < T.price) return null;
+    if (!T || Game.bank < T.price) return false;
     Game.bank -= T.price;
-    const r = Math.random();
+    Store.set('coins', Game.bank);
+    Stats.add('clawGrabs');
+    Stats.save();
+    return true;
+  },
+
+  // What landed in the chute: 'pet' (a rainbow capsule), 'cosmetic' (a purple
+  // one), 'coins' (any other), or null (nothing: the claw came up empty).
+  award(type, tier) {
+    const T = CLAW_TIERS[tier];
     let res;
     const pets = this.unowned(true), cos = this.unowned(false);
-    if (r < T.pet && pets.length) res = this.win(pick(pets), 'pet');
-    else if (r < T.pet + T.cosmetic && (cos.length || pets.length)) res = this.win(pick(cos.length ? cos : pets), cos.length ? 'cosmetic' : 'pet');
+    if (!type) res = { kind: 'empty' };
+    else if (type === 'pet' && (pets.length || cos.length)) res = this.win(pick(pets.length ? pets : cos), pets.length ? 'pet' : 'cosmetic');
+    else if (type === 'cosmetic' && cos.length) res = this.win(pick(cos), 'cosmetic');
     else {
       Game.bank += T.coins;
       res = { kind: 'coins', coins: T.coins };
     }
     Store.set('coins', Game.bank);
-    Stats.add('clawGrabs');
-    if (res.kind !== 'coins') Stats.add('clawWins');
+    if (res.kind === 'pet' || res.kind === 'cosmetic') Stats.add('clawWins');
     if (res.kind === 'pet') Stats.add('clawJackpots');
     Stats.save();
     Trophies.check();
@@ -307,6 +316,14 @@ const SoClose = {
 const CLAW_BOX = { W: 360, H: 270, L: 8, R: 352, FLOOR: 252, DIV: 74, DIV_TOP: 168, CHUTE_X: 40 };
 const CAPSULE_COLS = ['#ff5c8a', '#34c6ea', '#ffd23f', '#7ed957', '#a95cff', '#ff9f1c', '#ff6cf2', '#4df0b0'];
 
+function starPath5(c, x, y, R) {
+  for (let i = 0; i < 10; i++) {
+    const a = -Math.PI / 2 + (i * Math.PI) / 5, rr = i % 2 ? R * 0.45 : R;
+    i ? c.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr) : c.moveTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr);
+  }
+  c.closePath();
+}
+
 const ClawSim = {
   balls: [],
   claw: null,
@@ -314,26 +331,32 @@ const ClawSim = {
   init() {
     const B = CLAW_BOX;
     this.balls = [];
-    for (let k = 0; k < 30; k++) this.add(rand(B.DIV + 20, B.R - 16), rand(-300, 120));
-    this.claw = { x: 200, y: 34, open: 1, state: 'idle', t: 0, held: null, tx: 200, onDone: null };
+    // a bottom layer, then the special capsules, then the rest on top: they end up mid-pile
+    for (let k = 0; k < 13; k++) this.add(rand(B.DIV + 20, B.R - 16), rand(60, 230));
+    for (let i = 0; i < 120; i++) this.step(1 / 120);
+    if (Claw.unowned(true).length && Math.random() < 0.03) this.add(rand(B.DIV + 30, B.R - 20), rand(40, 120), 'pet');
+    if (Claw.unowned(false).length) for (let k = 0; k < 3; k++) this.add(rand(B.DIV + 30, B.R - 20), rand(40, 120), 'cosmetic');
+    for (let i = 0; i < 90; i++) this.step(1 / 120);
+    while (this.balls.length < 30) this.add(rand(B.DIV + 20, B.R - 16), rand(-300, 60));
+    this.claw = { x: 215, y: 34, open: 1, state: 'idle', t: 0, held: null, dir: 0, goal: null, onDone: null, tier: 'normal' };
     for (let i = 0; i < 360; i++) this.step(1 / 120); // let the pile settle before you see it
   },
 
-  add(x, y) {
-    const r = rand(11, 13.5);
-    this.balls.push({ x, y, vx: rand(-20, 20), vy: 0, r, m: r * r, a: rand(6.28), va: 0, col: pick(CAPSULE_COLS), held: false, prize: null, gone: false });
+  add(x, y, type = 'coins') {
+    const r = type === 'coins' ? rand(11, 13.5) : 12.5;
+    this.balls.push({ x, y, vx: rand(-20, 20), vy: 0, r, m: r * r, a: rand(6.28), va: 0, col: pick(CAPSULE_COLS), held: false, type, gone: false });
   },
 
-  // Start a grab. kind: 'pet' | 'cosmetic' | 'coins'. onDone runs when the prize lands in the chute.
-  grab(kind, onDone) {
-    const B = CLAW_BOX;
-    // aim at one of the capsules near the top of the pile
-    const cands = this.balls.filter(b => !b.gone && b.x > B.DIV + 22 && b.x < B.R - 18).sort((a, b) => a.y - b.y).slice(0, 8);
-    const target = cands.length ? pick(cands) : null;
-    Object.assign(this.claw, { state: 'move', t: 0, tx: target ? target.x : rand(B.DIV + 40, B.R - 40), kind, onDone, target, held: null });
-  },
+  busy() { return !!this.claw && this.claw.state !== 'idle'; },
+  aiming() { return !!this.claw && this.claw.state === 'aim'; },
 
-  busy() { return this.claw && this.claw.state !== 'idle'; },
+  // You've paid: steer the claw, then drop it. onDone(type) gets what landed in the chute.
+  start(tier, onDone) {
+    Object.assign(this.claw, { state: 'aim', t: 0, tier, onDone, held: null, drop: null, dir: 0, goal: null, slipAt: -1 });
+  },
+  steer(dir) { if (this.aiming()) { this.claw.dir = dir; if (dir) this.claw.goal = null; } },
+  aimAt(x) { if (this.aiming()) this.claw.goal = x; },
+  release() { if (this.aiming()) { this.claw.state = 'down'; this.claw.t = 0; Sound.whoosh(0.3, 0); } },
 
   update(dt) {
     dt = Math.min(dt, 1 / 30);
@@ -343,71 +366,97 @@ const ClawSim = {
   },
 
   moveClaw(dt) {
-    const C = this.claw, B = CLAW_BOX;
+    const C = this.claw, B = CLAW_BOX, T = CLAW_TIERS[C.tier] || CLAW_TIERS.normal;
     C.t += dt;
     const toward = (v, to, sp) => (Math.abs(to - v) <= sp * dt ? to : v + Math.sign(to - v) * sp * dt);
+    const minX = B.DIV + 18, maxX = B.R - 14;
     switch (C.state) {
       case 'idle':
-        C.x = 215 + Math.sin(performance.now() / 1300) * 40;
+        C.x = toward(C.x, 215 + Math.sin(performance.now() / 1300) * 40, 60);
         C.y = toward(C.y, 34, 120);
         C.open = toward(C.open, 1, 3);
         break;
-      case 'move':
-        C.x = toward(C.x, C.tx, 170);
-        if (C.x === C.tx) { C.state = 'down'; C.t = 0; }
+      case 'aim': // you steer; it drops by itself when the timer runs out
+        if (C.goal !== null) C.x = toward(C.x, clamp(C.goal, minX, maxX), 150);
+        else C.x = clamp(C.x + C.dir * 150 * dt, minX, maxX);
+        C.y = toward(C.y, 34, 120);
+        if (C.t > 15) this.release();
         break;
-      case 'down': { // stop when the prongs reach the pile (or the floor)
-        C.y += 130 * dt;
-        let hit = C.y + 34 >= B.FLOOR - 6;
-        for (const b of this.balls) if (!b.gone && Math.abs(b.x - C.x) < 10 && C.y + 30 > b.y - b.r * 0.2) hit = true;
-        if (hit || C.t > 2.5) { C.state = 'close'; C.t = 0; }
+      case 'down': { // stop when the prongs land on something (or the floor)
+        C.y += 120 * dt;
+        let hit = C.y + 34 >= B.FLOOR - 4;
+        for (const b of this.balls) if (!b.gone && Math.abs(b.x - C.x) < b.r * 0.6 && C.y + 22 > b.y - b.r) hit = true;
+        if (hit || C.t > 3) { C.state = 'close'; C.t = 0; }
         break;
       }
       case 'close':
         C.open = toward(C.open, 0, 3.5);
         if (C.t > 0.35) {
-          // grab the capsule closest to the jaws
+          // only a capsule actually between the jaws gets picked up
           let best = null, bd = 1e9;
           for (const b of this.balls) {
             if (b.gone) continue;
-            const d = Math.hypot(b.x - C.x, b.y - (C.y + 26));
+            const dx = Math.abs(b.x - C.x), dy = b.y - (C.y + 26);
+            if (dx > T.reach || dy < -b.r - 6 || dy > b.r + 6) continue;
+            const d = Math.hypot(dx, dy);
             if (d < bd) { bd = d; best = b; }
           }
           if (best) {
             best.held = true;
-            best.prize = C.kind;
-            if (C.kind === 'coins') best.col = '#ffd23f';
             C.held = best;
+            if (Math.random() < T.slip) C.slipAt = rand(0.4, 2.6); // sometimes it just... slips
           }
-          C.state = 'up'; C.t = 0;
+          C.state = 'up'; C.t = 0; C.since = 0;
         }
         break;
       case 'up':
-        C.y = toward(C.y, 34, 110);
+        C.y = toward(C.y, 34, 105);
         if (C.y === 34) { C.state = 'carry'; C.t = 0; }
         break;
       case 'carry':
-        C.x = toward(C.x, B.CHUTE_X, 150);
+        C.x = toward(C.x, B.CHUTE_X, 140);
         if (C.x === B.CHUTE_X) { C.state = 'drop'; C.t = 0; }
         break;
       case 'drop':
         C.open = toward(C.open, 1, 4);
         if (C.t > 0.15 && C.held) { C.drop = C.held; C.held.held = false; C.held.vx = 0; C.held.vy = 40; C.held = null; }
-        if (C.t > 4) { if (C.drop) C.drop.gone = true; this.finish(); } // (just in case it got stuck)
+        if (!C.drop && C.t > 0.8) this.finish(null); // nothing to drop
+        if (C.t > 4) { if (C.drop) C.drop.gone = true; this.finish(C.drop ? C.drop.type : null); }
         break;
     }
-    if (C.held) { // the capsule hangs in the jaws
+    if (C.held) {
       const b = C.held;
+      C.since = (C.since || 0) + dt;
+      if (C.slipAt > 0 && C.since > C.slipAt) { // it slips out of the jaws
+        b.held = false;
+        b.vx = rand(-30, 30);
+        b.vy = 20;
+        C.held = null;
+        C.slipAt = -1;
+        C.open = 0.5;
+        Sound.bump();
+        return;
+      }
       b.x = C.x; b.y = C.y + 28 + b.r * 0.4; b.vx = b.vy = 0; b.va *= 0.9;
     }
   },
 
-  finish() {
+  finish(type) {
     const C = this.claw;
     C.state = 'idle';
+    C.drop = null;
     const cb = C.onDone;
     C.onDone = null;
-    if (cb) cb();
+    // keep the machine stocked
+    const B = CLAW_BOX;
+    const live = () => this.balls.filter(b => !b.gone);
+    // restock only when it's running low, so the pile slowly digs down to what's buried
+    if (live().length < 22) {
+      while (live().length < 30) this.add(rand(B.DIV + 40, B.R - 30), -20 - live().length * 14);
+      if (Claw.unowned(false).length && live().filter(b => b.type === 'cosmetic').length < 3) this.add(rand(B.DIV + 40, B.R - 30), -60, 'cosmetic');
+    }
+    if (Claw.unowned(true).length && !live().some(b => b.type === 'pet') && Math.random() < 0.006) this.add(rand(B.DIV + 40, B.R - 30), -20, 'pet');
+    if (cb) cb(type);
   },
 
   step(dt) {
@@ -464,7 +513,7 @@ const ClawSim = {
           if (vn < 0) { b.vx -= 1.3 * vn * nx; b.vy -= 1.3 * vn * ny; }
         }
         // the claw's jaws push capsules aside on the way down
-        if (C && (C.state === 'down' || C.state === 'close') && !b.prize) {
+        if (C && C.state === 'down' && Math.abs(b.x - C.x) > 7) {
           for (const s of [-1, 1]) {
             const px = C.x + s * (6 + C.open * 9), py = C.y + 24;
             const ex = b.x - px, ey = b.y - py, ed = Math.hypot(ex, ey), rr = b.r + 4;
@@ -476,17 +525,14 @@ const ClawSim = {
     for (const b of live) {
       b.vx *= 0.999;
       b.va *= 0.985;
-      // dropped down the chute: it's yours
-      if (b.prize && !b.held && b.x < B.DIV && b.y > B.FLOOR - b.r - 4) {
+      // down the chute: whatever lands there is yours
+      if (!b.held && b.x < B.DIV - 4 && b.y > B.FLOOR - b.r - 4) {
         b.gone = true;
-        if (C.state === 'drop') this.finish();
+        if (C.state !== 'idle') this.finish(b.type);
       }
     }
     if (this.balls.length > 40) this.balls = this.balls.filter(b => !b.gone);
   },
-
-  // A refill capsule drops in from the top after a win.
-  refill() { this.add(rand(CLAW_BOX.DIV + 40, CLAW_BOX.R - 30), -20); },
 
   draw(c, now) {
     const B = CLAW_BOX, W = B.W, H = B.H, C = this.claw;
@@ -551,6 +597,20 @@ const ClawSim = {
     c.lineWidth = 1.5;
     c.beginPath(); c.moveTo(C.x - 1, 23); c.lineTo(C.x - 1, C.y); c.moveTo(C.x + 1, 23); c.lineTo(C.x + 1, C.y); c.stroke();
     if (C.held) this.capsule(c, C.held, now);
+    if (C.state === 'aim') { // a dashed guide straight down, and the clock
+      c.save();
+      c.strokeStyle = 'rgba(77,240,255,0.55)';
+      c.setLineDash([5, 6]);
+      c.lineDashOffset = -now * 30;
+      c.lineWidth = 1.5;
+      c.beginPath(); c.moveTo(C.x, C.y + 34); c.lineTo(C.x, B.FLOOR); c.stroke();
+      c.restore();
+      const left = Math.max(0, 15 - C.t);
+      c.font = `900 13px ${UI_FONT}`;
+      c.textAlign = 'right';
+      c.fillStyle = left < 4 && ((now * 4) | 0) % 2 ? '#ff5a4f' : '#ffe95c';
+      c.fillText(`${Math.ceil(left)}`, W - 12, 40);
+    }
     this.drawClaw(c, C);
     // glass: reflections and a frame
     c.fillStyle = 'rgba(255,255,255,0.07)';
@@ -571,18 +631,18 @@ const ClawSim = {
   capsule(c, b, now) {
     c.save();
     c.translate(b.x, b.y);
-    if (b.prize === 'pet' || b.prize === 'cosmetic') { // the winner glows
+    if (b.type === 'pet' || b.type === 'cosmetic') { // the special ones glow
       c.save();
       c.globalCompositeOperation = 'lighter';
       const g = c.createRadialGradient(0, 0, b.r * 0.5, 0, 0, b.r * 2.2);
-      g.addColorStop(0, b.prize === 'pet' ? `hsla(${(now * 220) % 360},100%,65%,0.7)` : 'rgba(200,140,255,0.6)');
+      g.addColorStop(0, b.type === 'pet' ? `hsla(${(now * 220) % 360},100%,65%,0.7)` : 'rgba(200,140,255,0.6)');
       g.addColorStop(1, 'rgba(0,0,0,0)');
       c.fillStyle = g;
       c.beginPath(); c.arc(0, 0, b.r * 2.2, 0, 6.2832); c.fill();
       c.restore();
     }
     c.rotate(b.a);
-    const col = b.prize === 'pet' ? `hsl(${(now * 220) % 360},90%,58%)` : b.prize === 'cosmetic' ? '#a95cff' : b.col;
+    const col = b.type === 'pet' ? `hsl(${(now * 220) % 360},90%,58%)` : b.type === 'cosmetic' ? '#a95cff' : b.col;
     // bottom half
     c.fillStyle = col;
     c.beginPath(); c.arc(0, 0, b.r, 0, Math.PI); c.fill();
@@ -598,7 +658,7 @@ const ClawSim = {
     c.strokeStyle = 'rgba(20,10,40,0.55)';
     c.lineWidth = 1.2;
     c.beginPath(); c.arc(0, 0, b.r, 0, 6.2832); c.stroke();
-    if (b.prize === 'coins') { c.fillStyle = '#fff4b8'; c.font = `900 ${b.r}px ${UI_FONT}`; c.textAlign = 'center'; c.fillText('$', 0, b.r * 0.8); }
+    if (b.type !== 'coins') { c.fillStyle = '#ffffff'; c.beginPath(); starPath5(c, 0, -b.r * 0.35, b.r * 0.32); c.fill(); } // a star on the special ones
     c.restore();
     // a shine that doesn't roll
     c.fillStyle = 'rgba(255,255,255,0.75)';

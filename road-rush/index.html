@@ -153,11 +153,27 @@
           <h2 id="claw-title">CLAW MACHINE</h2>
           <span class="plate coinplate"><span class="coin-ico"></span><b id="claw-coins">0</b></span>
         </div>
-        <canvas id="claw-canvas" class="claw-canvas" aria-label="The claw machine"></canvas>
+        <div class="claw-stage">
+          <canvas id="claw-canvas" class="claw-canvas" aria-label="The claw machine"></canvas>
+          <div id="claw-win" class="claw-win hidden" role="dialog" aria-labelledby="claw-win-title">
+            <div class="claw-win-card">
+              <p class="claw-win-kicker">YOU WON</p>
+              <div id="claw-win-art" class="claw-win-art"></div>
+              <h3 id="claw-win-title"></h3>
+              <p id="claw-win-sub"></p>
+              <button id="btn-claw-claim" class="btn-yellow">CLAIM</button>
+            </div>
+          </div>
+        </div>
         <p id="claw-result" class="claw-result" aria-live="polite"></p>
-        <div class="claw-btns">
+        <div id="claw-pay" class="claw-btns">
           <button id="btn-claw-grab" class="btn-yellow">Grab</button>
           <button id="btn-claw-gold" class="btn-yellow gold">Gold Grab</button>
+        </div>
+        <div id="claw-steer" class="claw-btns steer hidden">
+          <button id="btn-claw-left" class="btn-plate steer-btn" aria-label="Move the claw left">◀</button>
+          <button id="btn-claw-drop" class="btn-yellow drop-btn">DROP</button>
+          <button id="btn-claw-right" class="btn-plate steer-btn" aria-label="Move the claw right">▶</button>
         </div>
         <p id="claw-odds" class="claw-odds"></p>
         <p class="claw-label">Prizes you can only win here</p>

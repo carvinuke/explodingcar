@@ -81,6 +81,8 @@ const UI = {
     on('btn-claw', () => this.openClaw());
     on('btn-claw-done', () => this.closeModal());
     on('btn-claw-grab', () => this.clawGrab('normal'));
+    on('btn-claw-drop', () => this.clawDrop());
+    on('btn-claw-claim', () => this.clawClaim());
     on('btn-claw-gold', () => this.clawGrab('gold'));
     on('btn-settings-done', () => this.closeModal());
     on('btn-shop-done', () => this.closeModal());
@@ -754,7 +756,6 @@ const UI = {
 
   // ---- The claw machine ---------------------------------------------------------------
   openClaw() {
-    this.clawAnim = null;
     this.renderClaw();
     this.openModal('claw', 'screen-claw', 'btn-claw-grab');
     const cv = this.$('claw-canvas');
@@ -763,6 +764,20 @@ const UI = {
     this.clawCtx = cv.getContext('2d');
     this.clawCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
     if (!ClawSim.claw || !ClawSim.busy()) ClawSim.init();
+    if (!this.clawWired) { // steering: hold the arrow buttons, or tap where you want it
+      this.clawWired = true;
+      const hold = (id, dir) => {
+        const b = this.$(id);
+        b.addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); ClawSim.steer(dir); });
+        for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) b.addEventListener(ev, () => { if (ClawSim.claw && ClawSim.claw.dir === dir) ClawSim.steer(0); });
+      };
+      hold('btn-claw-left', -1);
+      hold('btn-claw-right', 1);
+      cv.addEventListener('pointerdown', e => {
+        const r = cv.getBoundingClientRect();
+        ClawSim.aimAt(((e.clientX - r.left) / r.width) * CLAW_BOX.W);
+      });
+    }
     let last = performance.now();
     const loop = () => {
       if (this.modal !== 'claw') return;
@@ -770,6 +785,8 @@ const UI = {
       ClawSim.update((now - last) / 1000);
       last = now;
       ClawSim.draw(this.clawCtx, now / 1000);
+      const aiming = ClawSim.aiming();
+      if (aiming !== this.clawAiming) { this.clawAiming = aiming; this.renderClaw(); }
       requestAnimationFrame(loop);
     };
     requestAnimationFrame(loop);
@@ -777,14 +794,16 @@ const UI = {
 
   renderClaw() {
     this.$('claw-coins').textContent = Game.bank;
+    const busy = ClawSim.busy(), aiming = ClawSim.aiming();
     for (const [tier, id] of [['normal', 'btn-claw-grab'], ['gold', 'btn-claw-gold']]) {
       const T = CLAW_TIERS[tier], b = this.$(id);
       b.innerHTML = `${T.name} <span class="coin-ico"></span> ${T.price}`;
-      b.disabled = Game.bank < T.price || !!this.clawAnim;
+      b.disabled = Game.bank < T.price || busy || !!this.clawPrize;
     }
-    const pct = v => `${+(v * 100).toFixed(1)}%`;
-    this.$('claw-odds').textContent = `Grab: ${pct(CLAW_TIERS.normal.pet)} Jackpot pet · ${pct(CLAW_TIERS.normal.cosmetic)} claw-only cosmetic · otherwise ${CLAW_TIERS.normal.coins} coins back. `
-      + `Gold Grab: double the odds, ${CLAW_TIERS.gold.coins} coins back.`;
+    this.show('claw-pay', !aiming);
+    this.show('claw-steer', aiming);
+    this.$('claw-odds').textContent = `Steer the claw with ◀ ▶ (or the arrow keys, or tap the glass) and drop it. Grab a glowing purple capsule for a claw-only cosmetic. `
+      + `Rare rainbow capsules hold a Jackpot pet. Any other capsule pays ${CLAW_TIERS.normal.coins} coins back (${CLAW_TIERS.gold.coins} on a Gold Grab, which also has a stronger claw).`;
     const ul = this.$('claw-prizes');
     ul.textContent = '';
     for (const petsOnly of [true, false]) for (const [tab, id] of Claw.prizes(petsOnly)) {
@@ -798,39 +817,71 @@ const UI = {
   },
 
   clawGrab(tier) {
-    if (this.clawAnim) return;
-    const res = Claw.grab(tier);
-    if (!res) return;
+    if (ClawSim.busy() || this.clawPrize || !Claw.pay(tier)) return;
     Sound.click();
-    this.clawAnim = { res };
-    this.$('claw-result').textContent = '';
+    this.$('claw-result').textContent = 'Steer the claw, then drop it!';
     this.$('claw-result').className = 'claw-result';
-    this.renderClaw();
     this.refreshMeta();
-    ClawSim.grab(res.kind, () => this.clawReveal());
+    ClawSim.start(tier, type => this.clawReveal(Claw.award(type, tier)));
+    this.renderClaw();
+    setTimeout(() => this.$('btn-claw-drop').focus({ preventScroll: true }), 30);
   },
 
-  clawReveal() {
-    const a = this.clawAnim;
-    if (!a) return;
-    const r = a.res, el = this.$('claw-result');
-    if (r.kind === 'pet') {
-      el.textContent = `JACKPOT! You won the ${r.name}! It's yours to equip in the shop.`;
-      el.className = 'claw-result jackpot';
-      Sound.levelUp();
-      Sound.hatch();
-    } else if (r.kind === 'cosmetic') {
-      el.textContent = `You won ${r.name} (${r.what})! Claw machine only.`;
-      el.className = 'claw-result win';
-      Sound.hatch();
-    } else {
-      el.textContent = `So close... ${r.coins} coins back.`;
-      el.className = 'claw-result';
-      Sound.coin();
-    }
-    ClawSim.refill();
-    this.clawAnim = null;
+  clawDrop() { ClawSim.release(); },
+
+  // Keyboard while the machine is open: left/right steer, Space/Enter/down drops.
+  clawKey(e, down) {
+    if (!ClawSim.aiming()) return false;
+    const r = Input.route(e.code), d = r ? r.dir : ARROWS[e.code];
+    if (d === 'left' || d === 'right') { e.preventDefault(); ClawSim.steer(down ? (d === 'left' ? -1 : 1) : 0); return true; }
+    if (down && (d === 'down' || e.code === 'Space' || e.code === 'Enter')) { e.preventDefault(); ClawSim.release(); return true; }
+    return false;
+  },
+
+  clawReveal(res) {
+    const el = this.$('claw-result');
     this.renderClaw();
+    this.refreshMeta();
+    if (res.kind === 'empty') {
+      el.textContent = 'The claw came up empty. Try again!';
+      el.className = 'claw-result';
+      Sound.bump();
+      return;
+    }
+    el.textContent = '';
+    this.clawPrize = res;
+    const box = this.$('claw-win'), art = this.$('claw-win-art');
+    art.textContent = '';
+    if (res.kind === 'coins') {
+      const coin = document.createElement('div');
+      coin.className = 'big-coin';
+      art.appendChild(coin);
+      this.$('claw-win-title').textContent = `You won ${res.coins} coins!`;
+      this.$('claw-win-sub').textContent = 'Not a prize capsule this time, but it pays you back.';
+      box.className = 'claw-win';
+      Sound.coin();
+    } else {
+      const cv = document.createElement('canvas');
+      cv.width = cv.height = 160;
+      this.preview(cv, res.tab, res.id);
+      art.appendChild(cv);
+      const jackpot = res.kind === 'pet';
+      this.$('claw-win-title').textContent = jackpot ? `JACKPOT! ${res.name}!` : `You won ${res.name}!`;
+      this.$('claw-win-sub').textContent = (SHOP_TABS[res.tab][res.id].perk ? SHOP_TABS[res.tab][res.id].perk + '. ' : '') + `A claw machine only ${res.what}, now in your shop.`;
+      box.className = 'claw-win ' + (jackpot ? 'jackpot' : 'cosmetic');
+      if (jackpot) Sound.levelUp();
+      Sound.hatch();
+    }
+    this.renderClaw();
+    setTimeout(() => this.$('btn-claw-claim').focus({ preventScroll: true }), 30);
+  },
+
+  clawClaim() {
+    this.clawPrize = null;
+    this.$('claw-win').className = 'claw-win hidden';
+    Sound.click();
+    this.renderClaw();
+    this.$('btn-claw-grab').focus({ preventScroll: true });
   },
 
   // ---- Goals: biome mastery, the Roadex and prestige -------------------------------
