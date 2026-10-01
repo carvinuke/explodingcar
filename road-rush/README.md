@@ -51,6 +51,11 @@ uses `W A S D` and player two the arrow keys.
   guarantees a path through the scenery, pits and road-work gear. Railroads and
   rivers are occasional: never next to each other, and each needs a long
   stretch before it can appear again.
+- **Road forks.** Before every new biome the road splits around a big
+  signpost with a green board pointing each way, each to a different biome.
+  Walk past the sign on the side you want and that's the biome you get next
+  (the board you picked lights up). Forks are in single-player runs; two
+  players get the normal order.
 - **Biomes.** The first 80 rows are countryside, then every 90 rows the world
   changes to one of nine biomes, with a green "Entering…" sign at the border:
   - *Countryside:* trees and meadows; cows wander onto the road and stop
@@ -294,7 +299,7 @@ Two more things keep going between runs:
   Crown of Fire (38), Shadow Cat (40), the Aurora trail (42), Cosmic Big J (45),
   and at level 50, Golden Big J and the Pure Gold trail. The report shows the
   XP you earned and what the next level unlocks.
-- **Shop:** 267 cosmetics in seven tabs, plus the Upgrades tab, with a collection counter at the top.
+- **Shop:** 289 cosmetics in eight tabs, plus the Upgrades tab, with a collection counter at the top.
   Unlocking everything takes a day or two of playing.
   - **Auras (30):** a glow that's always around you: Soft Glow, Sparkle Cloud,
     Love Bubble, Leaf Whirl, Sakura Breeze, Frost Swirl, Flame Ring, Toxic
@@ -302,6 +307,12 @@ Two more things keep going between runs:
     Rainbow Ring, Glitch Field, Diamond Dust, Moon Orbit, Solar Flare, Golden
     Halo and more, plus Northern Lights, Galaxy and The Void (levels 24, 33
     and 44), Storm Cell and Royal Glow (trophies) and the Prestige Aura.
+  - **Hop sounds (22):** the sound you make every time you hop. Tap a card's
+    speaker to hear it first: Squeaky Toy, Pop, 8-Bit, Bloop, Kick Drum,
+    Boing, Coin Blip, Quack, Spring, Slide Whistle, Robot, Meow, Laser,
+    Squelch, Kazoo, Cowbell, Car Horn, and Piano (every hop plays the next
+    note of a tune), plus Magic Sparkle and Temple Bell (levels 21 and 37),
+    Fanfare (reach level 50) and the claw-only Jackpot Ding.
   - **Footprints (14):** marks you leave on the ground for a few seconds:
     chicken tracks, paw prints, hearts, snow boots, stars, slime, pixels,
     flickering fire, flowers that pop up, ghostly steps, neon, rainbow and
@@ -471,6 +482,7 @@ Plain scripts that share a few global objects, loaded in order by `index.html`:
 | `js/effects.js` | `FX`: pooled particles, explosions, blood and scorch decals, fire, water, weather, flashes |
 | `js/draw.js` | `Draw`: 2.5D box sprites for vehicles, trains, logs, scenery, skins and icons |
 | `js/world.js` | `World`: endless row generation (ground, road, rail, river, road work), nine biomes, weather |
+| `js/forks.js` | `Forks`: the road forks that let you pick the next biome |
 | `js/vehicles.js` | `Vehicles`: types, lanes, braking, skids, crashes, blasts, responders, crash director |
 | `js/hazards.js` | `River` (logs), `Rail` (signals, trains, trams, stalled cars), `Work` (excavators) |
 | `js/animals.js` | `Animals`: cows, deer, tumbleweeds, seagulls, paramedics |

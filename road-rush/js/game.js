@@ -115,7 +115,7 @@ const Game = {
     SecretRoom.reset();
     River.steps.length = 0;
     Reverse.reset();
-    World.reset(seed, { speedMul: M.speedMul, gapMul: M.gapMul, powerups: M.powerups });
+    World.reset(seed, { speedMul: M.speedMul, gapMul: M.gapMul, powerups: M.powerups, forks: M.players !== 2 });
     if (this.players.length > 1) { Player.reset(3); Player2.reset(7); }
     else Player.reset(START_COL);
     Pets.reset();
@@ -240,6 +240,7 @@ const Game = {
       }
       this.updateScore();
       Upgrades.onRow(p); // the odometer
+      Forks.check(p); // walked past a fork sign
     }
   },
 

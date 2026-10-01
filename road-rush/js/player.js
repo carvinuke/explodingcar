@@ -114,7 +114,7 @@ const PlayerProto = {
     if (pogo) Sound.boing();
     if (slide) Sound.slide();
     else {
-      Sound.hop(fast);
+      if (this.id === 0 && Shop.hopSound) Sound.hopAs(Shop.hopSound, fast); else Sound.hop(fast);
       Cosmetics.hopTrail(this);
     }
     if (this.id === 0) Ghost.mark(Game.time, tx, nr * TILE, 'h');

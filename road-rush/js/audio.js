@@ -107,6 +107,43 @@ const Sound = (() => {
     },
 
     hop(fast) { if (ok()) tone('sine', fast ? 520 : 420, fast ? 820 : 660, 0.07, 0.07); },
+
+    // Your hop sound from the shop (or the classic one).
+    hopAs(kind, fast) {
+      if (!ok()) return;
+      const k = fast ? 1.25 : 1;
+      switch (kind) {
+        case 'squeak': tone('square', 1200 * k, 1800 * k, 0.05, 0.035); tone('sine', 1800 * k, 1300 * k, 0.07, 0.05, 0.04); return;
+        case 'boing': tone('sine', 170 * k, 520 * k, 0.16, 0.11); tone('triangle', 250 * k, 620 * k, 0.12, 0.04, 0.03); return;
+        case 'laser': tone('sawtooth', 1700 * k, 180, 0.12, 0.045); return;
+        case 'quack': tone('sawtooth', 560, 380, 0.1, 0.05); noise('bandpass', 950, 700, 0.1, 0.06, { q: 5 }); return;
+        case 'drum': tone('sine', 140, 55, 0.12, 0.2); noise('lowpass', 400, 90, 0.06, 0.12); return;
+        case 'coin': tone('square', 988 * k, 0, 0.05, 0.035); tone('square', 1319 * k, 0, 0.1, 0.035, 0.05); return;
+        case 'bubble': tone('sine', 380 * k, 1300 * k, 0.09, 0.09); return;
+        case 'pop': noise('bandpass', 2600, 1200, 0.035, 0.18, { q: 2 }); tone('sine', 900, 280, 0.04, 0.08); return;
+        case 'piano': {
+          const notes = [523, 587, 659, 784, 880, 1047, 880, 784, 659, 587];
+          this.pianoN = ((this.pianoN || 0) + 1) % notes.length;
+          const f = notes[this.pianoN];
+          tone('triangle', f, 0, 0.32, 0.09); tone('sine', f * 2, 0, 0.18, 0.025);
+          return;
+        }
+        case 'robot': tone('square', 300 * k, 300 * k, 0.04, 0.035); tone('square', 450 * k, 450 * k, 0.04, 0.035, 0.045); return;
+        case 'spring': tone('triangle', 300 * k, 950 * k, 0.07, 0.07); tone('triangle', 950 * k, 420 * k, 0.08, 0.05, 0.07); return;
+        case 'whistle': tone('sine', 1400 * k, 2300 * k, 0.1, 0.055); return;
+        case 'cowbell': tone('square', 560, 0, 0.13, 0.035); tone('square', 845, 0, 0.13, 0.028); return;
+        case 'chip': tone('square', 440 * k, 880 * k, 0.06, 0.045); return;
+        case 'meow': tone('sawtooth', 650, 1000, 0.07, 0.035); tone('sawtooth', 1000, 620, 0.12, 0.035, 0.07); return;
+        case 'slime': noise('lowpass', 700, 160, 0.11, 0.16); tone('sine', 320, 140, 0.1, 0.06); return;
+        case 'kazoo': tone('sawtooth', 330 * k, 360 * k, 0.12, 0.05); tone('square', 662 * k, 720 * k, 0.12, 0.012); return;
+        case 'honk': tone('square', 400, 400, 0.09, 0.035); tone('square', 505, 505, 0.09, 0.028); return;
+        case 'bell': tone('sine', 1568, 0, 0.45, 0.055); tone('sine', 2349, 0, 0.3, 0.025); return;
+        case 'magic': [1047, 1319, 1568, 2093].forEach((f, i) => tone('sine', f, 0, 0.12, 0.04, i * 0.025)); return;
+        case 'fanfare': tone('square', 784, 0, 0.07, 0.035); tone('square', 1047, 0, 0.14, 0.04, 0.07); return;
+        case 'jackpot': [1319, 1760, 1319, 1760].forEach((f, i) => tone('triangle', f, 0, 0.06, 0.06, i * 0.04)); return;
+        default: this.hop(fast);
+      }
+    },
     bump() { if (ok()) tone('sine', 170, 90, 0.09, 0.12); },
     land() { if (ok()) noise('lowpass', 700, 120, 0.14, 0.25); },
     click() { if (ok()) tone('sine', 660, 990, 0.06, 0.08); },

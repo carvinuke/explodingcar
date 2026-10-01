@@ -152,7 +152,7 @@ const Boxes = {
 
   give([tab, id], rare) {
     Shop.grant(tab, id);
-    const tabName = { skins: 'skin', hats: 'hat', trails: 'trail', pets: 'pet', auras: 'aura', prints: 'footprints', titles: 'title' }[tab];
+    const tabName = { skins: 'skin', hats: 'hat', trails: 'trail', pets: 'pet', auras: 'aura', prints: 'footprints', titles: 'title', sounds: 'hop sound' }[tab];
     return { tab, id, name: SHOP_TABS[tab][id].name, kind: tabName, rare, shards: 1 };
   },
 };
