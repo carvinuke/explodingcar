@@ -10,6 +10,8 @@ const WEATHER_SIGNS = {
   rain: ['SLIPPERY WHEN WET', 'Cars brake late and can skid into each other'],
   snow: ['ICY ROADS', 'Traffic slows down in the snow'],
   dust: ['DUST STORM', "You can't see far ahead. Listen for horns"],
+  fog: ['FOG AHEAD', "You won't see what's coming until it's close"],
+  leaves: ['FALLING LEAVES', 'Autumn is here'],
 };
 
 const UI = {
@@ -47,7 +49,7 @@ const UI = {
     }
 
     // Big J's rage meter and the egg you're carrying get chips too
-    for (const [k, name, color] of [['rage', 'Rage', '#ff3b2f'], ['egg', 'Egg', '#ff8ad8']]) {
+    for (const [k, name, color] of [['rage', 'Rage', '#ff3b2f'], ['calm', 'Calm', '#5aa9ff'], ['egg', 'Egg', '#ff8ad8']]) {
       const el = document.createElement('div');
       el.className = 'pw hidden';
       el.style.setProperty('--c', color);
@@ -87,6 +89,8 @@ const UI = {
     on('set-shake', flip('shake'));
     on('set-ghost', flip('ghost'));
     on('set-replay', flip('replay'));
+    on('set-graves', flip('graves'));
+    on('set-lowgfx', () => { Settings.lowGfx = !Settings.lowGfx; Settings.save(); this.syncSettings(); Renderer.resScale = 1; Renderer.resize(); Sound.click(); });
     on('set-motion', flip('motion'));
     on('set-colorblind', flip('colorblind'));
     on('set-gore', () => {
@@ -225,6 +229,8 @@ const UI = {
     set('set-shake', Settings.shake);
     set('set-ghost', Settings.ghost);
     set('set-replay', Settings.replay);
+    set('set-graves', Settings.graves);
+    set('set-lowgfx', Settings.lowGfx);
     set('set-motion', Settings.motion);
     set('set-colorblind', Settings.colorblind);
     set('set-gore', Settings.gore);
@@ -748,7 +754,8 @@ const UI = {
     }
 
     const extra = {
-      rage: Rage.able(Player) && Player.alive ? [Player.rage, Player.rage >= 1 ? 'Rage: MAX' : `Rage ${RAGE_LEVELS[Math.floor(Player.rage * 4)] || ''}`.trim()] : null,
+      rage: Rage.able(Player) && !Rage.calmOne(Player) && Player.alive ? [Player.rage, Player.rage >= 1 ? 'Rage: MAX' : `Rage ${RAGE_LEVELS[Math.floor(Player.rage * 4)] || ''}`.trim()] : null,
+      calm: Rage.able(Player) && Rage.calmOne(Player) && Player.alive ? [Player.rage, 'Calm'] : null,
       egg: Egg.carry && Player.alive ? [Egg.progress(), `Egg ${Math.min(EGG_ROWS, Egg.carry.rows)}/${EGG_ROWS}`] : null,
     };
     for (const k in this.extra) {

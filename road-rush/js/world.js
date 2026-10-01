@@ -44,6 +44,34 @@ const ZONES = {
     pal: { grass: ['#f2dfa7', '#eed99c'], edge: '#cdb277', tree: ['#3fa34d', '#2e7f3a', '#52b85e', '#38914a'],
            bush: ['#6dae55', '#548d42', '#7fc063', '#619f4b'], flowers: ['#f7f0dc'] },
   },
+  farm: {
+    name: 'FARMLAND', sub: 'Tall corn hides the road. Slow tractors, loose sheep',
+    weather: [['clear', 5], ['rain', 2]], work: 0.2, rail: 0.8, river: 1.0, lanes: 0,
+    bg: '#a9c45e',
+    pal: { grass: ['#b9d46a', '#b1cc61'], edge: '#7d8f3a', tree: ['#6cae4a', '#4f8c37', '#82c15c', '#62a243'],
+           bush: ['#8cc054', '#6ea041', '#9ccf64', '#7fb24c'], flowers: ['#ffe066', '#ffffff', '#ffb347'] },
+  },
+  swamp: {
+    name: 'THE SWAMP', sub: "Lily pads sink if you don't keep moving",
+    weather: [['fog', 4], ['rain', 2], ['clear', 1]], work: 0.1, rail: 0.4, river: 2.2, lanes: 0,
+    bg: '#5d7a45',
+    pal: { grass: ['#6f8f4a', '#688744'], edge: '#4a5e30', tree: ['#4f6b3a', '#3a522a', '#5f7d46', '#465f34'],
+           bush: ['#5a7a3e', '#45602f', '#6a8a4a', '#526f39'], flowers: ['#c9d98a', '#e8d6ff'] },
+  },
+  autumn: {
+    name: 'THE AUTUMN WOODS', sub: 'Leaf piles slow you down. Watch for logging trucks',
+    weather: [['leaves', 4], ['clear', 2], ['rain', 2]], work: 0.3, rail: 0.9, river: 1.1, lanes: 0,
+    bg: '#b89a5a',
+    pal: { grass: ['#c9b56a', '#c1ad60'], edge: '#8e7a3d', tree: ['#e8742a', '#c25a1a', '#f2a23a', '#d1821f'],
+           bush: ['#d18a3a', '#b06f2a', '#e0a050', '#c08038'], flowers: ['#e8742a', '#ffd23f', '#a8641f'] },
+  },
+  harbor: {
+    name: 'THE HARBOR', sub: 'Ride the ferries. Forklifts on the docks',
+    weather: [['clear', 3], ['rain', 3], ['fog', 1]], work: 0.4, rail: 0.7, river: 1.7, lanes: 0,
+    bg: '#5a6b78',
+    pal: { grass: ['#a07a52', '#9a744c'], edge: '#6b4f33', tree: ['#56a846', '#3f8a37', '#6cc255', '#50a043'],
+           bush: ['#62b44e', '#4b953d', '#77c75f', '#5aa648'], flowers: ['#7a5a3a'] },
+  },
   snow: {
     name: 'THE MOUNTAIN PASS', sub: 'Ice patches: you will slide',
     weather: [['snow', 1]], work: 0.2, rail: 1.1, river: 1.2, lanes: 0,
@@ -74,7 +102,7 @@ const World = {
     // so they don't depend on how far ahead rows have been generated
     const r = mulberry32(seed ^ 0x5bd1e995);
     this.zoneSeq = [];
-    const others = ['city', 'desert', 'snow', 'beach'];
+    const others = ['city', 'desert', 'snow', 'beach', 'farm', 'swamp', 'autumn', 'harbor'];
     for (let lap = 0; lap < 12; lap++) {
       const o = others.slice();
       for (let k = o.length - 1; k > 0; k--) { const j = Math.floor(r() * (k + 1)); [o[k], o[j]] = [o[j], o[k]]; }
@@ -203,6 +231,18 @@ const World = {
     if (prev && prev.type === 'grass') this.addRoadside(prev, 1);
   },
 
+  // Leaf piles in the autumn woods: land in one and your next hop is slow.
+  addLeaves(row) {
+    let leaves = null;
+    for (let k = Gen.int(0, 3); k > 0; k--) {
+      const col = Gen.int(0, COLS - 1);
+      if (row.blocked[col]) continue;
+      leaves = leaves || new Array(COLS).fill(false);
+      leaves[col] = true;
+    }
+    row.leaves = leaves;
+  },
+
   // Ice patches in the mountains: land on one and you keep sliding.
   addIce(row, count) {
     if (row.zone !== 'snow' || row.i < 6) return;
@@ -261,14 +301,18 @@ const World = {
   makeRiver(i) {
     const s = this.seg, k = s.k++, dir = s.dirs[k], d = difficulty(i);
     const zone = this.zoneAt(i);
+    const style = zone === 'snow' ? 'floe' : zone === 'city' ? 'raft' : zone === 'beach' ? 'surf'
+      : zone === 'swamp' ? 'lily' : zone === 'harbor' ? 'ferry' : 'log';
+    const lily = style === 'lily', ferry = style === 'ferry';
     const river = {
       dir,
-      style: zone === 'snow' ? 'floe' : zone === 'city' ? 'raft' : zone === 'beach' ? 'surf' : 'log',
-      speed: (32 + 55 * d) * Gen.rand(0.8, 1.3),
-      gapMin: lerp(1.0, 1.6, d) * TILE,
-      gapMax: lerp(2.6, 3.4, d) * TILE,
-      lenMin: lerp(2.8, 1.8, d) * TILE,
-      lenMax: lerp(4.2, 3.0, d) * TILE,
+      style,
+      // lily pads drift slowly but sink under you; ferries are long and slow with big gaps
+      speed: (32 + 55 * d) * Gen.rand(0.8, 1.3) * (lily ? 0.35 : ferry ? 0.7 : 1),
+      gapMin: (lily ? lerp(0.3, 0.7, d) : ferry ? lerp(2.2, 3.2, d) : lerp(1.0, 1.6, d)) * TILE,
+      gapMax: (lily ? lerp(1.0, 1.6, d) : ferry ? lerp(4, 5.5, d) : lerp(2.6, 3.4, d)) * TILE,
+      lenMin: (lily ? 0.95 : ferry ? lerp(5, 4, d) : lerp(2.8, 1.8, d)) * TILE,
+      lenMax: (lily ? 1.15 : ferry ? lerp(6.5, 5.2, d) : lerp(4.2, 3.0, d)) * TILE,
       nextGap: 0,
       xStart: dir > 0 ? -this.laneMargin : WORLD_W + this.laneMargin,
       xEnd: dir > 0 ? WORLD_W + this.laneMargin : -this.laneMargin,
@@ -327,6 +371,8 @@ const World = {
     const biome = this.palette(i, zone);
     const row = { i, y: i * TILE, type: 'grass', blocked: new Array(COLS).fill(false), objs: [], flat: [], biome, zone };
     if (zone === 'beach') row.boardwalk = Gen.chance(0.35);
+    if (zone === 'swamp') row.boardwalk = Gen.chance(0.4);
+    if (zone === 'harbor') row.dock = true;
 
     // A random-walk column that is never blocked guarantees a path forward:
     // each row keeps both the previous and the new path column clear.
@@ -357,6 +403,15 @@ const World = {
         if (far === 1) { if (Gen.chance(0.2)) row.objs.push(this.decor('umbrella', col, row)); }
         else if (far === 3 && Gen.chance(0.08)) row.objs.push(this.decor('lifeguard', col, row));
         else if (Gen.chance(0.2 + far * 0.05)) row.objs.push(this.decor(Gen.weighted([['palm', 4], ['umbrella', 2], ['chair', 1]]), col, row));
+      } else if (zone === 'farm') {
+        if (far <= 3) { if (Gen.chance(0.75)) row.objs.push(this.decor('corn', col, row)); } // the corn field
+        else if (Gen.chance(0.2)) row.objs.push(this.decor(Gen.weighted([['tree', 3], ['hay', 2]]), col, row));
+      } else if (zone === 'harbor') {
+        if (far === 1) { if (Gen.chance(0.35)) row.objs.push(this.decor('bollard', col, row)); }
+        else if (far === 2) { if (Gen.chance(0.3)) row.objs.push(this.decor(Gen.pick(['crate', 'barrel']), col, row)); }
+        else if (far >= 3 && Gen.chance(0.45)) row.objs.push(this.decor('container', col, row));
+      } else if (zone === 'swamp') {
+        if (Gen.chance(0.3 + far * 0.04)) row.objs.push(this.decor(Gen.weighted([['reeds', 4], ['tree', 3], ['stump', 1.5]]), col, row));
       } else if (far === 1) {
         if (Gen.chance(0.15)) row.objs.push(this.decor(zone === 'desert' ? 'deadbush' : 'bush', col, row));
       } else if (Gen.chance(0.22 + far * 0.07)) {
@@ -382,6 +437,7 @@ const World = {
 
     if (mode === 'normal') {
       this.addIce(row, Gen.int(0, 2));
+      if (zone === 'autumn') this.addLeaves(row);
       const below = this.rows.get(i - 1);
       if (below && below.type === 'road') this.addRoadside(row, -1);
     }
@@ -399,6 +455,14 @@ const World = {
       kind = Gen.weighted([['planter', 3], ['hydrant', 2], ['bin', 2], ['mailbox', 1], ['bench', 1.5], ['lamp', 1]]);
     } else if (z === 'desert') {
       kind = Gen.weighted([['cactus', 5], ['rock', 3], ['deadbush', 2], ['skull', 0.6]]);
+    } else if (z === 'farm') {
+      kind = Gen.weighted([['corn', 5], ['hay', 3], ['tree', 1], ['scarecrow', 0.5]]);
+    } else if (z === 'swamp') {
+      kind = Gen.weighted([['reeds', 4], ['stump', 2.5], ['tree', 2], ['rock', 1]]);
+    } else if (z === 'autumn') {
+      kind = Gen.weighted([['tree', 6], ['bush', 2], ['stump', 1.5], ['rock', 1]]);
+    } else if (z === 'harbor') {
+      kind = Gen.weighted([['crate', 4], ['barrel', 3], ['bollard', 2]]);
     } else if (z === 'beach') {
       kind = row.boardwalk ? Gen.weighted([['bench', 2], ['bin', 1.5], ['lamp', 1]])
         : Gen.weighted([['umbrella', 4], ['chair', 2.5], ['sandcastle', 2], ['palm', 2]]);
@@ -413,10 +477,10 @@ const World = {
     const o = { kind, col, x: cellX(col), y: row.y };
     if (kind === 'tree' || kind === 'planter') {
       o.tiers = kind === 'planter' ? 1 : Gen.weighted([[1, 4], [2, 4], [3, 2]]);
-      o.size = kind === 'planter' ? Gen.rand(10, 12) : Gen.rand(13, 16);
+      o.size = kind === 'planter' ? Gen.int(10, 12) : Gen.int(13, 16); // whole sizes so trees share cached sprites
       if (row.zone === 'snow') { o.tiers = Gen.int(2, 3); o.pine = true; }
       const t = b.tree;
-      o.pal = { top: shade(t[0], Gen.rand(-0.05, 0.05)), front: t[1], top2: t[2], front2: t[3] };
+      o.pal = { top: shade(t[0], Gen.int(-1, 1) * 0.04), front: t[1], top2: t[2], front2: t[3] };
     } else if (kind === 'bush' || kind === 'deadbush') {
       const t = b.bush;
       o.pal = { top: t[0], front: t[1], top2: t[2], front2: t[3] };
@@ -426,7 +490,7 @@ const World = {
     } else if (kind === 'lamp') {
       o.dir = Gen.chance(0.5) ? 1 : -1;
     } else if (kind === 'cactus') {
-      o.h = Gen.rand(26, 40);
+      o.h = Gen.int(13, 20) * 2;
       o.arms = Gen.int(0, 2);
       o.flip = Gen.chance(0.5) ? 1 : -1;
     } else if (kind === 'building') {
@@ -441,9 +505,14 @@ const World = {
       o.zone = row.zone;
     } else if (kind === 'umbrella' || kind === 'chair') {
       o.color = Gen.pick(['#e63946', '#ffb703', '#2a9d8f', '#3a86ff', '#ff6fa5']);
+    } else if (kind === 'corn') {
+      o.h = Gen.int(15, 19) * 2;
+    } else if (kind === 'crate' || kind === 'container') {
+      o.color = Gen.pick(kind === 'crate' ? ['#b88a58', '#a57a4d', '#c79a62'] : ['#c1121f', '#2667cc', '#2a9d8f', '#e9a23b', '#6a4c93']);
+      if (kind === 'container') o.stack = Gen.int(1, 3);
     } else if (kind === 'palm') {
-      o.h = Gen.rand(40, 58);
-      o.lean = Gen.rand(-6, 6);
+      o.h = Gen.int(20, 29) * 2;
+      o.lean = Gen.int(-3, 3) * 2;
     }
     return o;
   },

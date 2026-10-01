@@ -2,9 +2,100 @@
 // Frame composition: ground, shadows, depth-sorted objects, effects,
 // secret-event layers, day and night, weather and screen overlays.
 
+// Scenery that never changes is drawn once into a small image and stamped
+// after that (a tree is a dozen boxes; a stamp is one call).
+const STATIC_KINDS = {
+  tree: (c, o, snow) => Draw.tree(c, o, snow), bush: (c, o) => Draw.bush(c, o), deadbush: (c, o) => Draw.deadbush(c, o),
+  rock: (c, o) => Draw.rock(c, o), planter: (c, o) => Draw.planter(c, o), hydrant: c => Draw.hydrant(c), bin: c => Draw.bin(c),
+  mailbox: c => Draw.mailbox(c), bench: c => Draw.bench(c), snowman: c => Draw.snowman(c), cactus: (c, o) => Draw.cactus(c, o),
+  skull: c => Draw.skull(c), umbrella: (c, o) => Draw.umbrella(c, o), chair: (c, o) => Draw.chair(c, o), sandcastle: c => Draw.sandcastle(c),
+  palm: (c, o) => Draw.palm(c, o), lifeguard: c => Draw.lifeguard(c), cone: c => Draw.cone(c), sign: (c, o) => Draw.sign(c, o),
+  lamp: (c, o) => Draw.lamp(c, o),
+  hay: c => Draw.hay(c), corn: (c, o) => Draw.corn(c, o), scarecrow: c => Draw.scarecrow(c), reeds: c => Draw.reeds(c),
+  stump: c => Draw.stump(c), crate: (c, o) => Draw.crate(c, o), barrel: c => Draw.barrel(c), bollard: c => Draw.bollard(c),
+  container: (c, o) => Draw.container(c, o),
+};
+const SPRITE_SKIP = { x: 1, y: 1, col: 1, key: 1, _sk: 1 };
+
+const Sprites = {
+  cache: new Map(),
+  scale: 0,
+  MAX: 260,
+  scratch: null,
+
+  keyOf(o, snow) {
+    if (!o._sk) {
+      let k = o.kind;
+      for (const f in o) {
+        if (SPRITE_SKIP[f]) continue;
+        const v = o[f];
+        k += '|' + (v && typeof v === 'object' ? Object.values(v).join(',') : v);
+      }
+      o._sk = k;
+    }
+    return o.kind === 'tree' && !o.pine ? o._sk + '|' + snow : o._sk;
+  },
+
+  // Draw scenery object o at the current origin, from the cache when possible.
+  draw(c, o, snow) {
+    const snowQ = Math.round(snow * 4) / 4;
+    if (!this.drawKey(c, this.keyOf(o, snowQ), g => STATIC_KINDS[o.kind](g, o, snowQ))) STATIC_KINDS[o.kind](c, o, snow);
+  },
+
+  // Stamp the sprite for `key` (drawing it with fn the first time). False if it can't be cached.
+  drawKey(c, key, fn) {
+    if (Settings.noCache) return false;
+    const s = Math.round(Renderer.base * Renderer.dpr * 4) / 4;
+    if (s !== this.scale) { this.cache.clear(); this.scale = s; }
+    let spr = this.cache.get(key);
+    if (spr) { this.cache.delete(key); this.cache.set(key, spr); } // most recently used goes last
+    else {
+      spr = this.make(fn, s);
+      if (!spr) return false;
+      this.cache.set(key, spr);
+      if (this.cache.size > this.MAX) this.cache.delete(this.cache.keys().next().value);
+    }
+    if (spr.w) c.drawImage(spr.img, spr.ox, spr.oy, spr.w, spr.h);
+    return true;
+  },
+
+  // Render into a roomy scratch canvas, then crop to what was actually drawn.
+  make(fn, s) {
+    const HW = 64, UP = 120, DOWN = 32;
+    const W = Math.ceil(HW * 2 * s), H = Math.ceil((UP + DOWN) * s);
+    if (!this.scratch) { this.scratch = document.createElement('canvas'); this.sg = this.scratch.getContext('2d', { willReadFrequently: true }); }
+    const cv = this.scratch, g = this.sg;
+    if (cv.width < W || cv.height < H) { cv.width = Math.max(cv.width, W); cv.height = Math.max(cv.height, H); }
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.clearRect(0, 0, W, H);
+    g.setTransform(s, 0, 0, s, HW * s, UP * s);
+    try { fn(g); } catch (e) { return null; }
+    let data;
+    try { data = g.getImageData(0, 0, W, H).data; } catch (e) { return null; }
+    let x0 = W, y0 = H, x1 = -1, y1 = -1;
+    for (let y = 0; y < H; y++) {
+      for (let x = 0; x < W; x++) {
+        if (data[(y * W + x) * 4 + 3] === 0) continue;
+        if (x < x0) x0 = x;
+        if (x > x1) x1 = x;
+        if (y < y0) y0 = y;
+        y1 = y;
+      }
+    }
+    if (x1 < 0) return { w: 0 };
+    x0 = Math.max(0, x0 - 1); y0 = Math.max(0, y0 - 1); x1 = Math.min(W - 1, x1 + 1); y1 = Math.min(H - 1, y1 + 1);
+    const img = document.createElement('canvas');
+    img.width = x1 - x0 + 1;
+    img.height = y1 - y0 + 1;
+    img.getContext('2d').drawImage(cv, x0, y0, img.width, img.height, 0, 0, img.width, img.height);
+    return { img, ox: x0 / s - HW, oy: y0 / s - UP, w: img.width / s, h: img.height / s };
+  },
+};
+
 const Renderer = {
   ANCHOR: 0.64, // player's vertical position on screen (0 = top)
   list: [],
+  resScale: 1, // lowered automatically when frames run slow
 
   init(canvas) {
     this.canvas = canvas;
@@ -14,7 +105,8 @@ const Renderer = {
   },
 
   resize() {
-    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const native = Math.min(2, window.devicePixelRatio || 1);
+    const dpr = Math.max(0.6, native * this.resScale * (Settings.lowGfx ? Math.min(1, 1 / native) : 1));
     this.W = window.innerWidth;
     this.H = window.innerHeight;
     this.dpr = dpr;
@@ -25,6 +117,17 @@ const Renderer = {
     const viewW = this.W / (this.base * 0.45); // room for the miniature-world zoom-out
     World.laneMargin = Math.max(8 * TILE, (viewW - WORLD_W) / 2 + 4 * TILE);
     if (Cam.x !== undefined) this.metrics();
+  },
+
+  // Frames running slow: render fewer pixels. Running smooth again: step back up.
+  adapt(frameAvg, dt) {
+    const steps = [1, 0.85, 0.72, 0.6];
+    let i = steps.indexOf(this.resScale);
+    if (i < 0) i = 0;
+    this.slowT = frameAvg > 1 / 45 ? (this.slowT || 0) + dt : 0;
+    this.fastT = frameAvg < 1 / 56 ? (this.fastT || 0) + dt : 0;
+    if (this.slowT > 1.5 && i < steps.length - 1) { this.resScale = steps[i + 1]; this.slowT = 0; this.resize(); }
+    else if (this.fastT > 8 && i > 0) { this.resScale = steps[i - 1]; this.fastT = 0; this.resize(); }
   },
 
   metrics() {
@@ -113,6 +216,8 @@ const Renderer = {
     Animals.drawables(list);
     Storms.drawables(list);
     Pets.drawables(list);
+    Powers.drawables(list);
+    Graves.drawables(list);
     for (const p of Game.players) if (!p.gone) { p.key = p.y - 10; list.push(p); }
     list.sort((a, b) => b.key - a.key);
 
@@ -144,6 +249,17 @@ const Renderer = {
         c.fillStyle = 'rgba(0,0,0,0.07)';
         for (let x = Math.floor(x0 / TILE) * TILE; x < x1; x += TILE) c.fillRect(x, P(yT, zt), 1.2, TILE * GY);
         c.fillRect(x0, P(row.y, zt), w, 1);
+      } else if (row.dock || (zone === 'swamp' && row.boardwalk)) { // harbor docks and swamp boardwalks
+        const sw = zone === 'swamp';
+        c.fillStyle = sw ? (row.i & 1 ? '#6b5236' : '#705639') : (row.i & 1 ? '#9a744c' : '#a07a52');
+        c.fillRect(x0, P(yT, zt), w, TILE * GY + 0.5);
+        c.fillStyle = 'rgba(40,25,10,0.3)';
+        for (let x = Math.floor(x0 / 12) * 12; x < x1; x += 12) c.fillRect(x, P(yT, zt), 1.2, TILE * GY);
+        c.fillStyle = 'rgba(40,25,10,0.4)';
+        for (let x = Math.floor(x0 / 72) * 72 + ((row.i * 29) % 72); x < x1; x += 72) {
+          c.fillRect(x + 3, P(row.y + 10, zt), 1.6, 1.6);
+          c.fillRect(x + 3, P(row.y - 10, zt), 1.6, 1.6);
+        }
       } else if (zone === 'beach' && row.boardwalk) { // boardwalk planks
         c.fillStyle = row.i & 1 ? '#c59a64' : '#caa06a';
         c.fillRect(x0, P(yT, zt), w, TILE * GY + 0.5);
@@ -197,6 +313,7 @@ const Renderer = {
         c.fillRect(x0, P(yT, zt), w, TILE * GY + 0.5);
       }
       if (row.ice) this.ice(c, row, zt, time);
+      if (row.leaves) this.leafPiles(c, row, zt);
       const below = World.rows.get(row.i - 1);
       if (below && below.type !== 'grass') { // raised bank / kerb where ground meets road, rail or water
         const deep = below.type === 'river' ? 5 : 0;
@@ -303,6 +420,22 @@ const Renderer = {
     }
   },
 
+  // Leaf piles (autumn woods): land in one and your next hop is slow.
+  leafPiles(c, row, z) {
+    const cols = ['#e8742a', '#d1401c', '#f2b705', '#c25a1a'];
+    for (let col = 0; col < COLS; col++) {
+      if (!row.leaves[col]) continue;
+      const x = cellX(col), y = P(row.y, z);
+      c.fillStyle = 'rgba(90,50,20,0.25)';
+      c.beginPath(); c.ellipse(x, y + 1, 15, 15 * GY * 0.75, 0, 0, 6.2832); c.fill();
+      for (let k = 0; k < 9; k++) {
+        c.fillStyle = cols[(k + col) % cols.length];
+        const a = k * 2.4 + col, r = 4 + (k % 3) * 3.5;
+        c.beginPath(); c.ellipse(x + Math.cos(a) * r, y + Math.sin(a) * r * 0.55 - (3 - (k % 3)), 3.4, 2.2, a, 0, 6.2832); c.fill();
+      }
+    }
+  },
+
   // Glossy ice patches (mountain pass).
   ice(c, row, z, time) {
     for (let col = 0; col < COLS; col++) {
@@ -323,6 +456,7 @@ const Renderer = {
     const style = row.river ? row.river.style : 'log';
     c.globalAlpha = a;
     c.fillStyle = style === 'surf' ? (row.i & 1 ? '#2bb3c0' : '#30bac6') : style === 'floe' ? (row.i & 1 ? '#3f79a8' : '#4380b0')
+      : style === 'lily' ? (row.i & 1 ? '#4c6e48' : '#50744b') : style === 'ferry' ? (row.i & 1 ? '#2a6683' : '#2e6c8a')
       : style === 'raft' ? (row.i & 1 ? '#2f7d86' : '#33838c')
         : this.snow > 0.5 ? '#6fa6cf' : (row.i & 1 ? '#3a82c4' : '#3d88cb');
     c.fillRect(x0, P(yT, 0), w, TILE * GY + 0.5);
@@ -403,29 +537,16 @@ const Renderer = {
         break;
       case 'log': Draw.log(c, o, time, Game.players.some(p => p.ride === o)); break;
       case 'xing': Draw.xing(c, o, time); break;
-      case 'tree': Draw.tree(c, o, o.pine ? 1 : this.snow); break;
-      case 'planter': Draw.planter(c, o); break;
-      case 'bush': Draw.bush(c, o); break;
-      case 'deadbush': Draw.deadbush(c, o); break;
-      case 'rock': Draw.rock(c, o); break;
-      case 'lamp': Draw.lamp(c, o); break;
-      case 'sign': Draw.sign(c, o); break;
-      case 'cactus': Draw.cactus(c, o); break;
-      case 'umbrella': Draw.umbrella(c, o); break;
-      case 'chair': Draw.chair(c, o); break;
-      case 'sandcastle': Draw.sandcastle(c); break;
-      case 'palm': Draw.palm(c, o); break;
-      case 'lifeguard': Draw.lifeguard(c); break;
+      case 'tree': Sprites.draw(c, o, o.pine ? 1 : this.snow); break;
+      case 'planter': case 'bush': case 'deadbush': case 'rock': case 'lamp': case 'sign': case 'cactus':
+      case 'umbrella': case 'chair': case 'sandcastle': case 'palm': case 'lifeguard':
+      case 'hydrant': case 'bin': case 'mailbox': case 'bench': case 'snowman': case 'cone': case 'skull':
+      case 'hay': case 'corn': case 'scarecrow': case 'reeds': case 'stump': case 'crate': case 'barrel': case 'bollard': case 'container':
+        Sprites.draw(c, o, 0);
+        break;
       case 'gull': Draw.gull(c, o, time); break;
-      case 'skull': Draw.skull(c); break;
       case 'mesa': Draw.mesa(c, o); break;
       case 'building': Draw.building(c, o); break;
-      case 'hydrant': Draw.hydrant(c); break;
-      case 'bin': Draw.bin(c); break;
-      case 'mailbox': Draw.mailbox(c); break;
-      case 'bench': Draw.bench(c); break;
-      case 'snowman': Draw.snowman(c); break;
-      case 'cone': Draw.cone(c); break;
       case 'barrier': Draw.barrier(c, time); break;
       case 'worksign': Draw.worksign(c, time); break;
       case 'excavator': Draw.excavator(c, o, time); break;
@@ -437,11 +558,21 @@ const Renderer = {
       case 'item':
         if (o.type === 'coin') Draw.coin(c, o, time);
         else if (o.type === 'egg' || o.type === 'goldegg') Draw.egg(c, o, time);
+        else if (o.type === 'stand') Draw.stand(c, o, time);
         else Draw.powerItem(c, o, time);
         break;
       case 'ghost': Draw.bestGhost(c, o.z, o.alpha); break;
       case 'event': o.draw(c, time); break;
       case 'player': this.player(c, o, time); break;
+      case 'grave': c.scale(1.5, 1.5); Draw.grave(c); break;
+      case 'decoy': { // a fake you, blinking faster as it runs out
+        const blink = o.t < 2 && ((time * 10) | 0) % 2;
+        c.globalAlpha = blink ? 0.45 : 0.85;
+        Draw.player(c, { facing: o.facing, squash: Math.sin(time * 6) * 0.08, z: 0, rot: 0, flap: 0, char: 0, blinkSeed: 2 }, time, Player.skin(), null);
+        c.globalAlpha = 1;
+        Draw.hint(c, time, '?', 52);
+        break;
+      }
     }
     c.restore();
   },
@@ -453,6 +584,23 @@ const Renderer = {
       c.translate(t.x - p.x, P(t.y - p.y, 0));
       Draw.ghost(c, t.z);
       c.restore();
+    }
+    if (p.pw.bubble > 0) { // floating in a soap bubble
+      c.save();
+      c.globalAlpha = p.pw.bubble < 1.5 && ((time * 10) | 0) % 2 ? 0.35 : 0.8;
+      c.fillStyle = 'rgba(190,235,255,0.25)';
+      c.strokeStyle = 'rgba(255,255,255,0.85)';
+      c.lineWidth = 1.5;
+      c.beginPath(); c.arc(0, P(0, p.z + 15), 21 + Math.sin(time * 5) * 1, 0, 6.2832); c.fill(); c.stroke();
+      c.fillStyle = 'rgba(255,255,255,0.7)';
+      c.beginPath(); c.ellipse(-8, P(0, p.z + 24), 3, 5, -0.5, 0, 6.2832); c.fill();
+      c.restore();
+    }
+    if (p.pw.pogo > 0 && !p.hop) { // the pogo stick under you
+      c.fillStyle = '#9aa0a8';
+      c.fillRect(-0.8, P(0, p.z + 4), 1.6, 6 * GZ);
+      c.fillStyle = '#ff5c8a';
+      c.fillRect(-5, P(0, p.z + 10), 10, 1.6);
     }
     if (p.pw.magnet > 0) {
       c.save();
@@ -612,6 +760,17 @@ const Renderer = {
     FX.drawWeather(c, W, H, Game.weather.type, Game.weather.amt, dt || 0.016);
     Events.drawScreen(c, W, H, time);
 
+    if (Powers.stop > 0) { // time stop: the colour drains out
+      const k = Math.min(1, Powers.stop * 3);
+      c.fillStyle = `rgba(110,90,170,${0.22 * k})`;
+      c.fillRect(0, 0, W, H);
+      this.vignette(c, `rgba(60,30,120,${0.5 * k})`);
+    }
+    if (Game.fever && Game.state === 'playing') { // combo fever: golden edges
+      this.vignette(c, `rgba(255,200,40,${0.32 + 0.12 * Math.sin(time * 9)})`);
+      c.fillStyle = 'rgba(255,215,80,0.06)';
+      c.fillRect(0, 0, W, H);
+    }
     if (Powers.frost > 0.01) {
       c.fillStyle = `rgba(150,220,255,${0.08 * Powers.frost})`;
       c.fillRect(0, 0, W, H);

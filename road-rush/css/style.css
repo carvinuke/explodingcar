@@ -853,3 +853,6 @@ kbd {
   .skin b { font-size: 13px; }
   .skin .unlock { font-size: 11px; }
 }
+
+.t-calm { background: #1a4fb8; color: var(--sign-white); box-shadow: inset 0 0 0 2px #1a4fb8, inset 0 0 0 4px var(--sign-white), 0 6px 24px rgba(40, 110, 255, 0.45); }
+.t-fever { background: linear-gradient(135deg, #ffe066, #ffb000); color: var(--ink); box-shadow: inset 0 0 0 2px #ffd23f, inset 0 0 0 4px var(--ink), 0 6px 24px rgba(255, 190, 40, 0.6); }

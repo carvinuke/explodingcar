@@ -554,6 +554,7 @@ const FX = (() => {
   // ---- Screen space (identity transform) ----------------------------------------
   function drawWeather(c, W, H, type, amt, dt) {
     if (amt < 0.02) return;
+    if (sky.kind !== type) { sky.flakes.length = 0; sky.drops.length = 0; sky.kind = type; } // each weather has its own particles
     if (type === 'rain') {
       c.fillStyle = `rgba(40,60,90,${0.18 * amt})`;
       c.fillRect(0, 0, W, H);
@@ -593,6 +594,36 @@ const FX = (() => {
         c.lineTo(d.x - d.len, d.y - d.len * 0.06);
       }
       c.stroke();
+    } else if (type === 'fog') {
+      // low swamp fog: thicker further up the screen, drifting banks
+      const g = c.createLinearGradient(0, 0, 0, H);
+      g.addColorStop(0, `rgba(220,228,222,${0.62 * amt})`);
+      g.addColorStop(0.5, `rgba(214,222,216,${0.3 * amt})`);
+      g.addColorStop(1, `rgba(210,218,212,${0.1 * amt})`);
+      c.fillStyle = g;
+      c.fillRect(0, 0, W, H);
+      const want = Math.round(10 * amt);
+      while (sky.flakes.length < want) sky.flakes.push({ x: rand(W), y: rand(H), r: rand(80, 180), v: rand(8, 22), ph: rand(6.28) });
+      if (sky.flakes.length > want) sky.flakes.length = want;
+      c.fillStyle = `rgba(232,238,234,${0.12 * amt})`;
+      for (const f of sky.flakes) {
+        f.x += f.v * dt;
+        if (f.x - f.r > W) { f.x = -f.r; f.y = rand(H); }
+        c.beginPath(); c.ellipse(f.x, f.y, f.r, f.r * 0.35, 0, 0, 6.2832); c.fill();
+      }
+    } else if (type === 'leaves') {
+      c.fillStyle = `rgba(255,190,90,${0.06 * amt})`;
+      c.fillRect(0, 0, W, H);
+      const want = Math.round(40 * amt);
+      while (sky.flakes.length < want) sky.flakes.push({ x: rand(W), y: rand(-H, H), r: rand(3, 6), v: rand(40, 80), ph: rand(6.28), c: pick(['#e8742a', '#d1401c', '#f2b705', '#a8641f']) });
+      if (sky.flakes.length > want) sky.flakes.length = want;
+      for (const f of sky.flakes) {
+        f.y += f.v * dt;
+        f.ph += dt * 2;
+        f.x += Math.sin(f.ph) * 35 * dt;
+        if (f.y > H) { f.y = rand(-20, 0); f.x = rand(W); }
+        glyph(c, 'leaf', f.x, f.y, f.r * 1.6, f.c || '#e8742a', f.ph);
+      }
     } else if (type === 'snow') {
       c.fillStyle = `rgba(220,235,255,${0.12 * amt})`;
       c.fillRect(0, 0, W, H);

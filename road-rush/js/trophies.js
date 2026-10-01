@@ -54,7 +54,7 @@ const TROPHIES = [
   { id: 'weird', name: 'Weird Day', desc: 'Survive 3 secret events in one run', test: r => r.events >= 3 },
   { id: 'coldfeet', name: 'Cold Feet', desc: 'Reach the mountain pass', test: (r, s) => !!s.zones.snow },
   { id: 'beachbum', name: 'Beach Bum', desc: 'Reach the beach', test: (r, s) => !!s.zones.beach },
-  { id: 'tourist', name: 'Tourist', desc: 'Visit all five biomes', test: (r, s) => ['country', 'city', 'desert', 'snow', 'beach'].every(z => s.zones[z]) },
+  { id: 'tourist', name: 'Tourist', desc: 'Visit all nine biomes', test: (r, s) => Object.keys(ZONES).every(z => s.zones[z]) },
   { id: 'twister', name: 'Twister', desc: 'Get picked up by a tornado and live', test: r => r.tornado >= 1 },
   { id: 'sober', name: 'Designated Driver', desc: 'Get a close call with a drunk driver', test: r => r.drunkClose >= 1 },
   { id: 'nightowl', name: 'Night Owl', desc: 'Survive a whole night', test: r => r.nights >= 1 },

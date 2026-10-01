@@ -52,7 +52,7 @@ uses `W A S D` and player two the arrow keys.
   rivers are occasional: never next to each other, and each needs a long
   stretch before it can appear again.
 - **Biomes.** The first 80 rows are countryside, then every 90 rows the world
-  changes, with a green "Entering…" sign at the border:
+  changes to one of nine biomes, with a green "Entering…" sign at the border:
   - *Countryside:* trees and meadows; cows wander onto the road and stop
     traffic, and deer bolt across it.
   - *City:* sidewalks, hydrants, benches and tall buildings; more lanes, taxis
@@ -67,6 +67,23 @@ uses `W A S D` and player two the arrow keys.
     palms; lots of water crossed on lines of surfboards; and seagulls that
     swoop down to snatch coins off the ground or dive at you to steal up to 3
     of yours. A dashed ring shows where a diving gull will land, so move.
+  - *Farmland:* tall corn fields that hide what's behind them, hay bales and
+    scarecrows, slow tractors, and loose sheep wandering onto the road.
+  - *Swamp:* fog, reeds, stumps and creaky boardwalks. The rivers are lily
+    pads that wobble and sink if you stand on one for more than a second or
+    so, then bob back up later. Frogs croak, and fireflies come out at night.
+  - *Autumn woods:* orange and red trees, falling leaves, logging trucks, and
+    leaf piles that make your next hop slow.
+  - *Harbor:* wooden docks with bollards, crates, barrels and stacked
+    shipping containers; forklifts on the roads; and big slow ferries to ride
+    across the water, with gulls overhead.
+- **Roadside stands.** Now and then a little striped stall sits on a grass
+  row selling one power-up (shield, magnet, jetpack...) for a few of this
+  run's coins. Hop into it to buy, if you can afford it.
+- **Combo fever.** Reach a x10 close-call combo and the screen glows gold:
+  every coin is worth triple until the combo breaks.
+- **Graveyard markers.** A little cross marks the spot where your last run
+  ended (you can turn it off in Settings).
 - **Day and night.** A full day lasts about three minutes. At night the road
   goes dark and only lights cut through it: headlights, street lamps, train
   lamps, fires, lit windows and a small glow around you. Tail lights and
@@ -79,8 +96,8 @@ uses `W A S D` and player two the arrow keys.
 - **Emergency services.** After a crash, an ambulance or fire truck races in
   with sirens, pulls up alongside and the fire truck hoses the fire out. They
   don't stop for chickens.
-- **Traffic:** small cars, sedans, sports cars, pickups, vans, buses and tanker
-  trucks. Normal drivers brake for the car ahead. Traffic gets faster and
+- **Traffic:** small cars, sedans, sports cars, pickups, vans, buses, tanker
+  trucks, tractors, logging trucks and forklifts. Normal drivers brake for the car ahead. Traffic gets faster and
   denser, and roads widen from 1–2 lanes to 5.
 - **Reckless drivers and police chases.** Every 12–20 seconds a red speeder,
   sometimes with a police car and siren right behind it, rear-ends traffic
@@ -89,10 +106,11 @@ uses `W A S D` and player two the arrow keys.
 - **Railroads.** Crossing signals flash and a bell rings, then a fast freight
   train comes through. A yellow RR sign at the screen edge shows which side
   it's coming from. Sometimes a car has stalled on the tracks.
-- **Rivers.** Ride the drifting logs (ice floes in the mountains, rafts in the city) across. Missing a log, or riding one off
+- **Rivers.** Ride the drifting logs (ice floes in the mountains, rafts in the city, lily pads in the swamp, ferries at the harbor) across. Missing a log, or riding one off
   the edge, ends the run.
 - **Weather.** Rain makes cars brake late and occasionally skid into each
-  other. Snow slows traffic and whitens the ground.
+  other. Snow slows traffic and whitens the ground. Fog hides the road ahead
+  in the swamp and harbor, and leaves fall in the autumn woods.
 - **Thunderstorms.** In heavy rain, lightning picks a cell (often right in
   front of a car, or near you), marks it with a glowing ring and a bolt icon
   for about a second, then strikes. It wrecks cars and kills chickens.
@@ -138,8 +156,9 @@ crash or blast that rattles him: the brow drops, the frown deepens, an anger
 vein pops, he starts to shake and steam, and at maximum rage his eyes go
 white-hot. A RAGE meter on the HUD shows how close he is. At maximum he leaps
 up and slams the ground: a shockwave cracks the road and throws every car
-around him clear (worth points for each one). Big S doesn't rage at all. His
-face is just `:|`.
+around him clear (worth points for each one). Big S doesn't rage. He builds up
+*calm* instead (a blue CALM meter): at maximum, every car on the road simply
+stops for 3 seconds, and his face stays exactly `:|`.
 
 ## The egg
 
@@ -223,7 +242,15 @@ coins instead. A Ghostie pet makes eggs show up twice as often.
 - **More power-ups:** Jetpack (blast off and land on safe ground about 5 rows
   ahead), Ghost (cars and trains pass straight through you for 4 seconds),
   Shrink (a tiny chicken with a tiny hitbox for 7 seconds) and Horn (every car
-  nearby slams on its brakes, even speeders).
+  nearby slams on its brakes, even speeders), plus:
+  - *Pogo Stick:* for 6 seconds every forward hop clears two rows.
+  - *Time Stop:* rare. For 2.5 seconds the whole world freezes (cars, trains,
+    rivers, the danger line) while you keep moving.
+  - *Coin Rain:* coins tumble onto the next eight rows.
+  - *Bubble:* for 6 seconds you float on water. If it runs out while you're
+    still on the water, it pops.
+  - *Decoy:* leaves a fake you behind for 10 seconds. The giant goose, UFOs,
+    meteors and lightning go after it instead of you.
 - **Trophies:** 38 achievements, such as surviving three explosions in one run,
   a close call with a train, getting trampled by a deer, getting picked up
   by a tornado and living, playing 500 runs, reaching row 500, or owning 40,
@@ -254,6 +281,10 @@ report. Your choices are saved in the browser.
   crosshairs on meteor targets.
 - **Ghost of best run** and **Death replay** (a slow-motion instant replay of
   how you died, which any key or tap skips).
+- **Graveyard markers:** show where you died last run.
+- **Performance mode:** lower resolution and fewer particles for slower
+  computers and phones. Even with it off, the game drops its resolution by
+  itself if frames start running slow, and steps back up when they're smooth.
 - **Controls:** rebind the four movement keys.
 - **Reset all data:** wipes your coins, levels, cosmetics, trophies, stats,
   best scores and missions (your settings and controls are kept). It shows a
@@ -310,7 +341,7 @@ Plain scripts that share a few global objects, loaded in order by `index.html`:
 | `js/audio.js` | `Sound`: every sound effect and weather loop synthesized with WebAudio |
 | `js/effects.js` | `FX`: pooled particles, explosions, blood and scorch decals, fire, water, weather, flashes |
 | `js/draw.js` | `Draw`: 2.5D box sprites for vehicles, trains, logs, scenery, skins and icons |
-| `js/world.js` | `World`: endless row generation (ground, road, rail, river, road work), biomes, weather |
+| `js/world.js` | `World`: endless row generation (ground, road, rail, river, road work), nine biomes, weather |
 | `js/vehicles.js` | `Vehicles`: types, lanes, braking, skids, crashes, blasts, responders, crash director |
 | `js/hazards.js` | `River` (logs), `Rail` (signals, trains, trams, stalled cars), `Work` (excavators) |
 | `js/animals.js` | `Animals`: cows, deer, tumbleweeds, seagulls, paramedics |
@@ -321,11 +352,11 @@ Plain scripts that share a few global objects, loaded in order by `index.html`:
 | `js/trophies.js` | `Stats`, `Trophies` and `Levels` |
 | `js/events.js` | `Events`: secret events |
 | `js/storms.js` | `Storms`: lightning and tornadoes |
-| `js/specials.js` | `Rage` (Big J's rage stomp) and `Egg` (carrying and hatching) |
+| `js/specials.js` | `Rage` (Big J's rage stomp and Big S's calm), `Egg` (carrying and hatching) and `Graves` (where you died last run) |
 | `js/reverse.js` | `Reverse`: Reverse Day, where you drive and the chickens cross |
 | `js/camera.js` | `Cam`: follow (one or two players), shake, zoom |
 | `js/lighting.js` | `Lighting`: day and night, darkness layer and lights |
-| `js/renderer.js` | `Renderer`: frame composition, depth sorting, overlays |
+| `js/renderer.js` | `Renderer` + `Sprites`: frame composition, depth sorting, overlays, cached sprites for scenery and car bodies, adaptive resolution |
 | `js/replay.js` | `Replay`: records the last seconds and plays the death back |
 | `js/input.js` | `Input`: keyboard bindings, touch and game controllers |
 | `js/admin.js` | `Admin`: the hidden admin panel |

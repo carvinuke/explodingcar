@@ -40,7 +40,7 @@ const PlayerProto = {
     this.breath = 0;   // idle breathing
     this.idle = 0;
     this.blinkSeed = rand(0, 3);
-    this.pw = { speed: 0, magnet: 0, invincible: 0, ghost: 0, shrink: 0 };
+    this.pw = { speed: 0, magnet: 0, invincible: 0, ghost: 0, shrink: 0, pogo: 0, bubble: 0 };
     this.leftCell = null;
     this.combo = 0;
     this.comboT = -9;
@@ -78,6 +78,13 @@ const PlayerProto = {
 
   move(dx, dy, slide = false) {
     this.facing = dx > 0 ? 'right' : dx < 0 ? 'left' : dy > 0 ? 'up' : 'down';
+    // pogo stick: forward hops clear a whole row (if there's somewhere to land)
+    let pogo = false;
+    if (!slide && dy === 1 && this.pw.pogo > 0) {
+      World.ensure(this.row + 4);
+      const r2 = this.row + 2, c2 = Math.round(this.x / TILE - 0.5);
+      if (this.canEnter(c2, r2)) { dy = 2; pogo = true; }
+    }
     const nr = this.row + dy;
     const target = World.rows.get(nr);
     const toRiver = target && target.type === 'river';
@@ -95,13 +102,15 @@ const PlayerProto = {
     if (from && (from.type === 'road' || from.type === 'rail')) this.leftCell = { col: this.col, row: this.row, t: Game.time, used: false };
     this.hop = {
       fx: this.x, fy: this.y, tx, ty: nr * TILE, t: 0, slide,
-      dur: slide ? 0.11 : (fast ? 0.075 : 0.12) * lerp(1, 1.7, lg),
-      h: slide ? 0 : 0.3 * TILE * lerp(1, 3.2, lg),
+      dur: slide ? 0.11 : (pogo ? 0.17 : fast ? 0.075 : 0.12) * lerp(1, 1.7, lg) * (this.slowHop ? 1.9 : 1),
+      h: slide ? 0 : (pogo ? 0.75 : 0.3) * TILE * lerp(1, 3.2, lg),
     };
+    this.slowHop = false;
     this.col = nc;
     this.row = nr;
     this.ride = null;
-    this.lastDir = [dx, dy];
+    this.lastDir = [dx, Math.sign(dy)];
+    if (pogo) Sound.boing();
     if (slide) Sound.slide();
     else {
       Sound.hop(fast);
@@ -231,6 +240,11 @@ const PlayerProto = {
     this.logChain = 0;
     if (row.type === 'work' && row.pit[this.col]) { Game.kill('pit', { p: this }); return; }
     if (row.type === 'road' && row.flood) FX.splash(this.x, this.y, 8);
+    if (row.leaves && row.leaves[this.col] && !fromKnock && !(this.pw.speed > 0)) { // a leaf pile: crunch, and the next hop is slow
+      this.slowHop = true;
+      for (let i = 0; i < 10; i++) FX.spawn('glyph', this.x + rand(-8, 8), this.y + rand(-5, 5), rand(2, 8), { part: 'leaf', color: pick(['#e8742a', '#d1401c', '#f2b705']), vx: rand(-60, 60), vy: rand(-30, 30), vz: rand(60, 120), g: 200, drag: 1.5, life: 1, size: 5, rotV: rand(-8, 8) });
+      Sound.land();
+    }
     // ice: keep sliding the way you were going until you reach grip or something solid
     if (row.ice && row.ice[this.col] && !fromKnock && this.alive && !(this.id === 0 && Pets.perk('grip'))) {
       if (this.id === 0) Trophies.add('ice');

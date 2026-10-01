@@ -26,7 +26,7 @@ const Pets = {
       kind: 'pet', type, x: Player.x - 0.7 * TILE, y: Player.y - 0.6 * TILE, z: 0,
       hopT: 0, face: 1, fetch: null, catUsed: false, ph: rand(6), blink: rand(3),
       dropT: rand(4, 7), turtleT: 0, warned: new Set(),
-      reborn: false, fireT: 0, breath: 0, flame: null, layT: rand(5, 7), owlT: 0, rainbows: [],
+      reborn: false, fireT: 0, breath: 0, flame: null, layT: rand(5, 7), owlT: 0,
       golemT: 0, fairyT: 25, frostT: 30, ready: true,
     };
   },
@@ -151,7 +151,7 @@ const Pets = {
     // the robo pup fetches power-ups from far away
     if (pet.type === 'robopup' && active) {
       for (const it of Items.list) {
-        if (it.type === 'coin' || it.type === 'egg' || it.type === 'goldegg') continue;
+        if (it.type === 'coin' || it.type === 'egg' || it.type === 'goldegg' || it.type === 'stand') continue;
         const dx = p.x - it.x, dy = p.y - it.y, d = Math.hypot(dx, dy);
         if (d < 6 * TILE && d > 1) { const s = Math.min(d, 260 * dt); it.x += (dx / d) * s; it.y += (dy / d) * s; }
       }
@@ -163,17 +163,6 @@ const Pets = {
         if (it.type !== 'coin') continue;
         const dx = p.x - it.x, dy = p.y - it.y, d = Math.hypot(dx, dy);
         if (d < mg * TILE && d > 1) { const s = Math.min(d, 120 * dt); it.x += (dx / d) * s; it.y += (dy / d) * s; }
-      }
-    }
-    // the unicorn's rainbow steps fade once you've left them
-    for (let i = pet.rainbows.length - 1; i >= 0; i--) {
-      const rb = pet.rainbows[i];
-      if (p.ride === rb.log && p.alive) { rb.log.fade = Math.min(1, rb.log.fade + dt * 4); continue; }
-      rb.log.fade -= dt * 1.6;
-      if (rb.log.fade <= 0) {
-        const logs = rb.row.river.logs, k = logs.indexOf(rb.log);
-        if (k >= 0) logs.splice(k, 1);
-        pet.rainbows.splice(i, 1);
       }
     }
     // the mini tornado vacuums coins
@@ -290,14 +279,13 @@ const Pets = {
     FX.text(pet.x, pet.y + 34, 'FWOOSH!', '#ff9a2a', 14);
   },
 
-  // Unicorn: wherever you land on water, a rainbow step appears under you.
+  // Unicorn (rainbow steps) or the Bubble power-up: wherever you land on water, something holds you up.
   waterWalk(p, row) {
-    if (p.id !== 0 || !this.has('unicorn') || !p.alive) return null;
-    const step = { kind: 'log', id: ++River.ids, len: 0.9 * TILE, x: p.x, y: row.y, bob: 0, dir: row.river.dir, style: 'rainbow', still: true, fade: 0.4 };
-    row.river.logs.push(step);
-    this.pet.rainbows.push({ log: step, row });
+    if (!p.alive) return null;
+    if (p.pw.bubble > 0) return River.addStep(p, row, 'bubble');
+    if (p.id !== 0 || !this.has('unicorn')) return null;
     for (let i = 0; i < 10; i++) FX.spawn('glow', p.x + rand(-14, 14), p.y + rand(-6, 6), rand(2, 10), { vz: rand(20, 60), life: 0.6, size: 2.5, size2: 0.4, color: `hsl(${rand(360)},100%,75%)` });
-    return step;
+    return River.addStep(p, row, 'rainbow');
   },
 
   // Phoenix Chick: whatever killed you, you rise again (once per run).

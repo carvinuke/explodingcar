@@ -40,9 +40,15 @@ const Animals = {
       this.t -= dt;
       if (this.t <= 0) {
         const ok = zone === 'country' ? (chance(0.5) ? this.spawnCow() : this.spawnDeer())
-          : zone === 'snow' ? this.spawnDeer() : false;
-        this.t = ok ? rand(18, 32) : 3;
+          : zone === 'farm' ? this.spawnCow(true)
+            : zone === 'snow' || zone === 'autumn' ? this.spawnDeer() : false;
+        this.t = ok ? (zone === 'farm' ? rand(9, 16) : rand(18, 32)) : 3;
       }
+      if (zone === 'swamp' && chance(dt * 0.35)) Sound.croak();
+    }
+    if (playing && zone === 'harbor') {
+      this.gullT -= dt;
+      if (this.gullT <= 0) { this.gullT = rand(6, 11); this.spawnGull(); }
     }
     if (zone === 'desert' || this.weeds.length) {
       this.weedT -= dt;
@@ -60,7 +66,7 @@ const Animals = {
   },
 
   // ---- Cows -------------------------------------------------------------------
-  spawnCow() {
+  spawnCow(sheep = false) {
     const lead = Game.leader();
     const seg = this.findRoad(lead.row + 2, lead.row + 8);
     if (!seg) return false;
@@ -73,8 +79,9 @@ const Animals = {
     cow.walk = { dy: up ? 1 : -1, row: startRow, lane: null, t: 0, wait: rand(0.5, 1.2), fy: cow.y, ty: cow.y, moving: false, leaving: false };
     cow.spots = [[rand(-12, 6), rand(-8, 6)], [rand(-4, 10), rand(-6, 8)], [rand(-14, 12), rand(-6, 6)]];
     cow.alpha = 0;
+    if (sheep) { cow.sheep = true; cow.len = 1.0 * TILE; }
     this.cows.push(cow);
-    Sound.moo();
+    if (!sheep) Sound.moo();
     return true;
   },
 
@@ -107,7 +114,7 @@ const Animals = {
     }
     w.wait -= dt;
     if (w.wait > 0) {
-      if (w.lane && chance(dt * 0.25)) { Sound.moo(); FX.text(cow.x, cow.y + 26, 'MOO', '#ffffff', 13); }
+      if (w.lane && chance(dt * 0.25)) { if (!cow.sheep) Sound.moo(); FX.text(cow.x, cow.y + 26, cow.sheep ? 'BAA' : 'MOO', '#ffffff', 13); }
       return false;
     }
     const nextI = w.row + w.dy;

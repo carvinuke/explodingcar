@@ -9,6 +9,7 @@
 // and it hatches into a rare pet you can't buy anywhere.
 
 const RAGE_LEVELS = ['', 'ANNOYED', 'ANGRY', 'FURIOUS'];
+const CALM_LEVELS = ['', 'CALM', 'CALMER', 'VERY CALM'];
 
 const Rage = {
   RADIUS: 3.8 * TILE,
@@ -20,14 +21,20 @@ const Rage = {
     this.cracks.length = 0;
   },
 
-  // Only Big J (player one) can rage.
-  able(p) { return p.id === 0 && !!p.skin().rage; },
+  // Only Big J (player one) can rage. Big S builds up calm instead (same meter).
+  able(p) { return p.id === 0 && !!(p.skin().rage || p.skin().neutral); },
+  calmOne(p) { return !!p.skin().neutral; },
 
   add(p, amt) {
     if (!this.able(p) || !p.alive || p.stomp || Game.state !== 'playing') return;
     const before = p.rage;
     p.rage = Math.min(1, p.rage + amt);
     const lv = Math.floor(p.rage * 4), was = Math.floor(before * 4);
+    if (this.calmOne(p)) { // Big S: :|
+      if (p.rage >= 1 && before < 1) this.calm(p);
+      else if (lv > was && CALM_LEVELS[lv]) FX.text(p.x, p.y + 50, CALM_LEVELS[lv] + '.', '#7fb2ff', 13 + lv * 2);
+      return;
+    }
     Sound.growl(p.rage);
     if (p.rage >= 1 && before < 1) {
       FX.text(p.x, p.y + 50, 'MAXIMUM RAGE!', '#ff3b2f', 22);
@@ -38,12 +45,12 @@ const Rage = {
   },
 
   update(dt) {
-    for (const r of this.rings) r.t += dt;
+    for (const r of this.rings) r.t += dt * (r.calm ? 0.6 : 1); // calm waves spread slowly
     while (this.rings.length && this.rings[0].t > 0.9) this.rings.shift();
     for (const k of this.cracks) k.t += dt;
     while (this.cracks.length && this.cracks[0].t > 6) this.cracks.shift();
     for (const p of Game.players) {
-      if (!p.alive || !p.rage) continue;
+      if (!p.alive || !p.rage || this.calmOne(p)) continue;
       // boiling over: steam from the side tabs
       if (p.rage > 0.7 && Math.random() < dt * 22 * p.rage) {
         const side = chance(0.5) ? -1 : 1;
@@ -55,6 +62,19 @@ const Rage = {
         if (!p.hop && !p.knock && !p.abduct && !p.ride && row && row.type !== 'river') p.startStomp();
       }
     }
+  },
+
+  // Big S at maximum calm: no jump, no shout, no change of face. Traffic just stops.
+  calm(p) {
+    p.rage = 0;
+    Powers.freeze = Math.max(Powers.freeze, 3);
+    this.rings.push({ x: p.x, y: p.y, t: 0, calm: true });
+    this.rings.push({ x: p.x, y: p.y, t: -0.25, calm: true });
+    FX.text(p.x, p.y + 60, '. . .', '#7fb2ff', 22);
+    FX.flashScreen(0.25, '140,180,255');
+    Sound.calm();
+    UI.toast('t-calm', 'BIG S STAYED CALM', 'Every car stopped for 3 seconds', 2600);
+    if (Game.tracksProgress()) Stats.add('calms');
   },
 
   // The slam: throw every nearby car clear and knock the ground flat.
@@ -133,7 +153,7 @@ const Rage = {
     for (const r of this.rings) {
       if (r.t < 0) continue;
       const k = r.t / 0.9, R = this.RADIUS * 1.15 * easeOutCubic(k);
-      c.strokeStyle = `rgba(255,${Math.round(120 + 100 * k)},80,${0.85 * (1 - k)})`;
+      c.strokeStyle = r.calm ? `rgba(140,180,255,${0.8 * (1 - k)})` : `rgba(255,${Math.round(120 + 100 * k)},80,${0.85 * (1 - k)})`;
       c.lineWidth = 3 + 9 * (1 - k);
       c.beginPath(); c.ellipse(r.x, P(r.y, 2), R, R * GY, 0, 0, 6.2832); c.stroke();
     }
@@ -222,5 +242,35 @@ const Egg = {
     for (let i = 0; i < 12; i++) {
       FX.spawn('shard', p.x, p.y, 36, { vx: rand(-140, 140), vy: rand(-90, 90), vz: rand(80, 220), g: 800, drag: 0.8, life: rand(0.5, 0.9), size: rand(3, 6), color: pick(['#fff6e6', '#ffe9c9', '#ffd23f']), rotV: rand(-16, 16) });
     }
+  },
+};
+
+// Graveyard markers: a little cross on the road where you died last run.
+const Graves = {
+  mark: null,
+
+  start() {
+    const g = Store.get('grave', null);
+    this.mark = Settings.graves && Game.players.length === 1 && g && typeof g.row === 'number' ? { kind: 'grave', x: g.x, y: g.row * TILE, row: g.row, seen: false } : null;
+  },
+
+  // Remember where this run ended (single player only).
+  record(p) {
+    if (Game.players.length > 1 || p.id !== 0) return;
+    Store.set('grave', { row: Math.max(1, Math.round(p.y / TILE)), x: clamp(p.x, 0.5 * TILE, WORLD_W - 0.5 * TILE) });
+  },
+
+  update() {
+    const m = this.mark;
+    if (!m || m.seen || Game.state !== 'playing') return;
+    if (Player.maxRow >= m.row) {
+      m.seen = true;
+      FX.text(m.x, m.y + 30, 'YOU DIED HERE LAST TIME', '#e8e8f0', 12);
+    }
+  },
+
+  drawables(list) {
+    const m = this.mark;
+    if (m && Settings.graves && Game.state !== 'title') { m.key = m.y - 6; list.push(m); }
   },
 };
