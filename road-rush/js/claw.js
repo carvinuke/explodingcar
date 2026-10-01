@@ -266,6 +266,7 @@ const Claw = {
     else if (type === 'cosmetic' && cos.length) res = this.win(pick(cos), 'cosmetic');
     else {
       Game.bank += T.coins;
+      Stats.add('clawCoins', T.coins);
       res = { kind: 'coins', coins: T.coins };
     }
     Store.set('coins', Game.bank);

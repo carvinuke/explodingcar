@@ -955,12 +955,11 @@ kbd {
 .claw-btns { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
 .claw-btns .coin-ico { display: inline-block; vertical-align: -2px; }
 .claw-btns .gold { background: linear-gradient(180deg, #fff3b0, #ffd23f); }
-.claw-odds { margin: 0; font-size: 12px; font-weight: 600; line-height: 1.45; opacity: 0.85; text-align: center; }
-.claw-label { margin: 0; font-size: 12px; font-weight: 900; letter-spacing: 0.14em; text-transform: uppercase; color: #4df0ff; }
-.claw-prizes { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 5px; }
-.claw-prizes li { padding: 3px 8px 2px; border-radius: 4px; background: rgba(0, 0, 0, 0.3); font-size: 12px; font-weight: 800; opacity: 0.75; }
-.claw-prizes li.jackpot { box-shadow: inset 0 0 0 1.5px #ffe95c; color: #ffe95c; }
-.claw-prizes li.got { opacity: 1; background: rgba(255, 255, 255, 0.18); }
+.claw-hint { margin: 0; text-align: center; font-size: 13px; font-weight: 800; color: #4df0ff; }
+.claw-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin: 0; }
+.claw-stats div { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 7px 4px 6px; border-radius: 6px; background: rgba(0, 0, 0, 0.28); }
+.claw-stats dt { font-size: 10px; font-weight: 900; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.75; }
+.claw-stats dd { margin: 0; font: 700 17px var(--font-mono); font-variant-numeric: tabular-nums; color: #ffe95c; }
 .claw-inner > .btn-plate { align-self: flex-start; }
 .rarity.r-claw { background: #ff4fe0; color: #fff; }
 .rarity.r-jackpot { background: linear-gradient(90deg, #ffd23f, #ff4fe0, #4df0ff); color: var(--ink); }

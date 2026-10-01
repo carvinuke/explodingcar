@@ -212,7 +212,9 @@ you win:
 
 A "You won!" card shows what you got (the coin, or the item's shop picture);
 press **Claim** to go back to the machine. The pile only restocks when it gets
-low, so every grab changes what's on top.
+low, so every grab changes what's on top. Under the buttons is your record at
+the machine: grabs, prizes won, Jackpots, coins back, win rate and how many of
+the claw prizes you own.
 
 ## So close
 

@@ -802,24 +802,29 @@ const UI = {
     }
     this.show('claw-pay', !aiming);
     this.show('claw-steer', aiming);
-    this.$('claw-odds').textContent = `Steer the claw with ◀ ▶ (or the arrow keys, or tap the glass) and drop it. Grab a glowing purple capsule for a claw-only cosmetic. `
-      + `Rare rainbow capsules hold a Jackpot pet. Any other capsule pays ${CLAW_TIERS.normal.coins} coins back (${CLAW_TIERS.gold.coins} on a Gold Grab, which also has a stronger claw).`;
-    const ul = this.$('claw-prizes');
-    ul.textContent = '';
-    for (const petsOnly of [true, false]) for (const [tab, id] of Claw.prizes(petsOnly)) {
-      const li = document.createElement('li');
-      const got = Shop.has(tab, id);
-      li.className = (got ? 'got' : '') + (petsOnly ? ' jackpot' : '');
-      li.textContent = `${SHOP_TABS[tab][id].name}${got ? ' ✓' : ''}`;
-      li.title = SHOP_TABS[tab][id].perk || '';
-      ul.appendChild(li);
+    // your record at the machine
+    const d = Stats.data, grabs = d.clawGrabs || 0, wins = d.clawWins || 0;
+    const owned = Claw.prizes(true).concat(Claw.prizes(false)).filter(([t, id]) => Shop.has(t, id)).length;
+    const total = Claw.prizes(true).length + Claw.prizes(false).length;
+    const rows = [['Grabs', grabs], ['Prizes won', wins], ['Jackpots', d.clawJackpots || 0],
+      ['Coins back', (d.clawCoins || 0).toLocaleString()], ['Win rate', grabs ? `${Math.round((wins / grabs) * 100)}%` : '–'], ['Claw prizes', `${owned}/${total}`]];
+    const dl = this.$('claw-stats');
+    dl.textContent = '';
+    for (const [k, v] of rows) {
+      const wrap = document.createElement('div');
+      const dt = document.createElement('dt');
+      dt.textContent = k;
+      const dd = document.createElement('dd');
+      dd.textContent = v;
+      wrap.append(dt, dd);
+      dl.appendChild(wrap);
     }
   },
 
   clawGrab(tier) {
     if (ClawSim.busy() || this.clawPrize || !Claw.pay(tier)) return;
     Sound.click();
-    this.$('claw-result').textContent = 'Steer the claw, then drop it!';
+    this.$('claw-result').textContent = '';
     this.$('claw-result').className = 'claw-result';
     this.refreshMeta();
     ClawSim.start(tier, type => this.clawReveal(Claw.award(type, tier)));
