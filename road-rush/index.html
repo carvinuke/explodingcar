@@ -22,6 +22,7 @@
       <div id="coin-plate" class="plate coinplate"><span class="coin-ico"></span><b id="coins">0</b></div>
       <div id="mode-badge" class="plate mode-badge hidden"></div>
       <div id="combo" class="plate combo hidden"><b>x2</b><span>CLOSE CALLS</span></div>
+      <div id="upg-badge" class="plate upg-badge hidden"></div>
     </div>
     <div class="hud-r">
       <div id="best-plate" class="plate limit"><span class="plate-lbl">BEST</span><b id="best">0</b></div>
@@ -65,6 +66,7 @@
       <div class="menu-row">
         <button id="btn-shop" class="btn-plate small">Shop</button>
         <button id="btn-trophies" class="btn-plate small">Trophies <span id="trophy-count" class="count"></span></button>
+        <button id="btn-goals" class="btn-plate small">Goals <span id="goals-count" class="count"></span></button>
         <button id="btn-settings" class="btn-plate small">Settings</button>
       </div>
 
@@ -84,6 +86,7 @@
           <button id="btn-pause-admin" class="btn-plate admin-open hidden">Admin</button>
         </div>
         <ul id="pause-missions" class="missions dark"></ul>
+        <ul id="pause-upgrades" class="upg-list dark hidden"></ul>
         <p class="hint">P or Esc to resume &middot; M to mute</p>
       </div>
     </div>
@@ -114,6 +117,7 @@
       </div>
       <ul id="over-trophies" class="trophy-strip hidden"></ul>
       <ul id="over-boxes" class="box-strip hidden"></ul>
+      <ul id="over-upgrades" class="upg-list hidden"></ul>
       <ul id="over-missions" class="missions paper"></ul>
       <div class="actions">
         <button id="btn-again" class="btn-yellow">PLAY AGAIN</button>
@@ -122,6 +126,33 @@
         <button id="btn-over-settings" class="btn-plate">Settings</button>
       </div>
       <p class="hint">or press Space</p>
+    </div>
+  </div>
+
+  <div id="screen-upgrade" class="screen upgrade-screen hidden" role="dialog" aria-modal="true" aria-labelledby="upgrade-title">
+    <div class="upgrade-wrap">
+      <p class="upgrade-kicker" id="upgrade-row">CHECKPOINT</p>
+      <h2 id="upgrade-title">Pick an upgrade</h2>
+      <div id="upgrade-cards" class="upgrade-cards"></div>
+      <p class="hint">Click a card, or press 1, 2 or 3</p>
+    </div>
+  </div>
+
+  <div id="screen-goals" class="screen modal hidden" role="dialog" aria-modal="true" aria-labelledby="goals-title">
+    <div class="green-sign">
+      <div class="green-inner">
+        <div class="shop-head">
+          <h2 id="goals-title">GOALS</h2>
+          <span id="goals-progress" class="trophy-progress"></span>
+        </div>
+        <div class="tabs" role="tablist" aria-label="Goal sections">
+          <button class="tab" role="tab" data-gtab="biomes" aria-selected="true">Biomes</button>
+          <button class="tab" role="tab" data-gtab="roadex" aria-selected="false">Roadex</button>
+          <button class="tab" role="tab" data-gtab="prestige" aria-selected="false">Prestige</button>
+        </div>
+        <div id="goals-body" class="goals-body"></div>
+        <button id="btn-goals-done" class="btn-yellow">DONE</button>
+      </div>
     </div>
   </div>
 
@@ -192,7 +223,7 @@
       <div class="brown-inner">
         <div class="shop-head">
           <h2 id="shop-title">SHOP</h2>
-          <span class="plate coinplate"><span class="coin-ico"></span><b id="shop-coins">0</b></span>
+          <span class="shop-wallet"><span class="plate shardplate" title="Box shards: craft mystery box exclusives"><span class="shard-ico"></span><b id="shop-shards">0</b></span><span class="plate coinplate"><span class="coin-ico"></span><b id="shop-coins">0</b></span></span>
         </div>
         <div class="collection"><span id="shop-collection">COLLECTION</span><span class="collection-bar"><i id="shop-collection-fill"></i></span></div>
         <div class="outfits" id="outfits" aria-label="Saved outfits"></div>
@@ -294,6 +325,8 @@
 <script src="js/specials.js"></script>
 <script src="js/reverse.js"></script>
 <script src="js/extras.js"></script>
+<script src="js/upgrades.js"></script>
+<script src="js/goals.js"></script>
 <script src="js/camera.js"></script>
 <script src="js/lighting.js"></script>
 <script src="js/renderer.js"></script>

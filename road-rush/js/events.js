@@ -501,6 +501,7 @@ const Events = {
     if (HANDLERS[type].start(e) === false) return false;
     this.active = e;
     this.last = type;
+    Roadex.see('events', type);
     UI.eventToast(def.name, def.sub);
     Sound.eventSting();
     return true;

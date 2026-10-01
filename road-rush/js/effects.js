@@ -1194,6 +1194,9 @@ const FX = (() => {
     diamonds: ['diamond', ['#b9f2ff', '#7fd6ef', '#ffffff']], gold: ['diamond', ['#ffd23f', '#ffe98a', '#f0b400']],
     galaxy: ['star', ['#c79bff', '#7fb2ff', '#ffffff']], aurora: ['pixel', ['#5affc8', '#5ad1ff', '#b07aff']],
     smoke: ['pixel', ['#9a9aa2']], quake: ['pixel', ['#8a6a4a']], turbo: ['pixel', ['#ffffff']],
+    neoncity: ['pixel', ['#ff4fe0', '#4df0ff', '#ffe95c']], seaspray: ['drop', ['#5ad1ff', '#bfe8ff', '#ffffff']],
+    maple: ['leaf', ['#c1121f', '#e8742a', '#8a1a12']], surge: ['bolt', ['#a95cff', '#3d9bff', '#ffb319', '#7ed957']],
+    storm: ['drop', ['#7f8fa6', '#5a6b84', '#bfe8ff']], prestige: ['star', ['#ffd23f', '#ffffff', '#c79bff']],
   };
 
   function hopTrail(x, y, kind) {
@@ -1251,6 +1254,21 @@ const FX = (() => {
           spawn('glow', x + Math.cos(a) * r, y + Math.sin(a) * r * 0.6, rand(3, 10), { vx: -Math.cos(a) * 40 - Math.sin(a) * 50, vy: -Math.sin(a) * 30 + Math.cos(a) * 40, drag: 1, life: 0.6, size: rand(2, 3.5), size2: 0.3, color: pick(['#7b3cff', '#c46bff', '#3a1a8f']), alpha: 0.8 });
         }
         spawn('smoke', x, y, 3, { life: 0.7, size: 4, size2: 14, color: '#1a0f33', alpha: 0.5 });
+        return;
+      case 'neoncity':
+        g(4, { vx: rand(-50, 50), vy: rand(-30, 30), vz: rand(40, 90), g: 150, drag: 1, life: 0.9, size: 3.5 });
+        for (let i = 0; i < 2; i++) spawn('glow', x + rand(-6, 6), y + rand(-4, 4), rand(4, 14), { vz: 15, life: 0.5, size: 4, size2: 0.5, color: pick(look[1]), alpha: 0.7 });
+        return;
+      case 'seaspray': g(5, { vx: rand(-50, 50), vy: rand(-30, 30), vz: rand(80, 140), g: 400, drag: 0.8, life: 0.8, size: 3.5 }); return;
+      case 'maple': g(3, { vx: rand(-40, 40), vz: rand(50, 80), g: 80, drag: 1.4, life: 1.5, size: 6, spin: 7 }); return;
+      case 'surge': g(2, { z0: 4, z1: 16, vx: rand(-30, 30), vz: rand(20, 40), drag: 2, life: 0.45, size: 7, size2: 4, rot: rand(-0.5, 0.5) }); return;
+      case 'storm':
+        g(4, { z0: 18, z1: 30, vx: rand(-10, 10), vz: -rand(60, 120), g: 300, life: 0.5, size: 3.5 });
+        spawn('smoke', x, y, 26, { vz: 5, drag: 1, life: 0.8, size: 5, size2: 10, color: '#7f8fa6', alpha: 0.45 });
+        return;
+      case 'prestige':
+        g(3, { vx: rand(-60, 60), vy: rand(-40, 40), vz: rand(50, 90), g: 40, drag: 2, life: 1, size: 5.5, size2: 2, spin: 4 });
+        for (let i = 0; i < 3; i++) spawn('glow', x + rand(-8, 8), y + rand(-5, 5), rand(6, 20), { vz: rand(10, 30), drag: 2, life: 0.7, size: 3, size2: 0.4, color: pick(look[1]) });
         return;
       case 'turbo':
         for (let i = 0; i < 5; i++) spawn('spark', x + rand(-6, 6), y + rand(-6, 6), rand(4, 18), { vx: rand(-260, 260), vy: rand(-80, 80), drag: 4, life: 0.3, size: 1.6, color: pick(['#ffffff', '#bfe8ff', '#ffe95c']) });

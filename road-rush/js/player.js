@@ -68,6 +68,7 @@ const PlayerProto = {
 
   input(dx, dy) {
     if (Reverse.active && this.id === 0) { Reverse.input(dx, dy); return; } // you're the car right now
+    if (SecretRoom.active && this.id === 0) { SecretRoom.input(dx, dy); return; } // down in a secret room
     if (!this.alive || this.knock || this.abduct || this.stun > 0) return;
     if (this.hop || this.stomp) { this.queue = [dx, dy]; return; } // buffer one move for snappy input
     this.move(dx, dy);
@@ -103,7 +104,7 @@ const PlayerProto = {
     if (from && (from.type === 'road' || from.type === 'rail')) this.leftCell = { col: this.col, row: this.row, t: Game.time, used: false };
     this.hop = {
       fx: this.x, fy: this.y, tx, ty: nr * TILE, t: 0, slide,
-      dur: slide ? 0.11 : (pogo ? 0.17 : fast ? 0.075 : 0.12) * lerp(1, 1.7, lg) * (this.slowHop ? 1.9 : 1),
+      dur: slide ? 0.11 : (pogo ? 0.17 : fast ? 0.075 : 0.12) * lerp(1, 1.7, lg) * (this.slowHop ? 1.9 : 1) * (this.id === 0 ? Upgrades.hop() : 1),
       h: slide ? 0 : (pogo ? 0.75 : 0.3) * TILE * lerp(1, 3.2, lg),
     };
     this.slowHop = false;
@@ -223,7 +224,7 @@ const PlayerProto = {
     const row = this.rowObj();
     if (!row) return;
     if (row.type === 'river') {
-      const log = River.logAt(row, this.x) || Pets.waterWalk(this, row) || (!Admin.god && Pets.turtleCatch(this, row));
+      const log = River.logAt(row, this.x) || Pets.waterWalk(this, row) || (!Admin.god && Pets.turtleCatch(this, row)) || Upgrades.jacket(this, row);
       if (!log) { Game.kill('drown', { p: this }); return; }
       this.ride = log;
       if (log.id !== this.lastLog) {

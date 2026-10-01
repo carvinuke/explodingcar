@@ -370,6 +370,41 @@ const Admin = {
     this.flash('A mystery box, just ahead');
   },
 
+  upgradeNow() {
+    if (Game.players.length > 1) { this.flash('Upgrades are single-player only'); return; }
+    if (!this.ensureRun()) return;
+    this.after(() => { if (Game.state === 'playing') Upgrades.open(Player); });
+    this.flash('Checkpoint!');
+  },
+
+  giveManhole() {
+    if (Game.players.length > 1) { this.flash('Secret rooms are single-player only'); return; }
+    if (!this.ensureRun()) return;
+    this.after(() => {
+      for (let r = Player.row + 1; r <= Player.row + 8; r++) {
+        const R = World.rows.get(r);
+        if (!R || R.type !== 'grass' || World.isBlocked(Player.col, r)) continue;
+        Items.add('manhole', Player.col, r);
+        return;
+      }
+    });
+    this.flash('A manhole on the next patch of grass');
+  },
+
+  allStars() {
+    for (const z in ZONES) Mastery.data[z] = [1, 1, 1];
+    Store.set('mastery', Mastery.data);
+    Trophies.check();
+    this.flash('Every biome mastered');
+  },
+
+  fillRoadex() {
+    for (const page in ROADEX) for (const id in ROADEX[page].list) Roadex.seen[page].add(id);
+    Roadex.save();
+    Trophies.check();
+    this.flash('The Roadex is complete');
+  },
+
   maxPet() {
     if (!Shop.pet) { this.flash('Equip a pet first'); return; }
     PetLevels.xp[Shop.pet] = PET_LEVELS[PET_LEVELS.length - 1];
@@ -508,6 +543,12 @@ const Admin = {
     btn(r, 'Combo fever', () => this.fever(), 'gold');
     btn(r, 'Drop a mystery box', () => this.giveBox(), 'gold');
     btn(r, 'Max pet level', () => this.maxPet());
+    btn(r, 'Upgrade checkpoint now', () => this.upgradeNow(), 'gold');
+    btn(r, 'Secret manhole', () => this.giveManhole(), 'gold');
+    btn(r, 'Golden run (next run)', () => { Golden.force = true; this.flash('Your next run will be golden'); }, 'gold');
+    btn(r, '+20 box shards', () => { Shards.add(20); this.flash(`${Shards.n} shards`); });
+    btn(r, 'All biome stars', () => this.allStars());
+    btn(r, 'Fill the Roadex', () => this.fillRoadex());
 
     r = section('Pets');
     for (const k in PETS) btn(r, PETS[k].name, () => this.givePet(k));

@@ -53,6 +53,11 @@ const Game = {
     Stats.load();
     Trophies.load();
     Levels.load();
+    Prestige.load();
+    Mastery.load();
+    Roadex.load();
+    Shards.load();
+    Evolve.load();
     Shop.load();
     PetLevels.load();
     Renderer.init(document.getElementById('view'));
@@ -105,6 +110,9 @@ const Game = {
     DeathFX.reset();
     Prints.reset();
     Boxes.reset();
+    Upgrades.reset();
+    Golden.reset();
+    SecretRoom.reset();
     River.steps.length = 0;
     Reverse.reset();
     World.reset(seed, { speedMul: M.speedMul, gapMul: M.gapMul, powerups: M.powerups });
@@ -132,6 +140,7 @@ const Game = {
     this.xpInfo = null;
     this.petInfo = null;
     this.boxInfo = null;
+    this.bonusCoins = 0;
     this.lastTick = 99;
     this.fever = false;
   },
@@ -167,7 +176,10 @@ const Game = {
     Trophies.startRun(mode);
     const M = this.modeDef();
     Ghost.start(this.tracksProgress() ? M.ghost : null);
+    Mastery.startRun();
     UI.startRun();
+    Golden.roll(); // about 1 run in 40
+    Roadex.see('biomes', 'country');
   },
 
   // Back to the title screen with a fresh road.
@@ -225,6 +237,7 @@ const Game = {
         Trophies.add('rails');
       }
       this.updateScore();
+      Upgrades.onRow(p); // checkpoints and row-based upgrades
     }
   },
 
@@ -241,7 +254,8 @@ const Game = {
   // `n`: how many coins it's worth (the golden goose's eggs are worth 10).
   addCoin(it, p = Player, n = 1) {
     if (p.id === 0 && Math.random() < (Pets.perk('luck') || 0)) { n *= 2; FX.text(it.x, it.y + 24, 'LUCKY!', '#7ed957', 13); }
-    const k = (this.modeDef().coinMult || 1) * (p.id === 0 && Pets.has('unicorn') ? Pets.up(2, 3) : 1) * (p.id === 0 && this.fever ? 3 : 1) * n;
+    else if (p.id === 0 && Math.random() < 0.25 * Upgrades.n('piggy')) { n *= 2; FX.text(it.x, it.y + 24, 'PIGGY BANK!', '#ff9fb8', 13); }
+    const k = Golden.mult() * (this.modeDef().coinMult || 1) * (p.id === 0 && Pets.has('unicorn') ? Pets.up(2, 3) : 1) * (p.id === 0 && this.fever ? 3 : 1) * n;
     p.coins += k;
     if (p.id === 0) this.coins = p.coins;
     this.addBonus(25 * n, p);
@@ -267,14 +281,18 @@ const Game = {
   // A car (or train) missed by a hair. Chains within 3s build a multiplier.
   nearMiss(mult = 1, p = Player) {
     if (this.state !== 'playing' || !p.alive) return;
-    p.combo = this.time - p.comboT < 3 ? p.combo + 1 : 1;
+    p.combo = this.time - p.comboT < Upgrades.combo() ? p.combo + 1 : 1;
     p.comboT = this.time;
-    const pts = 15 * p.combo * mult * (p.id === 0 ? Pets.perk('closeBonus') || 1 : 1);
+    const dare = p.id === 0 && Upgrades.has('daredevil');
+    const pts = 15 * p.combo * mult * (p.id === 0 ? Pets.perk('closeBonus') || 1 : 1) * (dare ? 2 : 1);
+    if (dare) { p.coins++; this.coins = p.coins; }
     this.addBonus(pts, p);
     FX.text(p.x, p.y + 26, p.combo > 1 ? `CLOSE CALL x${p.combo}  +${pts}` : `CLOSE CALL +${pts}`, '#7fe0ff', 14 + Math.min(8, p.combo));
     Sound.near(p.combo);
     Rage.add(p, 0.25); // Big J: every close call makes him angrier
-    if (p.id === 0 && p.combo >= 10 && !this.fever && this.players.length === 1) { // combo fever
+    if (p.id === 0) Mastery.combo(p.combo);
+    if (p.id === 0 && p.combo >= Upgrades.fever() && !this.fever && this.players.length === 1) { // combo fever
+      Roadex.see('specials', 'fever');
       this.fever = true;
       Sound.fever(true);
       FX.flashScreen(0.3, '255,210,60');
@@ -346,7 +364,7 @@ const Game = {
 
   // Traffic speed multiplier: freeze power-up and snow.
   trafficFactor() {
-    return Powers.traffic * (this.weather.type === 'snow' ? 1 - 0.3 * this.weather.amt : 1) * (Pets.has('owl') ? 0.72 : 1);
+    return Powers.traffic * (this.weather.type === 'snow' ? 1 - 0.3 * this.weather.amt : 1) * (Pets.has('owl') ? 0.72 : 1) * Upgrades.traffic();
   },
 
   checkHits() {
@@ -382,10 +400,10 @@ const Game = {
       if (row.type !== 'road') continue;
       for (const v of row.lane.vehicles) {
         if (p.pw.ghost > 0 && !v.wreck) continue; // ghost: cars drive straight through you
-        const small = p.pw.shrink > 0;
-        if (Math.abs((v.drunk ? v.y : row.y) - p.y) > (small ? 0.42 : 0.58) * TILE) continue; // drunk drivers weave between lanes
+        const small = p.pw.shrink > 0, slim = p.id === 0 ? Upgrades.slim() : 0; // Slim Fit upgrade
+        if (Math.abs((v.drunk ? v.y : row.y) - p.y) > (small ? 0.42 : 0.58 - 0.05 * slim) * TILE) continue; // drunk drivers weave between lanes
         if (v.abducted || v.z > 30 || v.animal) continue;
-        if (Math.abs(v.x - p.x) > v.len / 2 - 2 + (small ? 0.08 : 0.24) * TILE) continue;
+        if (Math.abs(v.x - p.x) > v.len / 2 - 2 + (small ? 0.08 : 0.24 - 0.07 * slim) * TILE) continue;
         if (v.wreck) { // a sliding wreck shoves you aside instead of killing you
           if (!v.bumped && !p.knock && Math.abs(v.slide) * fz > 40) {
             v.bumped = true;
@@ -421,6 +439,7 @@ const Game = {
     const p = opts.p || Player;
     if (!p.alive || Admin.god) return;
     if (this.state === 'playing' && Pets.saves(p, source)) return; // the cat takes the hit
+    if (this.state === 'playing' && (Upgrades.shrugs(p, source) || Upgrades.saves(p, source))) return; // run upgrades
     const sameMoment = this.state === 'dying' && this.deathT === 0 && this.players.length > 1;
     if (this.state !== 'playing' && !sameMoment) return;
     const gore = Settings.gore && source !== 'danger' && source !== 'pit';
@@ -528,7 +547,9 @@ const Game = {
       this.setBest(this.mode, this.score);
       Ghost.save();
     }
-    this.bank += this.coins;
+    // prestige and an evolved pet pay a bonus on top
+    this.bonusCoins = Math.round(this.coins * (Prestige.bonus() * (Evolve.active() ? 1.1 : 1) - 1));
+    this.bank += this.coins + this.bonusCoins;
     Store.set('coins', this.bank);
     Stats.add('coins', this.coins);
     Stats.save();
@@ -554,6 +575,7 @@ const Game = {
       versus: versus ? { winner: this.winner, wins: this.versusWins, rows: this.players.map(p => p.maxRow), scores: this.players.map(p => p.score) } : null,
       trophies: Trophies.fresh.slice(), xp: versusRun ? null : this.xpInfo,
       boxes: versusRun ? [] : this.boxInfo || [], pet: versusRun ? null : this.petInfo,
+      upgrades: versusRun ? [] : Upgrades.order.slice(), bonus: versusRun ? 0 : this.bonusCoins, golden: Golden.active,
     });
   },
 
@@ -568,7 +590,7 @@ const Game = {
     if (!this.danger.active || Admin.noDanger) return;
     const lead = this.leader();
     const d = difficulty(lead.maxRow);
-    this.danger.y += TILE * (0.3 + 0.45 * d) * (this.modeDef().danger || 1) * (Pets.perk('danger') || 1) * dt;
+    this.danger.y += TILE * (0.3 + 0.45 * d) * (this.modeDef().danger || 1) * (Pets.perk('danger') || 1) * Upgrades.danger() * dt;
     this.danger.y = Math.max(this.danger.y, (lead.maxRow - 7) * TILE);
     for (const p of this.players) {
       if (p.alive && !p.knock && !p.abduct && p.y < this.danger.y) this.kill('danger', { p });
@@ -585,7 +607,8 @@ const Game = {
 
   updateWeather(dt) {
     const w = this.weather;
-    const want = Admin.weather || World.weatherAt(Math.max(0, this.leader().maxRow + 4));
+    const want = Admin.weather || (Upgrades.has('sunny') ? 'clear' : World.weatherAt(Math.max(0, this.leader().maxRow + 4)));
+    if (w.type !== 'clear' && w.amt > 0.5) Roadex.see('weather', w.type);
     if (w.type !== want) {
       w.amt = approach(w.amt, 0, dt * 0.6);
       if (w.amt === 0) {
@@ -605,6 +628,9 @@ const Game = {
     this.zone = z;
     if (this.state !== 'playing') return;
     UI.zoneToast(z);
+    Mastery.cross(z); // you crossed the last one
+    Roadex.see('biomes', z);
+    if (Upgrades.has('shieldzone') && this.players.length === 1) { Player.shield++; FX.text(Player.x, Player.y + 30, 'SHIELD FACTORY!', '#8fd0ff', 15); }
     const zc = Pets.perk('zoneCoins'); // the crab loves sightseeing
     if (zc && this.players.length === 1) this.giveCoins(zc, Player, `NEW BIOME! +${zc}`);
     if (this.tracksProgress()) Stats.zone(z);
@@ -625,6 +651,12 @@ const Game = {
     const playing = this.state === 'playing';
     // Reverse Day: the real road is frozen while you drive
     if (playing || Reverse.active) Reverse.update(dt);
+    if (SecretRoom.active) { // down in a secret room: the road waits for you
+      SecretRoom.update(realDt);
+      Cam.update(dt, realDt);
+      UI.update();
+      return;
+    }
     if (Reverse.active) {
       FX.update(dt);
       Cam.update(dt, realDt);
@@ -634,6 +666,7 @@ const Game = {
     if (playing) {
       Powers.update(dt);
       if (this.tracksProgress()) Stats.data.time += dt;
+      if (Lighting.isNight) Roadex.see('weather', 'night');
     }
     const fz = this.trafficFactor();
     this.skidCooldown -= dt;
@@ -643,7 +676,7 @@ const Game = {
     Events.update(wdt);
     for (const p of this.players) p.update(dt, this.time);
     Vehicles.update(wdt, fz);
-    Rail.update(wdt, fz);
+    Rail.update(wdt, fz * Upgrades.trains());
     Work.update(wdt);
     Animals.update(wdt);
     Pets.update(dt);
@@ -653,7 +686,7 @@ const Game = {
     Prints.update(dt);
     Egg.update();
     Graves.update();
-    if (this.fever && (this.time - Player.comboT >= 3 || !Player.alive)) { // the combo broke
+    if (this.fever && (this.time - Player.comboT >= Upgrades.combo() || !Player.alive)) { // the combo broke
       this.fever = false;
       if (Player.alive) { Sound.fever(false); FX.text(Player.x, Player.y + 50, 'FEVER OVER', '#e8d080', 14); }
     }
@@ -705,7 +738,7 @@ const Game = {
       if (Settings.lowGfx) FX.quality = Math.min(FX.quality, 0.6);
       if (this.state === 'playing') Renderer.adapt(this.frameAvg, realDt);
     }
-    if (this.state !== 'paused') {
+    if (this.state !== 'paused' && this.state !== 'upgrade') {
       if (this.slow.t > 0) {
         this.slow.t -= realDt;
         this.timeScale = this.slow.scale;

@@ -20,6 +20,7 @@ const UI = {
   returnFocus: null,
   shopTab: 'skins',
   trophyTab: 'trophies',
+  goalTab: 'biomes',
 
   init() {
     const $ = id => document.getElementById(id);
@@ -75,6 +76,8 @@ const UI = {
     for (const id of ['btn-settings', 'btn-pause-settings', 'btn-over-settings']) on(id, () => this.openSettings());
     for (const id of ['btn-shop', 'btn-over-shop']) on(id, () => this.openShop());
     on('btn-trophies', () => this.openTrophies());
+    on('btn-goals', () => this.openGoals());
+    on('btn-goals-done', () => this.closeModal());
     on('btn-settings-done', () => this.closeModal());
     on('btn-shop-done', () => this.closeModal());
     on('btn-trophies-done', () => this.closeModal());
@@ -145,8 +148,11 @@ const UI = {
     for (const t of document.querySelectorAll('[data-ttab]')) {
       t.addEventListener('click', () => { this.trophyTab = t.dataset.ttab; Sound.click(); this.renderTrophies(); });
     }
+    for (const t of document.querySelectorAll('[data-gtab]')) {
+      t.addEventListener('click', () => { this.goalTab = t.dataset.gtab; Sound.click(); this.renderGoals(); });
+    }
     // clicking the dimmed backdrop closes a dialog
-    for (const id of ['screen-settings', 'screen-warning', 'screen-reset', 'screen-shop', 'screen-trophies']) {
+    for (const id of ['screen-settings', 'screen-warning', 'screen-reset', 'screen-shop', 'screen-trophies', 'screen-goals']) {
       $(id).addEventListener('click', e => { if (e.target.id === id) this.closeModal(); });
     }
 
@@ -200,6 +206,11 @@ const UI = {
     this.openModal('trophies', 'screen-trophies', 'btn-trophies-done');
   },
 
+  openGoals() {
+    this.renderGoals();
+    this.openModal('goals', 'screen-goals', 'btn-goals-done');
+  },
+
   closeModal() {
     if (Input.capture) Input.capture(null);
     if (this.modal === 'reset') {
@@ -216,7 +227,7 @@ const UI = {
       return;
     }
     const was = this.modal;
-    for (const id of ['screen-settings', 'screen-shop', 'screen-trophies', 'screen-admin']) this.show(id, false);
+    for (const id of ['screen-settings', 'screen-shop', 'screen-trophies', 'screen-goals', 'screen-admin']) this.show(id, false);
     this.modal = null;
     if (was === 'admin') Admin.closed();
     this.refreshMeta();
@@ -283,6 +294,7 @@ const UI = {
   renderShop() {
     const tab = this.shopTab, table = SHOP_TABS[tab];
     this.$('shop-coins').textContent = Game.bank;
+    this.$('shop-shards').textContent = Shards.n;
     const col = Shop.collection();
     this.$('shop-collection').textContent = `COLLECTION ${col.have} / ${col.total}`;
     this.$('shop-collection-fill').style.width = `${(col.have / col.total) * 100}%`;
@@ -299,13 +311,14 @@ const UI = {
       const item = table[id];
       const owned = Shop.has(tab, id), equipped = Shop.equipped(tab, id);
       const card = document.createElement('div');
-      const special = item.unlock || item.level || item.egg || item.box;
+      const special = earnedOnly(item);
       card.className = 'skin' + (equipped ? ' equipped' : '') + (special && !owned ? ' locked' : '') + (item.egg ? ' egg' : '') + (item.box ? ' boxed' : '');
       const cv = document.createElement('canvas');
       cv.width = cv.height = 120;
       this.preview(cv, tab, id);
       const name = document.createElement('b');
-      name.textContent = item.name;
+      name.textContent = tab === 'pets' && id !== 'none' ? Evolve.name(id) : item.name;
+      if (tab === 'pets' && Evolve.has(id)) card.classList.add('evolved');
       card.append(cv, name);
       if (item.rare) {
         const tag = document.createElement('span');
@@ -324,10 +337,27 @@ const UI = {
         lv.className = 'unlock petlv';
         const info = PetLevels.info(id);
         const up = PET_MAX[id] ? `Level 5: ${PET_MAX[id]}` : '';
-        lv.textContent = !owned ? up : info.max ? `LEVEL 5 (MAX) · ${PET_MAX[id] || ''}` : `Level ${info.level} · ${info.into}/${info.need} XP` + (up ? ` · ${up}` : '');
+        lv.textContent = !owned ? up : Evolve.has(id) ? `EVOLVED · ${PET_MAX[id] || ''} · +20% XP and +10% coins`
+          : info.max ? `LEVEL 5 (MAX) · ${PET_MAX[id] || ''}` : `Level ${info.level} · ${info.into}/${info.need} XP` + (up ? ` · ${up}` : '');
         if (lv.textContent) card.appendChild(lv);
       }
       const btn = document.createElement('button');
+      if (tab === 'pets' && owned && Evolve.can(id)) { // level 5: it can evolve
+        const ev = document.createElement('button');
+        ev.className = 'btn-yellow small evolve-btn';
+        ev.innerHTML = `Evolve <span class="coin-ico"></span> ${EVOLVE_COST}`;
+        ev.disabled = Game.bank < EVOLVE_COST;
+        ev.title = 'Evolved pets grow, glow, and give +20% XP and +10% coins';
+        ev.addEventListener('click', () => {
+          if (!Evolve.go(id)) return;
+          Sound.levelUp();
+          this.toast('t-hatch', `${PETS[id].name.toUpperCase()} EVOLVED!`, `Meet Mega ${PETS[id].name}: +20% XP and +10% coins`, 3600);
+          this.renderShop();
+          this.refreshMeta();
+        });
+        ev.addEventListener('pointerdown', e => e.stopPropagation());
+        card.appendChild(ev);
+      }
       if (equipped) {
         btn.className = 'btn-plate small';
         btn.textContent = 'Equipped';
@@ -341,12 +371,28 @@ const UI = {
         const how = document.createElement('span');
         how.className = 'unlock';
         how.textContent = item.egg ? 'Find an egg on the road and carry it 50 rows to hatch it'
-          : item.box ? 'Only found in mystery boxes on the road'
+          : item.box ? `Found in mystery boxes, or craft it from ${SHARD_COST} box shards`
+          : item.mastery ? `Earn all 3 stars in ${zoneName(item.mastery)} (Goals)`
+          : item.roadex ? `Complete the ${ROADEX[item.roadex].name} page of the Roadex (Goals)`
+          : item.prestige ? `Reach prestige ${item.prestige} (Goals)`
           : item.level ? `Reach level ${item.level} (you're level ${Levels.level})` : `Trophy: ${t ? t.desc : 'secret'}`;
         card.appendChild(how);
-        btn.className = 'btn-plate small';
-        btn.textContent = 'Locked';
-        btn.disabled = true;
+        if (item.box) { // craft it from shards
+          btn.className = 'btn-yellow small';
+          btn.innerHTML = `<span class="shard-ico"></span> ${SHARD_COST} Craft`;
+          btn.disabled = Shards.n < SHARD_COST;
+          btn.setAttribute('aria-label', `Craft ${item.name} for ${SHARD_COST} shards`);
+          btn.addEventListener('click', () => {
+            if (!Shards.craft(tab, id)) return;
+            Sound.hatch();
+            Shop.equip(tab, id);
+            this.renderShop();
+          });
+        } else {
+          btn.className = 'btn-plate small';
+          btn.textContent = 'Locked';
+          btn.disabled = true;
+        }
       } else {
         const afford = Game.bank >= item.price;
         btn.className = 'btn-yellow small';
@@ -381,7 +427,7 @@ const UI = {
       g.translate(fly ? -2 : -3, fly ? 2 : -2);
       g.scale(1.25, 1.25);
       Draw.shadow(g, 0, 0, 24, 16, 0.8);
-      Draw.pet(g, { type: id, face: 1, z: fly ? 5 : 0, blink: 0, ph: 0 }, 1);
+      this.petArt(g, { type: id, face: 1, z: fly ? 5 : 0, blink: 0, ph: 0 });
     } else {
       if (tab === 'pets' && id !== 'none') g.translate(-9, 0);
       Draw.shadow(g, 0, 0, 30, 24, 0.9);
@@ -392,12 +438,12 @@ const UI = {
       g.save();
       g.translate(22, 4);
       Draw.shadow(g, 0, 0, 20, 14, 0.7);
-      Draw.pet(g, pet, 1);
+      this.petArt(g, pet);
       g.restore();
     }
     g.restore();
     const lockedPet = tab === 'pets' && PETS[id].egg && !Shop.has('pets', id);
-    if (lockedPet || (tab === 'skins' && (SKINS[id].unlock || SKINS[id].level) && !Shop.has('skins', id))) { // locked: a padlock over a silhouette
+    if (lockedPet || (tab === 'skins' && earnedOnly(SKINS[id]) && !Shop.has('skins', id))) { // locked: a padlock over a silhouette
       g.globalCompositeOperation = 'source-atop';
       g.fillStyle = 'rgba(20,14,10,0.78)';
       g.fillRect(0, 0, cv.width, cv.height);
@@ -408,6 +454,17 @@ const UI = {
       g.lineWidth = 3;
       g.beginPath(); g.arc(60, 58, 6, Math.PI, 0); g.stroke();
     }
+  },
+
+  // A pet in a preview (evolved pets are bigger and glow).
+  petArt(g, pet) {
+    if (!Evolve.has(pet.type)) { Draw.pet(g, pet, 1); return; }
+    Evolve.aura(g, pet, 1);
+    g.save();
+    g.scale(1.3, 1.3);
+    Draw.pet(g, pet, 1);
+    g.restore();
+    Evolve.sparkles(g, pet, 1);
   },
 
   // Mystery-box items stay a mystery until you find one.
@@ -655,6 +712,125 @@ const UI = {
     stats.appendChild(ul);
   },
 
+  // ---- Run upgrades: the checkpoint picker ------------------------------------------
+  upgradeIcon(id, size = 26) {
+    const c = UPGRADE_CATS[UPGRADES[id].cat];
+    return `<svg viewBox="0 0 24 24" width="${size}" height="${size}" aria-hidden="true" fill="currentColor" style="color:${c.color}">${c.icon}</svg>`;
+  },
+
+  showUpgrade(offer, row) {
+    const scr = this.$('screen-upgrade');
+    this.toasts.classList.toggle('dim', !!offer); // toasts would cover the cards
+    if (!offer) { scr.classList.add('hidden'); return; }
+    this.$('upgrade-row').textContent = `CHECKPOINT · ROW ${row}`;
+    const box = this.$('upgrade-cards');
+    box.textContent = '';
+    offer.forEach((id, i) => {
+      const u = UPGRADES[id], cat = UPGRADE_CATS[u.cat], n = Upgrades.n(id);
+      const b = document.createElement('button');
+      b.className = `upg-card tier-${u.tier}`;
+      b.style.setProperty('--c', cat.color);
+      b.innerHTML = `<span class="upg-key">${i + 1}</span><span class="upg-ico">${this.upgradeIcon(id, 34)}</span>`
+        + `<b></b><span class="upg-desc"></span><span class="upg-meta"></span>`;
+      b.querySelector('b').textContent = u.name + (n ? ` ${n + 1}` : '');
+      b.querySelector('.upg-desc').textContent = u.desc;
+      b.querySelector('.upg-meta').textContent = `${u.tier.toUpperCase()} · ${cat.name.toUpperCase()}` + (u.max > 1 ? ` · ${n}/${u.max}` : '');
+      b.addEventListener('click', () => Upgrades.choose(i));
+      b.addEventListener('pointerdown', e => e.stopPropagation());
+      box.appendChild(b);
+    });
+    scr.classList.remove('hidden');
+    this.show('powers', true);
+    setTimeout(() => { const f = box.querySelector('button'); if (f) f.focus({ preventScroll: true }); }, 30);
+  },
+
+  // A list of this run's upgrades (pause screen and the report).
+  renderUpgradeList(el, ids) {
+    el.textContent = '';
+    const counts = {};
+    for (const id of ids) counts[id] = (counts[id] || 0) + 1;
+    for (const id in counts) {
+      const li = document.createElement('li');
+      li.style.setProperty('--c', UPGRADE_CATS[UPGRADES[id].cat].color);
+      li.innerHTML = this.upgradeIcon(id, 16);
+      const t = document.createElement('span');
+      t.textContent = UPGRADES[id].name + (counts[id] > 1 ? ` x${counts[id]}` : '');
+      li.title = UPGRADES[id].desc;
+      li.appendChild(t);
+      el.appendChild(li);
+    }
+    el.classList.toggle('hidden', !ids.length);
+  },
+
+  // ---- Goals: biome mastery, the Roadex and prestige -------------------------------
+  renderGoals() {
+    const tab = this.goalTab;
+    for (const t of document.querySelectorAll('[data-gtab]')) t.setAttribute('aria-selected', t.dataset.gtab === tab ? 'true' : 'false');
+    const body = this.$('goals-body');
+    body.textContent = '';
+    const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; };
+    const rewardName = r => r ? `${SHOP_TABS[r[0]][r[1]].name} (${{ skins: 'skin', hats: 'hat', trails: 'trail', pets: 'pet', deaths: 'death effect', prints: 'footprints', titles: 'title' }[r[0]]})` : '';
+    if (tab === 'biomes') {
+      this.$('goals-progress').textContent = `★ ${Mastery.total()} / ${Mastery.max}`;
+      body.appendChild(el('p', 'goals-note', 'Every biome has three stars. Earn all three to unlock its reward.'));
+      const ul = el('ul', 'mastery-list');
+      for (const z in ZONES) {
+        const s = Mastery.stars(z), done = Mastery.done(z), seen = !!Stats.data.zones[z] || z === 'country';
+        const li = el('li', done ? 'done' : '');
+        li.style.setProperty('--zone', ZONES[z].bg);
+        const head = el('div', 'm-head');
+        head.append(el('b', '', seen ? zoneName(z) : '???'), el('span', 'm-stars', s.map(v => (v ? '★' : '☆')).join('')));
+        const stars = el('ol', 'm-goals');
+        MASTERY_STARS.forEach((txt, i) => stars.appendChild(el('li', s[i] ? 'got' : '', txt)));
+        li.append(head, stars, el('em', '', `${done ? 'Unlocked' : 'Reward'}: ${rewardName(Mastery.reward(z))}`));
+        ul.appendChild(li);
+      }
+      body.appendChild(ul);
+    } else if (tab === 'roadex') {
+      const T = Roadex.totals();
+      this.$('goals-progress').textContent = `${T.have} / ${T.total}`;
+      body.appendChild(el('p', 'goals-note', `Everything you see on the road goes in the book: +${ROADEX_COINS} coins for each new entry and +${ROADEX_PAGE_COINS} for each finished page.`));
+      for (const page in ROADEX) {
+        const n = Roadex.pageCount(page), done = n.have >= n.total;
+        const sec = el('section', 'roadex-page' + (done ? ' done' : ''));
+        const head = el('div', 'rx-head');
+        head.append(el('b', '', ROADEX[page].name), el('span', 'rx-count', `${n.have}/${n.total}`));
+        const grid = el('ul', 'rx-grid');
+        for (const id in ROADEX[page].list) grid.appendChild(el('li', Roadex.has(page, id) ? 'seen' : '', Roadex.has(page, id) ? ROADEX[page].list[id] : '???'));
+        sec.append(head, grid);
+        const r = Roadex.reward(page);
+        if (r) sec.appendChild(el('em', '', `${done ? 'Unlocked' : 'Reward'}: ${rewardName(r)}`));
+        body.appendChild(sec);
+      }
+    } else {
+      const L = Levels.info();
+      this.$('goals-progress').textContent = Prestige.n ? `PRESTIGE ${Prestige.n}` : 'NO PRESTIGE YET';
+      const card = el('div', 'prestige-card');
+      card.append(el('div', 'p-stars', Prestige.n ? '★'.repeat(Prestige.n) : '☆'));
+      card.append(el('p', '', `Reach level ${PRESTIGE_LEVEL}, then prestige: you go back to level 1 and keep everything you've unlocked. `
+        + `Each prestige gives you a star and a permanent +5% coins and +5% XP (up to ${PRESTIGE_MAX} times).`));
+      card.append(el('p', 'p-now', `Level ${L.level} · prestige ${Prestige.n}/${PRESTIGE_MAX} · bonus +${Math.round((Prestige.bonus() - 1) * 100)}% coins and XP`));
+      const b = el('button', 'btn-yellow');
+      const reset = () => { delete b.dataset.armed; b.textContent = Prestige.n >= PRESTIGE_MAX ? 'MAX PRESTIGE' : Prestige.can() ? `PRESTIGE TO ★${Prestige.n + 1}` : `Reach level ${PRESTIGE_LEVEL} to prestige`; };
+      reset();
+      b.disabled = !Prestige.can();
+      b.addEventListener('click', () => {
+        if (!b.dataset.armed) { b.dataset.armed = '1'; b.textContent = 'Tap again: back to level 1'; Sound.bump(); return; }
+        if (Prestige.go()) {
+          Sound.levelUp();
+          this.toast('t-golden', `PRESTIGE ${Prestige.n}!`, 'Back to level 1, with a permanent bonus', 3600);
+          this.renderGoals();
+          this.refreshMeta();
+        }
+      });
+      card.appendChild(b);
+      const ul = el('ul', 'p-rewards');
+      for (const [lvl, t, id] of Prestige.rewards()) ul.appendChild(el('li', Prestige.n >= lvl ? 'got' : '', `★${lvl}: ${rewardName([t, id])}`));
+      card.appendChild(ul);
+      body.appendChild(card);
+    }
+  },
+
   // ---- Missions board -----------------------------------------------------------
   renderMissions(el, showProgress) {
     el.textContent = '';
@@ -690,7 +866,8 @@ const UI = {
     this.$('trophy-count').textContent = `${Trophies.count}/${TROPHIES.length}`;
     const L = Levels.info();
     const lv = this.$('title-level');
-    lv.innerHTML = `<b>LV ${L.level}</b><span class="lvl-bar"><i style="width:${Math.round((L.into / L.need) * 100)}%"></i></span>`;
+    lv.innerHTML = `<b>LV ${L.level}${Prestige.n ? ` ★${Prestige.n}` : ''}</b><span class="lvl-bar"><i style="width:${Math.round((L.into / L.need) * 100)}%"></i></span>`;
+    this.$('goals-count').textContent = `★${Mastery.total()}`;
     lv.title = `${L.into} / ${L.need} XP to level ${L.level + 1}`;
     this.$('gore-badge').classList.toggle('hidden', !Settings.gore);
   },
@@ -710,8 +887,25 @@ const UI = {
     }
     this.toasts.appendChild(el);
     while (this.toasts.children.length > 3) this.toasts.firstChild.remove();
-    setTimeout(() => el.classList.add('out'), ms - 400);
-    setTimeout(() => el.remove(), ms);
+    el.t1 = setTimeout(() => el.classList.add('out'), ms - 400);
+    el.t2 = setTimeout(() => el.remove(), ms);
+    return el;
+  },
+
+  // New Roadex entries share one toast: a burst of them updates it instead of piling up.
+  roadexToast(name, sub) {
+    const live = this.rxToast && this.rxToast.isConnected && !this.rxToast.classList.contains('out');
+    if (!live) {
+      this.rxN = 0;
+      this.rxToast = this.toast('t-roadex', ' ', ' ', 2600);
+    }
+    this.rxN++;
+    const el = this.rxToast;
+    el.firstChild.textContent = this.rxN > 1 ? `NEW IN THE ROADEX: ${name.toUpperCase()} (+${this.rxN - 1} MORE)` : `NEW IN THE ROADEX: ${name.toUpperCase()}`;
+    el.lastChild.textContent = sub;
+    clearTimeout(el.t1); clearTimeout(el.t2); // keep it up a little longer
+    el.t1 = setTimeout(() => el.classList.add('out'), 2200);
+    el.t2 = setTimeout(() => el.remove(), 2600);
   },
 
   eventToast(name, sub) { this.toast('t-event', name, sub, 3600); },
@@ -731,6 +925,7 @@ const UI = {
     this.show('screen-title', true);
     this.show('screen-over', false);
     this.show('screen-pause', false);
+    this.show('screen-upgrade', false);
     this.show('hud', false);
     this.$('btn-play').focus({ preventScroll: true });
   },
@@ -741,6 +936,8 @@ const UI = {
     this.show('screen-over', false);
     this.show('screen-pause', false);
     this.show('hud', true);
+    this.show('screen-upgrade', false);
+    this.toasts.classList.remove('dim');
     const badge = this.$('mode-badge');
     badge.textContent = mode === 'hardcore' ? 'HARDCORE' : mode === 'time' ? 'TIME ATTACK' : '';
     badge.className = 'plate mode-badge' + (mode === 'hardcore' ? ' hardcore' : mode === 'time' ? ' time' : ' hidden');
@@ -766,6 +963,7 @@ const UI = {
       this.renderMissions(this.$('pause-missions'), true);
       this.show('btn-pause-admin', Admin.unlocked);
       this.show('pause-missions', Game.tracksProgress());
+      this.renderUpgradeList(this.$('pause-upgrades'), Game.players.length > 1 ? [] : Upgrades.order);
       this.$('btn-resume').focus({ preventScroll: true });
     }
   },
@@ -778,7 +976,7 @@ const UI = {
     const vs = info.versus;
     this.show('hud', false);
     this.$('report-no').textContent = 'No. ' + String(info.run).padStart(5, '0');
-    this.$('over-title').textContent = vs ? (vs.winner ? `Player ${vs.winner.id + 1} wins!` : 'Draw!') : info.cause === "Time's up" ? "Time's up" : 'Game Over';
+    this.$('over-title').textContent = vs ? (vs.winner ? `Player ${vs.winner.id + 1} wins!` : 'Draw!') : info.cause === "Time's up" ? "Time's up" : info.golden ? 'Golden Run Over' : 'Game Over';
     this.$('over-cause').textContent = info.cause;
     for (const id of ['over-rows-row', 'over-score-row', 'over-best-row', 'over-coins-row']) this.show(id, !vs);
     for (const id of ['over-p1-row', 'over-p2-row', 'over-tally-row']) this.show(id, !!vs);
@@ -791,7 +989,7 @@ const UI = {
       this.$('over-score').textContent = info.score;
       this.$('over-best').textContent = info.best;
       const mult = MODES[info.mode].coinMult;
-      this.$('over-coins').textContent = `${info.coins}${mult ? ` (x${mult})` : ''}, ${info.bank} total`;
+      this.$('over-coins').textContent = `${info.coins}${mult ? ` (x${mult})` : ''}${info.golden ? ' (golden x2)' : ''}${info.bonus ? ` +${info.bonus} bonus` : ''}, ${info.bank} total`;
     }
     const modeName = info.mode === 'normal' || vs ? '' : MODES[info.mode].name;
     this.$('over-mode-row').classList.toggle('hidden', !modeName);
@@ -843,7 +1041,8 @@ const UI = {
     bx.textContent = '';
     for (const r of info.boxes || []) {
       const li = document.createElement('li');
-      if (r.coins) li.textContent = `MYSTERY BOX: ${r.coins} coins`;
+      if (r.dupe) li.textContent = `MYSTERY BOX: ${r.dupe} again, so +${r.shards} shards`;
+      else if (r.coins) li.textContent = `MYSTERY BOX: ${r.coins} coins`;
       else { li.textContent = `MYSTERY BOX: ${r.name} (${r.kind})${r.rare ? ' · MYSTERY EXCLUSIVE!' : ''}`; if (r.rare) li.className = 'rare'; }
       bx.appendChild(li);
     }
@@ -853,7 +1052,14 @@ const UI = {
       li.textContent = info.pet.max ? `${info.pet.name} reached level 5! Its perk got stronger: ${PET_MAX[info.pet.id] || ''}` : `${info.pet.name} reached level ${info.pet.level}`;
       bx.appendChild(li);
     }
+    if ((info.boxes || []).length) {
+      const li = document.createElement('li');
+      li.className = 'pet';
+      li.textContent = `Box shards: ${Shards.n} (craft any mystery exclusive for ${SHARD_COST} in the shop)`;
+      bx.appendChild(li);
+    }
     bx.classList.toggle('hidden', !bx.children.length);
+    this.renderUpgradeList(this.$('over-upgrades'), info.upgrades || []);
     if ((info.boxes || []).length) Sound.hatch();
     this.show('over-missions', !vs);
     if (!vs) this.renderMissions(this.$('over-missions'), true);
@@ -891,11 +1097,18 @@ const UI = {
       }
     }
 
-    const comboOn = !versus && Player.combo > 1 && Game.time - Player.comboT < 3 && Game.state === 'playing';
+    const ub = !versus && Upgrades.count > 0;
+    if (ub !== this.ubOn || (ub && Upgrades.count !== this.ubN)) {
+      this.ubOn = ub;
+      this.ubN = Upgrades.count;
+      this.show('upg-badge', ub);
+      if (ub) this.$('upg-badge').innerHTML = `<b>${Upgrades.count}</b><span>UPGRADES</span>`;
+    }
+    const comboOn = !versus && Player.combo > 1 && Game.time - Player.comboT < Upgrades.combo() && Game.state === 'playing';
     this.combo.classList.toggle('hidden', !comboOn);
     if (comboOn) this.combo.firstElementChild.textContent = 'x' + Player.combo;
 
-    this.show('powers', !versus && (Game.state === 'playing' || Game.state === 'paused'));
+    this.show('powers', !versus && (Game.state === 'playing' || Game.state === 'paused' || Game.state === 'upgrade'));
     for (const k in this.chips) {
       const ch = this.chips[k];
       const left = Powers.left(k);

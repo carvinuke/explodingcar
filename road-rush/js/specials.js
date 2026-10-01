@@ -177,6 +177,7 @@ const Egg = {
     for (let i = Items.list.length - 1; i >= 0; i--) if (Items.list[i].type === 'egg') Items.list.splice(i, 1);
     FX.pickup(it.x, it.y, '#ff8ad8');
     FX.text(it.x, it.y + 20, 'AN EGG!', '#ff8ad8', 20);
+    Roadex.see('specials', 'egg');
     UI.toast('t-hatch', 'YOU FOUND AN EGG', `Carry it ${EGG_ROWS} rows without dying and it hatches`, 3400);
     Sound.powerup();
     if (Game.tracksProgress()) Stats.add('eggs');

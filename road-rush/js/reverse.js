@@ -119,6 +119,7 @@ const Reverse = {
     Player.queue = null;
     Sound.flip();
     Sound.eventSting();
+    Roadex.see('events', 'reverseday');
     // a head start: a few chickens already on the road
     for (let k = 0; k < 4; k++) this.spawn(this.car.x + (6 + k * 3) * TILE, true);
   },
