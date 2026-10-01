@@ -279,7 +279,7 @@ const Claw = {
 
   win([tab, id], kind) {
     Shop.grant(tab, id);
-    const what = { skins: 'skin', hats: 'hat', trails: 'trail', pets: 'pet', auras: 'aura', prints: 'footprints', titles: 'title' }[tab];
+    const what = { skins: 'skin', hats: 'hat', trails: 'trail', pets: 'pet', auras: 'aura', prints: 'footprints', titles: 'title', sounds: 'hop sound' }[tab];
     return { kind, tab, id, name: SHOP_TABS[tab][id].name, what };
   },
 };

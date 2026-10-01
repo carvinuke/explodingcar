@@ -1036,3 +1036,11 @@ kbd {
   .outfit { grid-template-columns: minmax(0, 1fr); justify-items: center; padding: 5px 4px; }
   .outfit canvas { grid-row: auto; width: 34px; height: 34px; }
 }
+/* nine tabs: 5 + 4 with Upgrades taking two spaces (3 x 3 on phones) */
+.shop-tabs { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.shop-tabs .tab.tab-upg { grid-column: span 2; }
+.skin canvas.playable { cursor: pointer; }
+@media (max-width: 480px) {
+  .shop-tabs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .shop-tabs .tab.tab-upg { grid-column: auto; }
+}

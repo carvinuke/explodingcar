@@ -333,6 +333,33 @@ const AURAS = {
   jackpot:  { name: 'Jackpot', price: 0, claw: true, rare: 'CLAW', perk: 'A golden glow with coins spinning around you' },
 };
 
+// The sound you make when you hop.
+const SOUNDS = {
+  none:    { name: 'Classic hop', price: 0 },
+  squeak:  { name: 'Squeaky Toy', price: 100, perk: 'A rubber-duck squeak' },
+  pop:     { name: 'Pop', price: 120, perk: 'A little popping bubble' },
+  chip:    { name: '8-Bit', price: 150, perk: 'A retro game blip' },
+  bubble:  { name: 'Bloop', price: 150, perk: 'A bubbly bloop' },
+  drum:    { name: 'Kick Drum', price: 200, perk: 'A punchy kick drum' },
+  boing:   { name: 'Boing', price: 200, perk: 'Cartoon springs' },
+  coin:    { name: 'Coin Blip', price: 250, perk: 'Sounds like money' },
+  quack:   { name: 'Quack', price: 250, perk: 'Every hop is a quack' },
+  spring:  { name: 'Spring', price: 300, perk: 'Up and down, boi-oing' },
+  whistle: { name: 'Slide Whistle', price: 300, perk: 'A rising whistle' },
+  robot:   { name: 'Robot', price: 350, perk: 'Beep boop' },
+  meow:    { name: 'Meow', price: 350, perk: 'A tiny meow' },
+  laser:   { name: 'Laser', price: 400, perk: 'Pew!' },
+  slime:   { name: 'Squelch', price: 400, perk: 'A gloopy squelch' },
+  kazoo:   { name: 'Kazoo', price: 450, perk: 'Bzzzzt' },
+  cowbell: { name: 'Cowbell', price: 500, perk: 'More cowbell' },
+  honk:    { name: 'Car Horn', price: 550, perk: 'Beep beep, coming through' },
+  piano:   { name: 'Piano', price: 800, perk: 'Every hop plays the next note of a tune' },
+  magic:   { name: 'Magic Sparkle', price: 0, level: 21, perk: 'A sparkly chime' },
+  bell:    { name: 'Temple Bell', price: 0, level: 37, perk: 'A long, clear bell' },
+  fanfare: { name: 'Fanfare', price: 0, unlock: 'legend', perk: 'Ta-da! on every hop' },
+  jackpot: { name: 'Jackpot Ding', price: 0, claw: true, rare: 'CLAW', perk: 'A slot machine payout, every hop' },
+};
+
 // Claw machine prizes: only won from the claw machine on the title screen.
 Object.assign(SKINS, {
   plushie: bird('Plushie Chick', 0, '#ffe3f1', '#ffb8d9', '#ffd1e8', '#f29cc6', { claw: true, rare: 'CLAW', marks: true, comb: ['#a98bff', '#8a6be6'], beak: ['#ffd8a8', '#f0b47a'], feet: '#f29cc6', perk: 'A stitched-together prize plush' }),
@@ -411,20 +438,21 @@ const PET_MAX = {
   mimic: 'Eats coins from further away', magbot: 'An even wider pull', luckystar: 'Coins are worth triple, and you start with two shields',
 };
 
-const SHOP_TABS = { skins: SKINS, hats: HATS, trails: TRAILS, pets: PETS, auras: AURAS, prints: PRINTS, titles: TITLES };
+const SHOP_TABS = { skins: SKINS, hats: HATS, trails: TRAILS, pets: PETS, auras: AURAS, prints: PRINTS, titles: TITLES, sounds: SOUNDS };
 // Which Shop field holds each tab's equipped item, and its storage key.
 const SLOTS = {
   skins: ['current', 'skin', 'chick'], hats: ['hat', 'hat'], trails: ['trail', 'trail'], pets: ['pet', 'pet'],
-  auras: ['aura', 'aura'], prints: ['print', 'print'], titles: ['title', 'title'],
+  auras: ['aura', 'aura'], prints: ['print', 'print'], sounds: ['hopSound', 'hopsound'], titles: ['title', 'title'],
 };
 
 const Shop = {
-  owned: { skins: ['chick'], hats: ['none'], trails: ['none'], pets: ['none'], auras: ['none'], prints: ['none'], titles: ['none'] },
+  owned: { skins: ['chick'], hats: ['none'], trails: ['none'], pets: ['none'], auras: ['none'], sounds: ['none'], prints: ['none'], titles: ['none'] },
   current: 'chick',
   hat: null,
   trail: null,
   pet: null,
   aura: null,
+  hopSound: null,
   print: null,
   title: null,
 

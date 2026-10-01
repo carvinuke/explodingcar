@@ -495,7 +495,7 @@ const Renderer = {
       case 'umbrella': Draw.shadow(c, o.x + 6, o.y, 1.1 * TILE, 0.8 * TILE, 0.55); break;
       case 'chair': case 'sandcastle': case 'lifeguard': Draw.shadow(c, o.x, o.y, 0.8 * TILE, 0.6 * TILE, 0.6); break;
       case 'gull': Draw.shadow(c, o.x, o.y, 0.5 * TILE * (1 - Math.min(0.6, o.z / 200)), 0.35 * TILE, 0.5); break;
-      case 'lamp': case 'sign': case 'xing': case 'hydrant': case 'bin': case 'mailbox': case 'cone': case 'worksign':
+      case 'lamp': case 'sign': case 'forksign': case 'xing': case 'hydrant': case 'bin': case 'mailbox': case 'cone': case 'worksign':
         Draw.shadow(c, o.x, o.y, 0.35 * TILE, 0.3 * TILE, 0.6); break;
       case 'barrier': Draw.shadow(c, o.x, o.y, 0.9 * TILE, 0.4 * TILE, 0.6); break;
       case 'excavator': Draw.shadow(c, o.x, o.y, 2.1 * TILE, 0.95 * TILE, 0.9); break;
@@ -585,6 +585,7 @@ const Renderer = {
       case 'event': o.draw(c, time); break;
       case 'player': this.player(c, o, time); break;
       case 'grave': c.scale(1.5, 1.5); Draw.grave(c); break;
+      case 'forksign': Forks.draw(c, o, time); break;
       case 'decoy': { // a fake you, blinking faster as it runs out
         const blink = o.t < 2 && ((time * 10) | 0) % 2;
         c.globalAlpha = blink ? 0.45 : 0.85;

@@ -114,6 +114,8 @@ const World = {
     this.speedMul = opts.speedMul || 1;
     this.gapMul = (opts.gapMul || 1) * Upgrades.gap(); // the Fewer Cars upgrade
     this.powerups = opts.powerups !== false;
+    this.forkOn = !!opts.forks; // road forks (single player)
+    Forks.reset();
     this.rows.clear();
     this.pathCol = START_COL;
     this.seg = { type: 'grass', left: 0 };
@@ -167,7 +169,10 @@ const World = {
     let row;
     if (i < 0) row = this.makeGrass(i, 'backdrop');
     else if (i < 4) row = this.makeGrass(i, 'start');
-    else {
+    else if (Forks.isForkRow(i)) { // a fork in the road: pick your next biome
+      row = this.makeGrass(i, 'normal');
+      Forks.setup(row);
+    } else {
       if (this.seg.left <= 0) this.nextSegment(i);
       const t = this.seg.type;
       row = t === 'road' ? this.makeRoad(i) : t === 'rail' ? this.makeRail(i) : t === 'river' ? this.makeRiver(i)
@@ -176,6 +181,7 @@ const World = {
     }
     this.rows.set(i, row);
     this.maxRow = i;
+    Forks.lock(i);
     if (i >= 3) Items.populateRow(row);
   },
 

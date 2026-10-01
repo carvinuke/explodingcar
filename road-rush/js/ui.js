@@ -304,7 +304,7 @@ const UI = {
     const col = Shop.collection();
     this.$('shop-collection').textContent = `COLLECTION ${col.have} / ${col.total}`;
     this.$('shop-collection-fill').style.width = `${(col.have / col.total) * 100}%`;
-    const labels = { skins: 'Skins', hats: 'Hats', trails: 'Trails', pets: 'Pets', auras: 'Auras', prints: 'Footprints', titles: 'Titles', upgrades: 'Upgrades' };
+    const labels = { skins: 'Skins', hats: 'Hats', trails: 'Trails', pets: 'Pets', auras: 'Auras', prints: 'Footprints', titles: 'Titles', sounds: 'Sounds', upgrades: 'Upgrades' };
     this.renderOutfits();
     for (const t of document.querySelectorAll('[data-tab]')) {
       t.setAttribute('aria-selected', t.dataset.tab === tab ? 'true' : 'false');
@@ -356,6 +356,10 @@ const UI = {
     const cv = document.createElement('canvas');
     cv.width = cv.height = 120;
     this.preview(cv, tab, id);
+    if (tab === 'sounds') { // tap to hear it
+      cv.classList.add('playable');
+      cv.addEventListener('click', () => { Sound.init(); Sound.hopAs(id, false); });
+    }
     const name = document.createElement('b');
     name.textContent = tab === 'pets' && id !== 'none' ? Evolve.name(id) : item.name;
     card.append(cv, name);
@@ -445,6 +449,7 @@ const UI = {
     if (SHOP_TABS[tab][id].box && !Shop.has(tab, id)) { this.mysteryPreview(g, cv); return; }
     if (tab === 'prints') { this.printPreview(g, cv, id); return; }
     if (tab === 'auras') { this.auraPreview(g, cv, id); return; }
+    if (tab === 'sounds') { this.soundPreview(g, cv, id); return; }
     g.save();
     g.translate(cv.width * (tab === 'trails' ? 0.6 : 0.5), cv.height * 0.74);
     g.scale(2.4, 2.4);
@@ -529,6 +534,24 @@ const UI = {
     let size = 18;
     while (lines.some(l => g.measureText(l).width > W - 24) && size > 10) { size--; g.font = `900 ${size}px ${UI_FONT}`; }
     lines.forEach((l, i) => g.fillText(l, W / 2, H / 2 + 1 + (i - (lines.length - 1) / 2) * (size + 2)));
+  },
+
+  // Hop sounds: a speaker with sound waves (tap the card to hear it).
+  soundPreview(g, cv, id) {
+    const W = cv.width, H = cv.height, cx = W * 0.42, cy = H * 0.5;
+    const col = id === 'none' ? '#c9ced6' : SOUNDS[id].claw ? '#ff4fe0' : SOUNDS[id].level || SOUNDS[id].unlock ? '#ffd23f' : '#7fe0ff';
+    g.fillStyle = '#2b2622';
+    g.beginPath(); g.arc(W / 2, cy, 46, 0, 6.2832); g.fill();
+    g.fillStyle = '#f7f7f2';
+    g.beginPath(); g.moveTo(cx - 20, cy - 10); g.lineTo(cx - 8, cy - 10); g.lineTo(cx + 6, cy - 24); g.lineTo(cx + 6, cy + 24); g.lineTo(cx - 8, cy + 10); g.lineTo(cx - 20, cy + 10); g.closePath(); g.fill();
+    g.strokeStyle = col;
+    g.lineWidth = 4;
+    g.lineCap = 'round';
+    for (let k = 0; k < 3; k++) { g.beginPath(); g.arc(cx + 8, cy, 12 + k * 10, -0.7, 0.7); g.stroke(); }
+    g.fillStyle = col;
+    g.font = `900 13px ${UI_FONT}`;
+    g.textAlign = 'center';
+    g.fillText('▶ TAP', W / 2, H - 6);
   },
 
   // Auras: your character with the aura around it.
@@ -916,7 +939,7 @@ const UI = {
     const body = this.$('goals-body');
     body.textContent = '';
     const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; };
-    const rewardName = r => r ? `${SHOP_TABS[r[0]][r[1]].name} (${{ skins: 'skin', hats: 'hat', trails: 'trail', pets: 'pet', auras: 'aura', prints: 'footprints', titles: 'title' }[r[0]]})` : '';
+    const rewardName = r => r ? `${SHOP_TABS[r[0]][r[1]].name} (${{ skins: 'skin', hats: 'hat', trails: 'trail', pets: 'pet', auras: 'aura', prints: 'footprints', titles: 'title', sounds: 'hop sound' }[r[0]]})` : '';
     if (tab === 'biomes') {
       this.$('goals-progress').textContent = `★ ${Mastery.total()} / ${Mastery.max}`;
       body.appendChild(el('p', 'goals-note', 'Every biome has three stars. Earn all three to unlock its reward.'));
