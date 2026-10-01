@@ -82,8 +82,8 @@ const ZONES = {
 };
 
 const WEATHER_SECTION = 60; // rows per weather zone
-const FIRST_ZONE = 80;      // rows of countryside before the first change
-const ZONE_LEN = 90;        // rows per biome after that
+const FIRST_ZONE = 80;      // the countryside lasts at least this many rows (80 to 100)
+const ZONE_LEN = 90;        // a typical biome's length (each one is 80 to 130 rows)
 
 const World = {
   rows: new Map(),
@@ -110,6 +110,12 @@ const World = {
     }
     this.weatherRolls = [];
     for (let k = 0; k < 200; k++) this.weatherRolls.push(r());
+    // where each biome starts: every biome has its own length
+    this.bounds = [FIRST_ZONE + Math.floor(r() * 21)];
+    while (this.bounds.length < this.zoneSeq.length) this.bounds.push(this.bounds[this.bounds.length - 1] + 80 + Math.floor(r() * 51));
+    // every run has its own personality: more rivers in one, more railroads in another
+    const vary = (lo, hi) => lo + r() * (hi - lo);
+    this.mood = { rail: vary(0.6, 1.6), river: vary(0.6, 1.6), work: vary(0.5, 1.5), meadow: vary(0.7, 1.4), lanes: Math.floor(vary(-1, 2)), trees: vary(0.6, 1.5) };
 
     this.speedMul = opts.speedMul || 1;
     this.gapMul = (opts.gapMul || 1) * Upgrades.gap(); // the Fewer Cars upgrade
@@ -128,9 +134,18 @@ const World = {
     this.ensure(30);
   },
 
+  // Which biome a row is in (index -1 is the opening countryside).
+  zoneIndex(row) {
+    const b = this.bounds;
+    if (row < b[0]) return -1;
+    let lo = 0, hi = b.length - 1;
+    while (lo < hi) { const m = (lo + hi + 1) >> 1; if (b[m] <= row) lo = m; else hi = m - 1; }
+    return lo;
+  },
+
   zoneAt(row) {
-    if (row < FIRST_ZONE) return 'country';
-    return this.zoneSeq[Math.floor((row - FIRST_ZONE) / ZONE_LEN) % this.zoneSeq.length];
+    const k = this.zoneIndex(row);
+    return k < 0 ? 'country' : this.zoneSeq[k % this.zoneSeq.length];
   },
 
   palette(i, zone) {
@@ -191,8 +206,12 @@ const World = {
     const d = difficulty(i), zone = this.zoneAt(i), Z = ZONES[zone];
     if (this.seg.type !== 'grass') {
       // strips vary a lot: a one-row breather, or a wide meadow now and then
-      const len = Gen.weighted([[1, 3], [2, 4], [3, 3], [4, 1.6], [5, 0.9], [6, 0.4]]);
-      this.seg = { type: 'grass', left: d > 0.5 && len > 2 ? len - 1 : len };
+      // (and, rarely, a long open stretch to catch your breath)
+      const m = this.mood.meadow;
+      const len = Gen.weighted([[1, 3], [2, 4], [3, 3 * m], [4, 1.6 * m], [5, 0.9 * m], [6, 0.4 * m], [8, 0.12 * m]]);
+      // some strips are dense little woods, some are open fields
+      const density = Gen.weighted([[1, 6], [1.8 * this.mood.trees, 1.5], [0.3, 1.5]]);
+      this.seg = { type: 'grass', left: d > 0.5 && len > 2 ? len - 1 : len, density };
       return;
     }
     const sinceSpecial = i - Math.max(this.lastRail, this.lastRiver);
@@ -200,10 +219,10 @@ const World = {
     const riverOk = Z.river > 0 && i >= 18 && i - this.lastRiver >= Gen.int(16, 28) && sinceSpecial >= 7;
     const workOk = i >= 12 && i - this.lastWork >= Gen.int(10, 18);
     const kind = Gen.weighted([
-      ['road', 6], ['rail', railOk ? Z.rail : 0], ['river', riverOk ? Z.river : 0], ['work', workOk ? Z.work : 0],
+      ['road', 6], ['rail', railOk ? Z.rail * this.mood.rail : 0], ['river', riverOk ? Z.river * this.mood.river : 0], ['work', workOk ? Z.work * this.mood.work : 0],
     ]);
     if (kind === 'rail') {
-      this.seg = { type: 'rail', left: 1 };
+      this.seg = { type: 'rail', left: d > 0.25 && Gen.chance(0.15) ? 2 : 1 }; // now and then, two tracks side by side
       this.lastRail = i;
       return;
     }
@@ -213,7 +232,7 @@ const World = {
       return;
     }
     if (kind === 'river') {
-      const n = Gen.weighted([[1, 5], [2, 3], [3, d > 0.4 ? 1.2 : 0]]);
+      const n = Gen.weighted([[1, 5], [2, 3], [3, d > 0.4 ? 1.2 : 0], [4, d > 0.6 ? 0.3 : 0]]);
       const d0 = Gen.chance(0.5) ? 1 : -1;
       const dirs = [];
       for (let k = 0; k < n; k++) dirs.push(k % 2 ? -d0 : d0);
@@ -221,8 +240,9 @@ const World = {
       this.lastRiver = i + n - 1;
       return;
     }
-    const maxLanes = Math.min(6, 2 + Math.round(d * 3) + Z.lanes); // 2 -> 5 (6 in the city)
-    const n = d < 0.08 ? Gen.int(1, 2) : Gen.int(1 + Z.lanes, maxLanes);
+    const maxLanes = clamp(2 + Math.round(d * 3) + Z.lanes + this.mood.lanes, 2, 6); // 2 -> 5 (6 in the city)
+    let n = d < 0.08 ? Gen.int(1, 2) : Gen.int(1 + Z.lanes, maxLanes);
+    if (d > 0.3 && Gen.chance(0.025)) n = Gen.int(6, 7); // a rare wide highway
     const d0 = Gen.chance(0.5) ? 1 : -1;
     const oneWay = n > 1 && Gen.chance(0.25);
     const alternate = !oneWay && n > 2 && Gen.chance(0.35);
@@ -267,7 +287,7 @@ const World = {
     const s = this.seg, k = s.k++, dir = s.dirs[k], d = difficulty(i);
     const lane = {
       dir,
-      speed: s.speed * Gen.rand(0.85, 1.18),
+      speed: s.speed * Gen.rand(0.8, 1.25) * (Gen.chance(0.1) ? 1.35 : Gen.chance(0.08) ? 0.7 : 1), // the odd fast or slow lane
       gapMin: lerp(4.2, 2.1, d) * TILE * this.gapMul,
       gapMax: lerp(9.5, 5.2, d) * TILE * this.gapMul,
       nextGap: 0,
@@ -387,7 +407,8 @@ const World = {
     const keepB = this.pathCol;
 
     const d = difficulty(i);
-    const n = mode === 'backdrop' ? Gen.int(3, 6) : mode === 'start' ? Gen.int(0, 2) : Gen.int(0, 2 + Math.round(d * 2));
+    const dens = mode === 'normal' && this.seg && this.seg.type === 'grass' ? this.seg.density || 1 : 1;
+    const n = mode === 'backdrop' ? Gen.int(3, 6) : mode === 'start' ? Gen.int(0, 2) : Math.round(Gen.int(0, 2 + Math.round(d * 2)) * dens);
     for (let tries = 0, placed = 0; tries < n * 3 && placed < n; tries++) {
       const col = Gen.int(0, COLS - 1);
       if (col === keepA || col === keepB || row.blocked[col]) continue;
