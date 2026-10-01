@@ -9,7 +9,7 @@ const POWERUPS = {
   invincible: { name: 'Invincible', color: '#a95cff', dur: 5, weight: 0.6 },
   jetpack:    { name: 'Jetpack',    color: '#ff7a1a', dur: 0, weight: 0.7, instant: true }, // fly 5 rows ahead
   ghost:      { name: 'Ghost',      color: '#9fe7ff', dur: 4, weight: 0.7 },                // cars pass straight through you
-  shrink:     { name: 'Shrink',     color: '#7ed957', dur: 7, weight: 0.8 },                // tiny chicken, tiny hitbox
+  shrink:     { name: 'Shrink',     color: '#7ed957', dur: 8, weight: 0.8 },                // tiny: big vehicles roll right over you, quicker hops, double coins
   horn:       { name: 'Horn',       color: '#ffd23f', dur: 0, weight: 0.8, instant: true }, // everything nearby slams its brakes
   pogo:       { name: 'Pogo Stick', color: '#ff5c8a', dur: 6, weight: 0.7 },                 // forward hops go two rows
   timestop:   { name: 'Time Stop',  color: '#b07aff', dur: 2.5, weight: 0.35 },              // the whole world freezes, you don't
@@ -105,7 +105,9 @@ const Items = {
   },
 
   update(dt, p) {
-    const magnet = p.pw.magnet > 0;
+    const magbot = p.id === 0 && Pets.has('magbot'); // the Magnet Bot: a magnet that never runs out
+    const magnet = p.pw.magnet > 0 || magbot;
+    const range = p.pw.magnet > 0 ? MAGNET_RANGE : MAGNET_RANGE * Pets.up(0.85, 1.15);
     for (let i = this.list.length - 1; i >= 0; i--) {
       const it = this.list[i];
       if (!it) continue; // picking up an egg clears the other eggs mid-loop
@@ -124,7 +126,7 @@ const Items = {
         const s = Math.min(dist, 220 * dt);
         it.x += (dx / dist) * s; it.y += (dy / dist) * s;
       }
-      if (magnet && dist < MAGNET_RANGE && (!it.pulled || it.pulled === p)) {
+      if (magnet && dist < range && (!it.pulled || it.pulled === p)) {
         const step = Math.min(dist, (it.pulled ? 560 : 280) * dt);
         it.pulled = p;
         if (dist > 0) { it.x += (dx / dist) * step; it.y += (dy / dist) * step; }

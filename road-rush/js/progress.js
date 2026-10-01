@@ -298,6 +298,65 @@ Object.assign(PETS, {
   mimic: { name: 'Mimic', price: 0, box: true, rare: 'MYSTERY', perk: 'A hungry treasure chest that eats the coins you hop past (and gives them to you)' },
 });
 
+// A glow that's always around you.
+const AURAS = {
+  none:     { name: 'No aura', price: 0 },
+  glow:     { name: 'Soft Glow', price: 150 },
+  sparkle:  { name: 'Sparkle Cloud', price: 200 },
+  bubbles:  { name: 'Bubble Ring', price: 220 },
+  hearts:   { name: 'Love Bubble', price: 250 },
+  leaves:   { name: 'Leaf Whirl', price: 250 },
+  petals:   { name: 'Sakura Breeze', price: 300 },
+  notes:    { name: 'Sound Waves', price: 300 },
+  frost:    { name: 'Frost Swirl', price: 350 },
+  fire:     { name: 'Flame Ring', price: 400 },
+  toxic:    { name: 'Toxic Fumes', price: 400 },
+  coins:    { name: 'Coin Orbit', price: 450 },
+  feathers: { name: 'Feather Storm', price: 450 },
+  bats:     { name: 'Bat Swarm', price: 500 },
+  ghosts:   { name: 'Haunted', price: 550 },
+  electric: { name: 'Static Charge', price: 600 },
+  shadow:   { name: 'Shadow Smoke', price: 650 },
+  rainbow:  { name: 'Rainbow Ring', price: 700 },
+  pixels:   { name: 'Glitch Field', price: 750 },
+  diamonds: { name: 'Diamond Dust', price: 900 },
+  moon:     { name: 'Moon Orbit', price: 1000 },
+  sun:      { name: 'Solar Flare', price: 1200 },
+  halo:     { name: 'Golden Halo', price: 1400 },
+  aurora:   { name: 'Northern Lights', price: 0, level: 24 },
+  galaxy:   { name: 'Galaxy', price: 0, level: 33 },
+  void:     { name: 'The Void', price: 0, level: 44 },
+  storm:    { name: 'Storm Cell', price: 0, unlock: 'twister' },
+  royal:    { name: 'Royal Glow', price: 0, unlock: 'legend' },
+  prestige: { name: 'Prestige Aura', price: 0, prestige: 2 },
+  arcade:   { name: 'Arcade Lights', price: 0, claw: true, rare: 'CLAW', perk: 'Chasing arcade lights, like the marquee on a claw machine' },
+  jackpot:  { name: 'Jackpot', price: 0, claw: true, rare: 'CLAW', perk: 'A golden glow with coins spinning around you' },
+};
+
+// Claw machine prizes: only won from the claw machine on the title screen.
+Object.assign(SKINS, {
+  plushie: bird('Plushie Chick', 0, '#ffe3f1', '#ffb8d9', '#ffd1e8', '#f29cc6', { claw: true, rare: 'CLAW', marks: true, comb: ['#a98bff', '#8a6be6'], beak: ['#ffd8a8', '#f0b47a'], feet: '#f29cc6', perk: 'A stitched-together prize plush' }),
+  arcadechick: bird('Arcade Chick', 0, '#2a1a6b', '#1a0f45', '#ff4fe0', '#c42bb9', { claw: true, rare: 'CLAW', glow: 'rgba(255,80,230,0.45)', eyeColor: '#4df0ff', comb: ['#4df0ff', '#2bc2d0'], beak: ['#ffe95c', '#e0c020'], feet: '#4df0ff', perk: 'Straight out of a neon arcade cabinet' }),
+});
+Object.assign(HATS, {
+  clawhat: { name: 'Claw Hat', price: 0, claw: true, rare: 'CLAW', perk: 'A tiny claw machine claw, opening and closing' },
+});
+Object.assign(TRAILS, {
+  tickets: { name: 'Prize Tickets', price: 0, claw: true, rare: 'CLAW' },
+});
+Object.assign(PRINTS, {
+  tokens: { name: 'Arcade Tokens', price: 0, claw: true, rare: 'CLAW' },
+});
+Object.assign(TITLES, {
+  highroller: { name: 'High Roller', price: 0, claw: true, rare: 'CLAW' },
+  clawmaster: { name: 'Claw Master', price: 0, claw: true, rare: 'CLAW' },
+});
+// the super rare ones (0.5% a grab)
+Object.assign(PETS, {
+  magbot: { name: 'Magnet Bot', price: 0, fly: true, claw: true, rare: 'JACKPOT', perk: 'A permanent magnet: pulls in every coin and power-up nearby', magnetPet: true },
+  luckystar: { name: 'Lucky Star', price: 0, fly: true, claw: true, rare: 'JACKPOT', perk: 'Every coin is worth double, and you start every run with a shield', startShield: 1 },
+});
+
 // Rewards for long-term goals: biome mastery (all three stars), Roadex pages,
 // prestige, and the new trophies.
 Object.assign(SKINS, {
@@ -336,7 +395,7 @@ Object.assign(TITLES, {
 });
 
 // Earned, not bought.
-const earnedOnly = it => !!(it.unlock || it.level || it.egg || it.box || it.mastery || it.roadex || it.prestige);
+const earnedOnly = it => !!(it.unlock || it.level || it.egg || it.box || it.mastery || it.roadex || it.prestige || it.claw);
 
 // What each pet's perk becomes at level 5 (shown in the shop).
 const PET_MAX = {
@@ -349,22 +408,23 @@ const PET_MAX = {
   dragon: 'Breathes fire much more often', unicorn: 'Coins are worth triple', goose: 'Lays golden eggs much faster', owl: 'Slows time more often',
   golem: 'Recharges in 14 seconds', fairy: 'A power-up every 18 seconds', alien: 'Events pay 100 coins', frostfox: 'Freezes traffic every 22 seconds',
   mole: 'Treasure every 30 rows', robopup: 'Fetches power-ups from across the screen', luckycat: 'Even more coins on the road',
-  mimic: 'Eats coins from further away',
+  mimic: 'Eats coins from further away', magbot: 'An even wider pull', luckystar: 'Coins are worth triple, and you start with two shields',
 };
 
-const SHOP_TABS = { skins: SKINS, hats: HATS, trails: TRAILS, pets: PETS, prints: PRINTS, titles: TITLES };
+const SHOP_TABS = { skins: SKINS, hats: HATS, trails: TRAILS, pets: PETS, auras: AURAS, prints: PRINTS, titles: TITLES };
 // Which Shop field holds each tab's equipped item, and its storage key.
 const SLOTS = {
   skins: ['current', 'skin', 'chick'], hats: ['hat', 'hat'], trails: ['trail', 'trail'], pets: ['pet', 'pet'],
-  prints: ['print', 'print'], titles: ['title', 'title'],
+  auras: ['aura', 'aura'], prints: ['print', 'print'], titles: ['title', 'title'],
 };
 
 const Shop = {
-  owned: { skins: ['chick'], hats: ['none'], trails: ['none'], pets: ['none'], prints: ['none'], titles: ['none'] },
+  owned: { skins: ['chick'], hats: ['none'], trails: ['none'], pets: ['none'], auras: ['none'], prints: ['none'], titles: ['none'] },
   current: 'chick',
   hat: null,
   trail: null,
   pet: null,
+  aura: null,
   print: null,
   title: null,
 

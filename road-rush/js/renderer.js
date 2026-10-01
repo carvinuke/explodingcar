@@ -686,7 +686,10 @@ const Renderer = {
     if (sk.flames && p.alive && !p.gone && Math.random() < 0.45) { // the Phoenix is always a little on fire
       FX.spawn('fire', p.x + rand(-9, 9), p.y + rand(-5, 5), p.z + rand(8, 24), { vz: rand(25, 55), g: -25, drag: 1, life: rand(0.25, 0.5), size: rand(3, 5.5), size2: 1 });
     }
+    const aura = p.id === 0 && Shop.aura && p.alive && !p.gone && Game.players.length === 1 ? Shop.aura : null;
+    if (aura) Auras.draw(c, aura, time, p.z, false);
     Draw.player(c, p, time, sk, p.hat());
+    if (aura) Auras.draw(c, aura, time, p.z, true);
     if (p.id === 0 && Egg.carry && p.alive) { // carrying the egg on your head, wobbling more as it gets close
       const k = Egg.progress(), wob = Math.sin(time * (4 + k * 14)) * (0.08 + k * 0.25);
       const ez = p.z + Draw.headTop(sk) + 9 + (p.hat() ? 8 : 0) + Math.sin(time * 3) * 1.5;

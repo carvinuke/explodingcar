@@ -78,6 +78,10 @@ const UI = {
     on('btn-trophies', () => this.openTrophies());
     on('btn-goals', () => this.openGoals());
     on('btn-goals-done', () => this.closeModal());
+    on('btn-claw', () => this.openClaw());
+    on('btn-claw-done', () => this.closeModal());
+    on('btn-claw-grab', () => this.clawGrab('normal'));
+    on('btn-claw-gold', () => this.clawGrab('gold'));
     on('btn-settings-done', () => this.closeModal());
     on('btn-shop-done', () => this.closeModal());
     on('btn-trophies-done', () => this.closeModal());
@@ -152,7 +156,7 @@ const UI = {
       t.addEventListener('click', () => { this.goalTab = t.dataset.gtab; Sound.click(); this.renderGoals(); });
     }
     // clicking the dimmed backdrop closes a dialog
-    for (const id of ['screen-settings', 'screen-warning', 'screen-reset', 'screen-shop', 'screen-trophies', 'screen-goals']) {
+    for (const id of ['screen-settings', 'screen-warning', 'screen-reset', 'screen-shop', 'screen-trophies', 'screen-goals', 'screen-claw']) {
       $(id).addEventListener('click', e => { if (e.target.id === id) this.closeModal(); });
     }
 
@@ -227,7 +231,7 @@ const UI = {
       return;
     }
     const was = this.modal;
-    for (const id of ['screen-settings', 'screen-shop', 'screen-trophies', 'screen-goals', 'screen-admin']) this.show(id, false);
+    for (const id of ['screen-settings', 'screen-shop', 'screen-trophies', 'screen-goals', 'screen-claw', 'screen-admin']) this.show(id, false);
     this.modal = null;
     if (was === 'admin') Admin.closed();
     this.refreshMeta();
@@ -298,7 +302,7 @@ const UI = {
     const col = Shop.collection();
     this.$('shop-collection').textContent = `COLLECTION ${col.have} / ${col.total}`;
     this.$('shop-collection-fill').style.width = `${(col.have / col.total) * 100}%`;
-    const labels = { skins: 'Skins', hats: 'Hats', trails: 'Trails', pets: 'Pets', prints: 'Footprints', titles: 'Titles', upgrades: 'Upgrades' };
+    const labels = { skins: 'Skins', hats: 'Hats', trails: 'Trails', pets: 'Pets', auras: 'Auras', prints: 'Footprints', titles: 'Titles', upgrades: 'Upgrades' };
     this.renderOutfits();
     for (const t of document.querySelectorAll('[data-tab]')) {
       t.setAttribute('aria-selected', t.dataset.tab === tab ? 'true' : 'false');
@@ -325,7 +329,7 @@ const UI = {
       if (item.rare) {
         const tag = document.createElement('span');
         tag.className = 'rarity r-' + item.rare.toLowerCase();
-        tag.textContent = item.box ? 'MYSTERY BOX ONLY' : item.rare + ' · EGG ONLY';
+        tag.textContent = item.box ? 'MYSTERY BOX ONLY' : item.claw ? (tab === 'pets' ? 'JACKPOT · CLAW ONLY' : 'CLAW MACHINE ONLY') : item.rare + ' · EGG ONLY';
         card.appendChild(tag);
       }
       if (item.perk) {
@@ -373,6 +377,7 @@ const UI = {
         const how = document.createElement('span');
         how.className = 'unlock';
         how.textContent = item.egg ? 'Find an egg on the road and carry it 50 rows to hatch it'
+          : item.claw ? 'Win it from the claw machine on the title screen'
           : item.box ? `Found in mystery boxes, or craft it from ${SHARD_COST} box shards`
           : item.mastery ? `Earn all 3 stars in ${zoneName(item.mastery)} (Goals)`
           : item.roadex ? `Complete the ${ROADEX[item.roadex].name} page of the Roadex (Goals)`
@@ -417,6 +422,7 @@ const UI = {
     if (tab === 'titles') { this.titlePreview(g, cv, id); return; }
     if (SHOP_TABS[tab][id].box && !Shop.has(tab, id)) { this.mysteryPreview(g, cv); return; }
     if (tab === 'prints') { this.printPreview(g, cv, id); return; }
+    if (tab === 'auras') { this.auraPreview(g, cv, id); return; }
     g.save();
     g.translate(cv.width * (tab === 'trails' ? 0.6 : 0.5), cv.height * 0.74);
     g.scale(2.4, 2.4);
@@ -501,6 +507,19 @@ const UI = {
     let size = 18;
     while (lines.some(l => g.measureText(l).width > W - 24) && size > 10) { size--; g.font = `900 ${size}px ${UI_FONT}`; }
     lines.forEach((l, i) => g.fillText(l, W / 2, H / 2 + 1 + (i - (lines.length - 1) / 2) * (size + 2)));
+  },
+
+  // Auras: your character with the aura around it.
+  auraPreview(g, cv, id) {
+    g.save();
+    g.translate(cv.width * 0.5, cv.height * 0.72);
+    g.scale(2.1, 2.1);
+    const t = 1.3;
+    if (id !== 'none') Auras.draw(g, id, t, 0, false);
+    Draw.shadow(g, 0, 0, 30, 24, 0.9);
+    Draw.player(g, { facing: 'down', squash: 0, z: 0, rot: 0, flap: 0, char: 0 }, 0, Shop.skin(), Shop.hat);
+    if (id !== 'none') Auras.draw(g, id, t, 0, true);
+    g.restore();
   },
 
   // Footprints: your character with a trail of steps behind it.
@@ -733,6 +752,166 @@ const UI = {
     }
   },
 
+  // ---- The claw machine ---------------------------------------------------------------
+  openClaw() {
+    this.clawAnim = null;
+    this.renderClaw();
+    this.openModal('claw', 'screen-claw', 'btn-claw-grab');
+    const cv = this.$('claw-canvas');
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    cv.width = 360 * dpr; cv.height = 270 * dpr;
+    this.clawCtx = cv.getContext('2d');
+    this.clawCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    // the prize pile, fixed for this visit
+    this.clawPile = [];
+    for (let k = 0; k < 34; k++) this.clawPile.push({ x: 40 + (k % 12) * 23 + rand(-6, 6), y: 232 - Math.floor(k / 12) * 17 + rand(-4, 4), r: rand(9, 12), c: pick(['#ff5c8a', '#34c6ea', '#ffd23f', '#7ed957', '#a95cff', '#ff9f1c']) });
+    const loop = () => {
+      if (this.modal !== 'claw') return;
+      this.drawClaw(performance.now() / 1000);
+      requestAnimationFrame(loop);
+    };
+    requestAnimationFrame(loop);
+  },
+
+  renderClaw() {
+    this.$('claw-coins').textContent = Game.bank;
+    for (const [tier, id] of [['normal', 'btn-claw-grab'], ['gold', 'btn-claw-gold']]) {
+      const T = CLAW_TIERS[tier], b = this.$(id);
+      b.innerHTML = `${T.name} <span class="coin-ico"></span> ${T.price}`;
+      b.disabled = Game.bank < T.price || !!this.clawAnim;
+    }
+    const pct = v => `${+(v * 100).toFixed(1)}%`;
+    this.$('claw-odds').textContent = `Grab: ${pct(CLAW_TIERS.normal.pet)} Jackpot pet · ${pct(CLAW_TIERS.normal.cosmetic)} claw-only cosmetic · otherwise ${CLAW_TIERS.normal.coins} coins back. `
+      + `Gold Grab: double the odds, ${CLAW_TIERS.gold.coins} coins back.`;
+    const ul = this.$('claw-prizes');
+    ul.textContent = '';
+    for (const petsOnly of [true, false]) for (const [tab, id] of Claw.prizes(petsOnly)) {
+      const li = document.createElement('li');
+      const got = Shop.has(tab, id);
+      li.className = (got ? 'got' : '') + (petsOnly ? ' jackpot' : '');
+      li.textContent = `${SHOP_TABS[tab][id].name}${got ? ' ✓' : ''}`;
+      li.title = SHOP_TABS[tab][id].perk || '';
+      ul.appendChild(li);
+    }
+  },
+
+  clawGrab(tier) {
+    if (this.clawAnim) return;
+    const res = Claw.grab(tier);
+    if (!res) return;
+    Sound.click();
+    this.clawAnim = { t0: performance.now() / 1000, res, x: rand(60, 300), done: false };
+    this.$('claw-result').textContent = '';
+    this.$('claw-result').className = 'claw-result';
+    this.renderClaw();
+    this.refreshMeta();
+  },
+
+  clawReveal() {
+    const a = this.clawAnim, r = a.res, el = this.$('claw-result');
+    a.done = true;
+    if (r.kind === 'pet') {
+      el.textContent = `JACKPOT! You won the ${r.name}! It's yours to equip in the shop.`;
+      el.className = 'claw-result jackpot';
+      Sound.levelUp();
+      Sound.hatch();
+    } else if (r.kind === 'cosmetic') {
+      el.textContent = `You won ${r.name} (${r.what})! Claw machine only.`;
+      el.className = 'claw-result win';
+      Sound.hatch();
+    } else {
+      el.textContent = `So close... ${r.coins} coins back.`;
+      el.className = 'claw-result';
+      Sound.coin();
+    }
+    this.clawAnim = null;
+    this.renderClaw();
+  },
+
+  // The machine: the claw drops, grabs, and carries a prize to the chute.
+  drawClaw(now) {
+    const c = this.clawCtx, W = 360, H = 270;
+    c.clearRect(0, 0, W, H);
+    c.fillStyle = '#241640';
+    c.fillRect(0, 0, W, H);
+    c.fillStyle = 'rgba(255,255,255,0.04)';
+    for (let x = 0; x < W; x += 18) c.fillRect(x, 0, 1, H);
+    // the chute
+    c.fillStyle = '#120a22';
+    c.fillRect(8, 160, 52, 110);
+    c.strokeStyle = '#ff4fe0';
+    c.lineWidth = 2;
+    c.strokeRect(8, 160, 52, 110);
+    const a = this.clawAnim;
+    let cx = 180 + Math.sin(now * 0.8) * 30, cy = 30, open = 1, carry = null;
+    if (a) {
+      const t = now - a.t0, ease = k => k * k * (3 - 2 * k), seg = (t0, t1) => ease(clamp((t - t0) / (t1 - t0), 0, 1));
+      const startX = 180;
+      cx = lerp(startX, a.x, seg(0, 0.8));
+      cy = 30 + 150 * seg(0.8, 1.6) - 150 * seg(1.9, 2.7);
+      open = 1 - seg(1.6, 1.9) + seg(3.4, 3.6);
+      cx = lerp(cx, 34, seg(2.7, 3.4));
+      const held = t >= 1.8 && t < 3.5;
+      if (held) carry = a.res.kind;
+      if (t >= 3.5 && t < 4.1) { carry = a.res.kind; cy += (t - 3.5) * 260; }
+      if (t >= 4.1 && !a.done) this.clawReveal();
+    }
+    // the prizes
+    for (const b of this.clawPile) {
+      if (a && carry && Math.abs(b.x - a.x) < 12 && b.y < 210) continue; // the one in the claw
+      c.fillStyle = b.c;
+      c.beginPath(); c.arc(b.x, b.y, b.r, 0, 6.2832); c.fill();
+      c.fillStyle = 'rgba(255,255,255,0.75)';
+      c.beginPath(); c.arc(b.x, b.y, b.r, Math.PI, 0); c.fill();
+      c.fillStyle = 'rgba(0,0,0,0.12)';
+      c.fillRect(b.x - b.r, b.y - 1, b.r * 2, 2);
+    }
+    // rail and cable
+    c.fillStyle = '#8d97a6';
+    c.fillRect(0, 14, W, 6);
+    c.fillStyle = '#c9d1dc';
+    c.fillRect(cx - 9, 12, 18, 10);
+    c.fillRect(cx - 1, 20, 2, cy - 20);
+    // what's in the claw
+    if (carry) {
+      const py = cy + 20;
+      if (carry === 'coins') {
+        c.fillStyle = '#c98a00'; c.beginPath(); c.arc(cx, py, 11, 0, 6.2832); c.fill();
+        c.fillStyle = '#ffd23f'; c.beginPath(); c.arc(cx, py, 9, 0, 6.2832); c.fill();
+        c.fillStyle = '#fff4b8'; c.fillRect(cx - 3, py - 5, 3, 8);
+      } else {
+        c.save();
+        c.globalCompositeOperation = 'lighter';
+        c.fillStyle = carry === 'pet' ? `hsla(${(now * 200) % 360},100%,65%,0.6)` : 'rgba(200,150,255,0.5)';
+        c.beginPath(); c.arc(cx, py, 20, 0, 6.2832); c.fill();
+        c.restore();
+        c.fillStyle = carry === 'pet' ? `hsl(${(now * 200) % 360},90%,60%)` : '#a95cff';
+        c.beginPath(); c.arc(cx, py, 11, 0, 6.2832); c.fill();
+        c.fillStyle = 'rgba(255,255,255,0.8)';
+        c.beginPath(); c.arc(cx, py, 11, Math.PI, 0); c.fill();
+      }
+    }
+    // the claw
+    c.strokeStyle = '#e8ecf2';
+    c.lineWidth = 3;
+    c.lineCap = 'round';
+    c.fillStyle = '#c9d1dc';
+    c.fillRect(cx - 8, cy, 16, 7);
+    c.beginPath();
+    for (const s of [-1, 1]) {
+      const sp = 6 + open * 9;
+      c.moveTo(cx + s * 6, cy + 7); c.lineTo(cx + s * sp, cy + 20); c.lineTo(cx + s * (sp - 6 - open * 2), cy + 31);
+    }
+    c.stroke();
+    // glass shine and marquee lights
+    c.fillStyle = 'rgba(255,255,255,0.06)';
+    c.beginPath(); c.moveTo(250, 0); c.lineTo(290, 0); c.lineTo(200, H); c.lineTo(160, H); c.fill();
+    for (let k = 0; k < 18; k++) {
+      c.fillStyle = (k + ((now * 8) | 0)) % 3 === 0 ? ['#ff4fe0', '#4df0ff', '#ffe95c'][k % 3] : '#4a3a6a';
+      c.beginPath(); c.arc(10 + k * 20, 6, 3, 0, 6.2832); c.fill();
+    }
+  },
+
   // ---- Goals: biome mastery, the Roadex and prestige -------------------------------
   renderGoals() {
     const tab = this.goalTab;
@@ -740,7 +919,7 @@ const UI = {
     const body = this.$('goals-body');
     body.textContent = '';
     const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; };
-    const rewardName = r => r ? `${SHOP_TABS[r[0]][r[1]].name} (${{ skins: 'skin', hats: 'hat', trails: 'trail', pets: 'pet', prints: 'footprints', titles: 'title' }[r[0]]})` : '';
+    const rewardName = r => r ? `${SHOP_TABS[r[0]][r[1]].name} (${{ skins: 'skin', hats: 'hat', trails: 'trail', pets: 'pet', auras: 'aura', prints: 'footprints', titles: 'title' }[r[0]]})` : '';
     if (tab === 'biomes') {
       this.$('goals-progress').textContent = `★ ${Mastery.total()} / ${Mastery.max}`;
       body.appendChild(el('p', 'goals-note', 'Every biome has three stars. Earn all three to unlock its reward.'));
@@ -1027,6 +1206,14 @@ const UI = {
     }
     bx.classList.toggle('hidden', !bx.children.length);
     if ((info.boxes || []).length) Sound.hatch();
+    const close = this.$('over-close');
+    close.textContent = '';
+    for (const line of vs ? [] : SoClose.lines(info)) {
+      const li = document.createElement('li');
+      li.textContent = line;
+      close.appendChild(li);
+    }
+    close.classList.toggle('hidden', !close.children.length);
     this.show('over-missions', !vs);
     if (!vs) this.renderMissions(this.$('over-missions'), true);
     this.show('screen-over', true);

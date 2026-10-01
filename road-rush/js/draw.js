@@ -1734,6 +1734,22 @@ const Draw = (() => {
         c.fillRect(-1.5, P(-7, top + 3) - 1, 3, 2.5);
         break;
       }
+      case 'clawhat': { // a cap with a tiny claw machine claw on top
+        const t = now(), open = 0.4 + 0.4 * Math.abs(Math.sin(t * 1.6));
+        box(c, -hw + 0.5, hw - 0.5, -D + 0.5, D - 0.5, top, top + 4, '#ff4fe0', '#c42bb9');
+        box(c, -hw + 1, hw - 1, -D - 5, -D + 1, top, top + 1.5, '#c42bb9', '#8a1f84');
+        c.fillStyle = '#9aa0a8';
+        c.fillRect(-0.6, P(0, top + 15), 1.2, 11 * GZ);
+        box(c, -3, 3, -2, 2, top + 12, top + 15, '#c9d1dc', '#8d97a6');
+        c.strokeStyle = '#c9d1dc';
+        c.lineWidth = 1.4;
+        c.beginPath();
+        for (const s of [-1, 1]) { c.moveTo(s * 2.5, P(0, top + 12)); c.lineTo(s * (2.5 + open * 4), P(0, top + 8)); c.lineTo(s * (1 + open * 2), P(0, top + 5)); }
+        c.stroke();
+        c.fillStyle = '#4df0ff';
+        c.fillRect(-1, P(-2, top + 14) - 1, 2, 2);
+        break;
+      }
       case 'raincloud': { // your own little storm
         const t = now(), cz = top + 16 + Math.sin(t * 2) * 1;
         c.fillStyle = '#9aa3b5';
@@ -2980,6 +2996,54 @@ const Draw = (() => {
         if (o.x !== undefined && Math.random() < 0.3) FX.spawn('glow', o.x + rand(-6, 6), o.y + rand(-3, 3), o.z + rand(0, 10), { vz: -15, life: 0.6, size: 1.6, size2: 0.3, color: pick(['#ffd6f5', '#fff6b0', '#bfe8ff']) });
         break;
       }
+      case 'magbot': { // a little flying robot with a horseshoe magnet
+        const bob = Math.sin(time * 3) * 1.5, y = -8 + bob;
+        c.save();
+        c.globalCompositeOperation = 'lighter';
+        c.strokeStyle = `rgba(255,90,120,${0.25 + 0.2 * Math.sin(time * 5)})`;
+        c.lineWidth = 1;
+        for (let k = 0; k < 2; k++) { const r = 8 + ((time * 14 + k * 6) % 12); c.beginPath(); c.arc(0, y + 9, r, 0.3, Math.PI - 0.3); c.stroke(); }
+        c.restore();
+        c.fillStyle = '#c9d1dc';
+        c.fillRect(-5, y - 6, 10, 7);
+        c.fillStyle = '#8d97a6';
+        c.fillRect(-5, y, 10, 1.5);
+        c.fillStyle = '#4df0ff';
+        c.fillRect(-3, y - 4, 2, 2); c.fillRect(1, y - 4, 2, 2);
+        c.fillStyle = '#9aa0a8';
+        c.fillRect(-0.5, y - 9, 1, 3);
+        c.fillStyle = Math.sin(time * 5) > 0 ? '#ff3b3b' : '#7a1c1c';
+        c.fillRect(-1, y - 10, 2, 2);
+        c.lineWidth = 3; // the magnet
+        c.strokeStyle = '#e63946';
+        c.beginPath(); c.arc(0, y + 5, 4, 0, Math.PI); c.stroke();
+        c.fillStyle = '#e8ecf2';
+        c.fillRect(-5.5, y + 2.5, 3, 2.5); c.fillRect(2.5, y + 2.5, 3, 2.5);
+        break;
+      }
+      case 'luckystar': { // a smiling star that twinkles
+        const bob = Math.sin(time * 2.5) * 2, y = -8 + bob;
+        c.save();
+        c.globalCompositeOperation = 'lighter';
+        c.fillStyle = 'rgba(255,220,90,0.3)';
+        c.beginPath(); c.arc(0, y, 11, 0, 6.2832); c.fill();
+        c.restore();
+        c.save();
+        c.translate(0, y);
+        c.rotate(Math.sin(time * 1.5) * 0.2);
+        c.fillStyle = '#ffd23f';
+        starPath(c, 0, 0, 8, 3.8);
+        c.fill();
+        c.fillStyle = '#fff3b0';
+        starPath(c, -1, -1, 3.5, 1.6);
+        c.fill();
+        c.fillStyle = '#1d1d1f';
+        c.fillRect(-2.5, -1.5, 1.2, 1.6); c.fillRect(1.3, -1.5, 1.2, 1.6);
+        c.fillRect(-1.2, 1.5, 2.4, 0.8);
+        c.restore();
+        if (((time * 3) | 0) % 4 === 0) FX.glyph(c, 'star', 9, y - 7, 3, '#ffffff', 0);
+        break;
+      }
       case 'alien': {
         const tilt = Math.sin(time * 2) * 0.12;
         c.rotate(tilt);
@@ -3000,7 +3064,7 @@ const Draw = (() => {
         break;
       }
     }
-    if (['mimic', 'turtle', 'rock', 'hamster', 'bunny', 'fox', 'frostfox', 'panda', 'robopup', 'mole', 'luckycat', 'penguin', 'bat', 'bee', 'snail', 'crab', 'slime', 'ghostie', 'goldfish', 'golem', 'fairy', 'alien'].includes(o.type)) { c.restore(); return; }
+    if (['mimic', 'turtle', 'rock', 'hamster', 'bunny', 'fox', 'frostfox', 'panda', 'robopup', 'mole', 'luckycat', 'penguin', 'bat', 'bee', 'snail', 'crab', 'slime', 'ghostie', 'goldfish', 'golem', 'fairy', 'alien', 'magbot', 'luckystar'].includes(o.type)) { c.restore(); return; }
     if (o.type === 'phoenix') { // a tiny firebird with a burning tail
       const flap = Math.sin(time * 16) * 5, fl = Math.sin(time * 23);
       c.save();

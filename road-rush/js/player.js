@@ -103,7 +103,7 @@ const PlayerProto = {
     if (from && (from.type === 'road' || from.type === 'rail')) this.leftCell = { col: this.col, row: this.row, t: Game.time, used: false };
     this.hop = {
       fx: this.x, fy: this.y, tx, ty: nr * TILE, t: 0, slide,
-      dur: slide ? 0.11 : (pogo ? 0.17 : fast ? 0.075 : 0.12) * lerp(1, 1.7, lg) * (this.slowHop ? 1.9 : 1) * (this.id === 0 ? Upgrades.hop() : 1),
+      dur: slide ? 0.11 : (pogo ? 0.17 : fast ? 0.075 : 0.12) * lerp(1, 1.7, lg) * (this.slowHop ? 1.9 : 1) * (this.id === 0 ? Upgrades.hop() : 1) * (this.pw.shrink > 0 ? 0.8 : 1),
       h: slide ? 0 : (pogo ? 0.75 : 0.3) * TILE * lerp(1, 3.2, lg),
     };
     this.slowHop = false;

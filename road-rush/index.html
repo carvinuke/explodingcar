@@ -66,6 +66,7 @@
         <button id="btn-shop" class="btn-plate small">Shop</button>
         <button id="btn-trophies" class="btn-plate small">Trophies <span id="trophy-count" class="count"></span></button>
         <button id="btn-goals" class="btn-plate small">Goals <span id="goals-count" class="count"></span></button>
+        <button id="btn-claw" class="btn-plate small claw-btn">Claw Machine</button>
         <button id="btn-settings" class="btn-plate small">Settings</button>
       </div>
 
@@ -115,6 +116,7 @@
       </div>
       <ul id="over-trophies" class="trophy-strip hidden"></ul>
       <ul id="over-boxes" class="box-strip hidden"></ul>
+      <ul id="over-close" class="close-list hidden" aria-label="So close"></ul>
       <ul id="over-missions" class="missions paper"></ul>
       <div class="actions">
         <button id="btn-again" class="btn-yellow">PLAY AGAIN</button>
@@ -140,6 +142,27 @@
         </div>
         <div id="goals-body" class="goals-body"></div>
         <button id="btn-goals-done" class="btn-yellow">DONE</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="screen-claw" class="screen modal hidden" role="dialog" aria-modal="true" aria-labelledby="claw-title">
+    <div class="claw-cab">
+      <div class="claw-inner">
+        <div class="shop-head">
+          <h2 id="claw-title">CLAW MACHINE</h2>
+          <span class="plate coinplate"><span class="coin-ico"></span><b id="claw-coins">0</b></span>
+        </div>
+        <canvas id="claw-canvas" class="claw-canvas" aria-label="The claw machine"></canvas>
+        <p id="claw-result" class="claw-result" aria-live="polite"></p>
+        <div class="claw-btns">
+          <button id="btn-claw-grab" class="btn-yellow">Grab</button>
+          <button id="btn-claw-gold" class="btn-yellow gold">Gold Grab</button>
+        </div>
+        <p id="claw-odds" class="claw-odds"></p>
+        <p class="claw-label">Prizes you can only win here</p>
+        <ul id="claw-prizes" class="claw-prizes"></ul>
+        <button id="btn-claw-done" class="btn-plate">DONE</button>
       </div>
     </div>
   </div>
@@ -220,6 +243,7 @@
           <button class="tab" role="tab" data-tab="hats" aria-selected="false">Hats</button>
           <button class="tab" role="tab" data-tab="trails" aria-selected="false">Trails</button>
           <button class="tab" role="tab" data-tab="pets" aria-selected="false">Pets</button>
+          <button class="tab" role="tab" data-tab="auras" aria-selected="false">Auras</button>
           <button class="tab" role="tab" data-tab="prints" aria-selected="false">Footprints</button>
           <button class="tab" role="tab" data-tab="titles" aria-selected="false">Titles</button>
           <button class="tab tab-upg" role="tab" data-tab="upgrades" aria-selected="false">Upgrades</button>
@@ -315,6 +339,7 @@
 <script src="js/extras.js"></script>
 <script src="js/upgrades.js"></script>
 <script src="js/goals.js"></script>
+<script src="js/claw.js"></script>
 <script src="js/camera.js"></script>
 <script src="js/lighting.js"></script>
 <script src="js/renderer.js"></script>

@@ -1197,6 +1197,7 @@ const FX = (() => {
     neoncity: ['pixel', ['#ff4fe0', '#4df0ff', '#ffe95c']], seaspray: ['drop', ['#5ad1ff', '#bfe8ff', '#ffffff']],
     maple: ['leaf', ['#c1121f', '#e8742a', '#8a1a12']], surge: ['bolt', ['#a95cff', '#3d9bff', '#ffb319', '#7ed957']],
     storm: ['drop', ['#7f8fa6', '#5a6b84', '#bfe8ff']], prestige: ['star', ['#ffd23f', '#ffffff', '#c79bff']],
+    tickets: ['cash', ['#ff5c8a', '#ffb000', '#4df0ff']],
   };
 
   function hopTrail(x, y, kind) {
@@ -1255,6 +1256,7 @@ const FX = (() => {
         }
         spawn('smoke', x, y, 3, { life: 0.7, size: 4, size2: 14, color: '#1a0f33', alpha: 0.5 });
         return;
+      case 'tickets': g(3, { vx: rand(-40, 40), vz: rand(60, 100), g: 120, drag: 1.6, life: 1.3, size: 6, spin: 5 }); return;
       case 'neoncity':
         g(4, { vx: rand(-50, 50), vy: rand(-30, 30), vz: rand(40, 90), g: 150, drag: 1, life: 0.9, size: 3.5 });
         for (let i = 0; i < 2; i++) spawn('glow', x + rand(-6, 6), y + rand(-4, 4), rand(4, 14), { vz: 15, life: 0.5, size: 4, size2: 0.5, color: pick(look[1]), alpha: 0.7 });
