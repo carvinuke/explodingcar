@@ -100,6 +100,19 @@ const UI = {
       }
     });
     on('btn-warn-cancel', () => this.closeModal());
+    on('btn-reset-data', () => this.openReset());
+    on('btn-reset-cancel', () => this.closeModal());
+    on('btn-reset-ok', () => {
+      const b = this.$('btn-reset-ok');
+      if (!b.dataset.armed) { // a second tap, just to be sure
+        b.dataset.armed = '1';
+        b.textContent = 'Tap again to delete it all';
+        Sound.bump();
+        return;
+      }
+      Store.wipeProgress();
+      location.reload();
+    });
     on('btn-warn-ok', () => {
       Settings.gore = true;
       Settings.save();
@@ -129,7 +142,7 @@ const UI = {
       t.addEventListener('click', () => { this.trophyTab = t.dataset.ttab; Sound.click(); this.renderTrophies(); });
     }
     // clicking the dimmed backdrop closes a dialog
-    for (const id of ['screen-settings', 'screen-warning', 'screen-shop', 'screen-trophies']) {
+    for (const id of ['screen-settings', 'screen-warning', 'screen-reset', 'screen-shop', 'screen-trophies']) {
       $(id).addEventListener('click', e => { if (e.target.id === id) this.closeModal(); });
     }
 
@@ -160,6 +173,19 @@ const UI = {
     this.$('btn-warn-cancel').focus({ preventScroll: true });
   },
 
+  // Settings: wipe all progress (asks first, then asks again).
+  openReset() {
+    const col = Shop.collection();
+    this.$('reset-body').textContent = `This permanently deletes your ${Game.bank.toLocaleString()} coins, your level (${Levels.level}), `
+      + `every cosmetic you own (${col.have} of ${col.total}), your trophies, stats, best scores and missions. Your settings and controls are kept. This can't be undone.`;
+    const b = this.$('btn-reset-ok');
+    delete b.dataset.armed;
+    b.textContent = 'Delete everything';
+    this.modal = 'reset';
+    this.show('screen-reset', true);
+    this.$('btn-reset-cancel').focus({ preventScroll: true });
+  },
+
   openShop() {
     this.renderShop();
     this.openModal('shop', 'screen-shop', 'btn-shop-done');
@@ -172,6 +198,12 @@ const UI = {
 
   closeModal() {
     if (Input.capture) Input.capture(null);
+    if (this.modal === 'reset') {
+      this.show('screen-reset', false);
+      this.modal = 'settings';
+      this.$('btn-reset-data').focus({ preventScroll: true });
+      return;
+    }
     if (this.modal === 'warning') {
       this.show('screen-warning', false);
       this.modal = 'settings';
@@ -245,7 +277,15 @@ const UI = {
   renderShop() {
     const tab = this.shopTab, table = SHOP_TABS[tab];
     this.$('shop-coins').textContent = Game.bank;
-    for (const t of document.querySelectorAll('[data-tab]')) t.setAttribute('aria-selected', t.dataset.tab === tab ? 'true' : 'false');
+    const col = Shop.collection();
+    this.$('shop-collection').textContent = `COLLECTION ${col.have} / ${col.total}`;
+    this.$('shop-collection-fill').style.width = `${(col.have / col.total) * 100}%`;
+    const labels = { skins: 'Skins', hats: 'Hats', trails: 'Trails', pets: 'Pets' };
+    for (const t of document.querySelectorAll('[data-tab]')) {
+      t.setAttribute('aria-selected', t.dataset.tab === tab ? 'true' : 'false');
+      const n = Shop.tabCount(t.dataset.tab);
+      t.innerHTML = `${labels[t.dataset.tab]} <small>${n.have}/${n.total}</small>`;
+    }
     const grid = this.$('shop-grid');
     grid.textContent = '';
     for (const id in table) {
@@ -352,6 +392,11 @@ const UI = {
 
   trailPreview(g, id) {
     const dots = [[-13, 3], [-18, 8], [-11, 12], [-20, 15], [-15, 20], [-10, 24], [-19, 25]];
+    const look = FX.TRAIL_LOOK[id];
+    if (look) {
+      dots.forEach(([x, y], i) => FX.glyph(g, look[0], x, -y * 0.8, 5 - i * 0.25, look[1][i % look[1].length], i * 0.7));
+      return;
+    }
     dots.forEach(([x, y], i) => {
       const py = -y * 0.8;
       if (id === 'sparkle') { g.fillStyle = i % 2 ? '#fff6b0' : '#ffd84d'; g.fillRect(x - 1.5, py - 1.5, 3, 3); }
@@ -385,9 +430,10 @@ const UI = {
         const s = document.createElement('span');
         s.textContent = t.desc;
         txt.append(b, s);
-        if (t.skin) {
+        const un = Trophies.unlocks(t.id);
+        if (un.length) {
           const u = document.createElement('em');
-          u.textContent = `Unlocks the ${SKINS[t.skin].name} skin`;
+          u.textContent = `Unlocks: ${un.join(', ')}`;
           txt.appendChild(u);
         }
         const st = document.createElement('i');
@@ -525,10 +571,11 @@ const UI = {
 
   eventToast(name, sub) { this.toast('t-event', name, sub, 3600); },
   weatherToast(type) { const [t, s] = WEATHER_SIGNS[type]; this.toast('t-weather', t, s); },
-  missionDone(m) { this.toast('t-mission', `MISSION COMPLETE  +${m.reward}`, Missions.text(m)); },
+  missionDone(m, pay = m.reward) { this.toast('t-mission', `MISSION COMPLETE  +${pay}`, Missions.text(m)); },
   zoneToast(z) { this.toast('t-zone', `ENTERING ${ZONES[z].name}`, ZONES[z].sub, 3600); },
   trophyToast(t) {
-    this.toast('t-trophy', `TROPHY: ${t.name.toUpperCase()}`, t.skin ? `${t.desc}. New skin: ${SKINS[t.skin].name}` : t.desc, 4000);
+    const un = Trophies.unlocks(t.id);
+    this.toast('t-trophy', `TROPHY: ${t.name.toUpperCase()}`, un.length ? `${t.desc}. Unlocked: ${un.join(', ')}` : t.desc, 4000);
   },
 
   // ---- Screens ----------------------------------------------------------------
@@ -621,15 +668,15 @@ const UI = {
       ul.textContent = '';
       for (const r of xp.rewards) {
         const li = document.createElement('li');
-        li.textContent = `LEVEL UP! Level ${r.level}: +${r.coins} coins` + (r.skin ? `, new skin: ${SKINS[r.skin].name}` : '');
+        li.textContent = `LEVEL UP! Level ${r.level}: +${r.coins} coins` + (r.items.length ? `, unlocked: ${r.items.join(', ')}` : '');
         ul.appendChild(li);
       }
       if (!xp.rewards.length) {
-        const nx = Levels.nextSkin();
+        const nx = Levels.nextUnlock();
         if (nx) {
           const li = document.createElement('li');
           li.className = 'next';
-          li.textContent = `Next skin: ${SKINS[nx.skin].name} at level ${nx.level}`;
+          li.textContent = `Next unlock: ${nx.items.join(', ')} at level ${nx.level}`;
           ul.appendChild(li);
         }
       }
@@ -638,7 +685,8 @@ const UI = {
     tr.textContent = '';
     for (const t of info.trophies) {
       const li = document.createElement('li');
-      li.textContent = t.skin ? `${t.name}: ${SKINS[t.skin].name} skin unlocked` : t.name;
+      const un = Trophies.unlocks(t.id);
+      li.textContent = un.length ? `${t.name}: ${un.join(', ')} unlocked` : t.name;
       tr.appendChild(li);
     }
     tr.classList.toggle('hidden', !info.trophies.length);
@@ -694,7 +742,7 @@ const UI = {
       }
       if (on !== ch.on) { ch.el.classList.toggle('hidden', !on); ch.on = on; }
       if (on && ch.fill) {
-        ch.fill.style.transform = `scaleX(${(left / POWERUPS[k].dur).toFixed(3)})`;
+        ch.fill.style.transform = `scaleX(${Math.min(1, left / POWERUPS[k].dur).toFixed(3)})`;
         ch.el.classList.toggle('ending', left < 1.5);
       }
     }

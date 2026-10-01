@@ -232,7 +232,7 @@ const PlayerProto = {
     if (row.type === 'work' && row.pit[this.col]) { Game.kill('pit', { p: this }); return; }
     if (row.type === 'road' && row.flood) FX.splash(this.x, this.y, 8);
     // ice: keep sliding the way you were going until you reach grip or something solid
-    if (row.ice && row.ice[this.col] && !fromKnock && this.alive) {
+    if (row.ice && row.ice[this.col] && !fromKnock && this.alive && !(this.id === 0 && Pets.perk('grip'))) {
       if (this.id === 0) Trophies.add('ice');
       const [dx, dy] = this.lastDir;
       this.queue = null;

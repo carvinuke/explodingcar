@@ -100,7 +100,7 @@ const Reverse = {
     this.t = 0;
     const sk = Player.skin();
     const car = Vehicles.make({ speed: REV.CRUISE, dir: 1 }, 'sports', REV.Y0 + 2 * TILE);
-    car.base = sk.kind === 'bigj' ? (sk.face || '#ff1a1a') : sk.front;
+    car.base = sk.kind === 'bigj' ? (sk.face && sk.face[0] === '#' ? sk.face : '#ff4fa3') : sk.rainbow ? '#ff4fa3' : sk.front;
     car.pal = Draw.vehiclePalette(car.base);
     car.dark = false;
     car.x = 0;
@@ -142,6 +142,7 @@ const Reverse = {
     Player.grace = Math.max(Player.grace, 2);
     const title = r.points <= 0 ? 'LICENCE REVOKED' : 'BACK TO NORMAL';
     UI.toast('t-reverse', title, `Dodged ${r.dodged} · hit ${r.hit} · ${r.coins >= 0 ? '+' : ''}${r.coins} coins`, 4200);
+    if (Pets.has('alien')) Game.giveCoins(50, Player, 'SPACE BUDDY +50', '#9bff7a');
     if (Game.tracksProgress()) {
       Stats.add('revDodged', r.dodged);
       Trophies.max('revDodge', r.dodged);

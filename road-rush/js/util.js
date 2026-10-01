@@ -58,6 +58,14 @@ function shade(hex, amt) {
   const [r, g, b] = hexToRgb(hex);
   return rgbToHex(f(r), f(g), f(b));
 }
+// h in degrees, s and l 0..1 -> '#rrggbb' (for the rainbow skins).
+function hslHex(h, s, l) {
+  h = ((h % 360) + 360) % 360;
+  const k = n => (n + h / 30) % 12, a = s * Math.min(l, 1 - l);
+  const f = n => Math.round(255 * (l - a * Math.max(-1, Math.min(k(n) - 3, 9 - k(n), 1))));
+  return rgbToHex(f(0), f(8), f(4));
+}
+
 function mix(a, b, t) {
   const A = hexToRgb(a), B = hexToRgb(b);
   return rgbToHex(Math.round(lerp(A[0], B[0], t)), Math.round(lerp(A[1], B[1], t)), Math.round(lerp(A[2], B[2], t)));
@@ -73,6 +81,18 @@ const Store = {
   },
   set(key, value) {
     try { localStorage.setItem('roadrush.' + key, JSON.stringify(value)); } catch (e) { /* ignore */ }
+  },
+  // Delete every bit of progress, keeping only settings, controls and mute.
+  wipeProgress() {
+    try {
+      const keep = ['roadrush.settings', 'roadrush.muted'];
+      const doomed = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith('roadrush.') && !keep.includes(k)) doomed.push(k);
+      }
+      for (const k of doomed) localStorage.removeItem(k);
+    } catch (e) { /* ignore */ }
   },
 };
 

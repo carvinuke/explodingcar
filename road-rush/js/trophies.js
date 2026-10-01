@@ -46,13 +46,13 @@ const TROPHIES = [
   { id: 'baby', name: 'Baby Steps', desc: 'Reach row 10', test: r => r.row >= 10 },
   { id: 'longhaul', name: 'Long Haul', desc: 'Reach row 150 in one run', test: r => r.row >= 150 },
   { id: 'warrior', name: 'Road Warrior', desc: 'Reach row 300 in one run', test: r => r.row >= 300 },
-  { id: 'crashtest', name: 'Crash Test', desc: 'Survive 3 explosions near you in one run', test: r => r.booms >= 3, skin: 'dummy' },
+  { id: 'crashtest', name: 'Crash Test', desc: 'Survive 3 explosions near you in one run', test: r => r.booms >= 3 },
   { id: 'hair', name: "Hair's Breadth", desc: 'Get a x5 close-call combo', test: r => r.combo >= 5 },
   { id: 'tooclose', name: 'Too Close', desc: 'Get a close call with a train', test: r => r.trainDodge >= 1 },
   { id: 'traindodger', name: 'Train Dodger', desc: 'Cross 5 railroads in one run', test: r => r.rails >= 5 },
   { id: 'logroller', name: 'Log Roller', desc: 'Ride 6 logs in a row without touching land', test: r => r.logChain >= 6 },
   { id: 'weird', name: 'Weird Day', desc: 'Survive 3 secret events in one run', test: r => r.events >= 3 },
-  { id: 'coldfeet', name: 'Cold Feet', desc: 'Reach the mountain pass', test: (r, s) => !!s.zones.snow, skin: 'penguin' },
+  { id: 'coldfeet', name: 'Cold Feet', desc: 'Reach the mountain pass', test: (r, s) => !!s.zones.snow },
   { id: 'beachbum', name: 'Beach Bum', desc: 'Reach the beach', test: (r, s) => !!s.zones.beach },
   { id: 'tourist', name: 'Tourist', desc: 'Visit all five biomes', test: (r, s) => ['country', 'city', 'desert', 'snow', 'beach'].every(z => s.zones[z]) },
   { id: 'twister', name: 'Twister', desc: 'Get picked up by a tornado and live', test: r => r.tornado >= 1 },
@@ -65,7 +65,7 @@ const TROPHIES = [
   { id: 'power', name: 'Power Hungry', desc: 'Grab all 5 kinds of power-up in one run', test: r => r.powerTypes >= 5 },
   { id: 'pocket', name: 'Pocket Money', desc: 'Collect 30 coins in one run', test: r => r.coins >= 30 },
   { id: 'savings', name: 'Savings Account', desc: 'Earn 1,000 coins in total', test: (r, s) => s.coins >= 1000 },
-  { id: 'again', name: 'Try, Try Again', desc: 'Die 50 times', test: (r, s) => s.deathsTotal >= 50, skin: 'zombie' },
+  { id: 'again', name: 'Try, Try Again', desc: 'Die 50 times', test: (r, s) => s.deathsTotal >= 50 },
   { id: 'hardcore', name: 'Hardcore', desc: 'Reach row 100 in Hardcore', test: r => r.mode === 'hardcore' && r.row >= 100 },
   { id: 'speed', name: 'Speed Demon', desc: 'Reach row 60 in Time Attack', test: r => r.mode === 'time' && r.row >= 60 },
   { id: 'rivals', name: 'Friendly Rivalry', desc: 'Finish a two-player match', test: (r, s) => s.versusGames >= 1 },
@@ -73,6 +73,13 @@ const TROPHIES = [
   { id: 'rage', name: 'Anger Management', desc: 'Throw 3 cars at once with Big J\'s rage stomp', test: r => r.stompCars >= 3 },
   { id: 'reborn', name: 'Rise Again', desc: 'Get brought back to life by the Phoenix Chick', test: r => r.reborn >= 1 },
   { id: 'reverse', name: 'Role Reversal', desc: 'Dodge 25 chickens in one Reverse Day', test: r => r.revDodge >= 25 },
+  { id: 'eggspert', name: 'Eggspert', desc: 'Hatch 5 eggs', test: (r, s) => (s.hatched || 0) >= 5 },
+  { id: 'marathon', name: 'Marathon', desc: 'Reach row 500 in one run', test: r => r.row >= 500 },
+  { id: 'veteran', name: 'Veteran', desc: 'Play 500 runs', test: (r, s) => s.runs >= 500 },
+  { id: 'collector', name: 'Collector', desc: 'Own 40 cosmetics', test: () => Shop.collection().have >= 40 },
+  { id: 'hoarder', name: 'Hoarder', desc: 'Own 90 cosmetics', test: () => Shop.collection().have >= 90 },
+  { id: 'completionist', name: 'Completionist', desc: 'Own every single cosmetic', test: () => { const c = Shop.collection(); return c.have >= c.total - 1; } },
+  { id: 'legend', name: 'Legend', desc: 'Reach level 50', test: () => Levels.level >= 50 },
   { id: 'gentle', name: 'Careful Driver', desc: 'Get through a Reverse Day without hitting a single chicken', test: r => r.revClean >= 1 },
 ];
 
@@ -106,6 +113,13 @@ const Trophies = {
     if (v > (this.run[key] || 0)) { this.run[key] = v; this.check(); }
   },
 
+  // Names of what a trophy unlocks in the shop.
+  unlocks(id) {
+    const out = [];
+    for (const tab in SHOP_TABS) for (const k in SHOP_TABS[tab]) if (SHOP_TABS[tab][k].unlock === id) out.push(SHOP_TABS[tab][k].name);
+    return out;
+  },
+
   check() {
     for (const t of TROPHIES) {
       if (this.got[t.id]) continue;
@@ -123,7 +137,6 @@ const Trophies = {
 
 // ---- Levels -------------------------------------------------------------------
 // Every run earns XP. Each level pays coins, and some unlock skins.
-const LEVEL_SKINS = { 3: 'silver', 5: 'robo', 8: 'neon', 12: 'diamond', 16: 'golden', 20: 'phoenix' };
 
 const Levels = {
   xp: 0,     // total XP ever earned
@@ -148,7 +161,7 @@ const Levels = {
   // XP for a finished run.
   forRun(mode, row, coins, run) {
     const base = row + coins * 2 + (run.closeCalls || 0) * 3 + (run.events || 0) * 10 + Trophies.fresh.length * 25;
-    return Math.round(base * (mode === 'hardcore' ? 1.5 : mode === 'time' ? 1.2 : 1) * (Pets.has('duck') ? 1.25 : 1) * (Pets.has('goose') ? 2 : 1));
+    return Math.round(base * (mode === 'hardcore' ? 1.5 : mode === 'time' ? 1.2 : 1) * (Pets.perk('xp') || 1));
   },
 
   // Add XP; returns what happened, including any level-up rewards.
@@ -161,16 +174,22 @@ const Levels = {
     for (let l = before.level + 1; l <= after.level; l++) {
       const coins = 20 * l;
       Game.bank += coins;
-      rewards.push({ level: l, coins, skin: LEVEL_SKINS[l] || null });
+      rewards.push({ level: l, coins, items: this.levelItems(l) });
     }
     if (rewards.length) Store.set('coins', Game.bank);
     return { amount, before, after, rewards };
   },
 
-  // The next level that unlocks a skin, for the "next reward" hint.
-  nextSkin() {
-    const l = this.level;
-    for (const k of Object.keys(LEVEL_SKINS).map(Number).sort((a, b) => a - b)) if (k > l) return { level: k, skin: LEVEL_SKINS[k] };
+  // Everything (skins, hats, trails) that unlocks at exactly level l.
+  levelItems(l) {
+    const out = [];
+    for (const tab in SHOP_TABS) for (const id in SHOP_TABS[tab]) if (SHOP_TABS[tab][id].level === l) out.push(SHOP_TABS[tab][id].name);
+    return out;
+  },
+
+  // The next level that unlocks something, for the "next reward" hint.
+  nextUnlock() {
+    for (let l = this.level + 1; l <= 60; l++) { const items = this.levelItems(l); if (items.length) return { level: l, items }; }
     return null;
   },
 };

@@ -494,7 +494,7 @@ const Renderer = {
     Draw.player(c, p, time, sk, p.hat());
     if (p.id === 0 && Egg.carry && p.alive) { // carrying the egg on your head, wobbling more as it gets close
       const k = Egg.progress(), wob = Math.sin(time * (4 + k * 14)) * (0.08 + k * 0.25);
-      const ez = p.z + (sk.kind === 'bigj' ? 54 : 36) + (p.hat() ? 8 : 0) + Math.sin(time * 3) * 1.5;
+      const ez = p.z + Draw.headTop(sk) + 9 + (p.hat() ? 8 : 0) + Math.sin(time * 3) * 1.5;
       c.save();
       c.translate(0, P(0, ez));
       c.rotate(wob);

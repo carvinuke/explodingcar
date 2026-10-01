@@ -152,6 +152,7 @@ const Game = {
       Stats.add('runs');
     }
     Pets.reset();
+    if (Pets.perk('startShield')) Player.shield += Pets.perk('startShield'); // the bunny brings a shield
     Missions.startRun();
     Trophies.startRun(mode);
     const M = this.modeDef();
@@ -189,6 +190,15 @@ const Game = {
     if (p.row > p.maxRow) {
       p.maxRow = p.row;
       const row = World.rows.get(p.row);
+      if (p.id === 0 && this.state === 'playing') {
+        const rc = Pets.perk('rowCoins'); // the slimeling squeezes out a coin
+        if (rc && p.maxRow % rc === 0) this.giveCoins(1, p, 'SQUISH! +1', '#8dff8a');
+        if (Pets.has('mole') && p.maxRow % 40 === 0) { // the mole digs up treasure
+          this.giveCoins(25, p, 'TREASURE! +25');
+          FX.dust(p.x, p.y, 14);
+          for (let i = 0; i < 8; i++) FX.spawn('glyph', p.x, p.y, 10, { part: 'coin', color: '#ffd23f', vx: rand(-60, 60), vy: rand(-40, 40), vz: rand(120, 200), g: 600, bounce: 0.4, life: 1.2, size: 6, rotV: rand(-6, 6) });
+        }
+      }
       if (p.id === 0) {
         Missions.max('distance', p.maxRow);
         Trophies.max('row', p.maxRow);
@@ -220,6 +230,7 @@ const Game = {
 
   // `n`: how many coins it's worth (the golden goose's eggs are worth 10).
   addCoin(it, p = Player, n = 1) {
+    if (p.id === 0 && Math.random() < (Pets.perk('luck') || 0)) { n *= 2; FX.text(it.x, it.y + 24, 'LUCKY!', '#7ed957', 13); }
     const k = (this.modeDef().coinMult || 1) * (p.id === 0 && Pets.has('unicorn') ? 2 : 1) * n;
     p.coins += k;
     if (p.id === 0) this.coins = p.coins;
@@ -234,12 +245,21 @@ const Game = {
     }
   },
 
+  // Coins from a pet or a bonus, with no pickup involved.
+  giveCoins(n, p = Player, label = `+${n} COINS`, color = '#ffd23f') {
+    p.coins += n;
+    if (p.id === 0) this.coins = p.coins;
+    FX.text(p.x, p.y + 48, label, color, 17);
+    Sound.coin();
+    if (p.id === 0) Trophies.max('coins', p.coins);
+  },
+
   // A car (or train) missed by a hair. Chains within 3s build a multiplier.
   nearMiss(mult = 1, p = Player) {
     if (this.state !== 'playing' || !p.alive) return;
     p.combo = this.time - p.comboT < 3 ? p.combo + 1 : 1;
     p.comboT = this.time;
-    const pts = 15 * p.combo * mult;
+    const pts = 15 * p.combo * mult * (p.id === 0 ? Pets.perk('closeBonus') || 1 : 1);
     this.addBonus(pts, p);
     FX.text(p.x, p.y + 26, p.combo > 1 ? `CLOSE CALL x${p.combo}  +${pts}` : `CLOSE CALL +${pts}`, '#7fe0ff', 14 + Math.min(8, p.combo));
     Sound.near(p.combo);
@@ -493,6 +513,7 @@ const Game = {
     Stats.save();
     Trophies.check();
     this.xpInfo = Levels.award(Levels.forRun(this.mode, Player.maxRow, this.coins, Trophies.run));
+    Trophies.check(); // level trophies
   },
 
   gameOver() {
@@ -523,7 +544,7 @@ const Game = {
     if (!this.danger.active || Admin.noDanger) return;
     const lead = this.leader();
     const d = difficulty(lead.maxRow);
-    this.danger.y += TILE * (0.3 + 0.45 * d) * (this.modeDef().danger || 1) * dt;
+    this.danger.y += TILE * (0.3 + 0.45 * d) * (this.modeDef().danger || 1) * (Pets.perk('danger') || 1) * dt;
     this.danger.y = Math.max(this.danger.y, (lead.maxRow - 7) * TILE);
     for (const p of this.players) {
       if (p.alive && !p.knock && !p.abduct && p.y < this.danger.y) this.kill('danger', { p });
@@ -560,6 +581,8 @@ const Game = {
     this.zone = z;
     if (this.state !== 'playing') return;
     UI.zoneToast(z);
+    const zc = Pets.perk('zoneCoins'); // the crab loves sightseeing
+    if (zc && this.players.length === 1) this.giveCoins(zc, Player, `NEW BIOME! +${zc}`);
     if (this.tracksProgress()) Stats.zone(z);
   },
 

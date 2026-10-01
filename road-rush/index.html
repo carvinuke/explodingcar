@@ -167,6 +167,11 @@
           <div><b id="lbl-gore">Graphic mode</b><span>Cartoon blood and gore when you die, and much more violent crashes, trains, meteors and monsters</span></div>
           <button id="set-gore" class="toggle" role="switch" aria-checked="false" aria-labelledby="lbl-gore"><i></i></button>
         </div>
+        <p class="set-head">Data</p>
+        <div class="set-row">
+          <div><b>Reset all data</b><span>Start over from scratch: coins, levels, cosmetics, trophies and stats</span></div>
+          <button id="btn-reset-data" class="btn-red small">Reset</button>
+        </div>
         <button id="btn-settings-done" class="btn-yellow">DONE</button>
       </div>
     </div>
@@ -179,6 +184,7 @@
           <h2 id="shop-title">SHOP</h2>
           <span class="plate coinplate"><span class="coin-ico"></span><b id="shop-coins">0</b></span>
         </div>
+        <div class="collection"><span id="shop-collection">COLLECTION</span><span class="collection-bar"><i id="shop-collection-fill"></i></span></div>
         <div class="tabs" role="tablist" aria-label="Shop sections">
           <button class="tab" role="tab" data-tab="skins" aria-selected="true">Skins</button>
           <button class="tab" role="tab" data-tab="hats" aria-selected="false">Hats</button>
@@ -219,6 +225,22 @@
         </div>
         <p id="admin-status" class="admin-status" aria-live="polite"></p>
         <div id="admin-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="screen-reset" class="screen modal hidden" role="alertdialog" aria-modal="true" aria-labelledby="reset-title" aria-describedby="reset-body">
+    <div class="warn-card">
+      <div class="warn-inner">
+        <div class="warn-head">
+          <div class="diamond big" aria-hidden="true"><span>!</span></div>
+          <h2 id="reset-title">Reset all data?</h2>
+        </div>
+        <p id="reset-body"></p>
+        <div class="actions">
+          <button id="btn-reset-cancel" class="btn-plate">Keep my data</button>
+          <button id="btn-reset-ok" class="btn-red">Delete everything</button>
+        </div>
       </div>
     </div>
   </div>

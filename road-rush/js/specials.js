@@ -204,7 +204,8 @@ const Egg = {
       UI.toast('t-hatch', 'THE EGG WAS FULL OF GOLD', `You have every egg pet already. +${n} coins`, 4200);
       return;
     }
-    const id = pick(fresh), def = PETS[id];
+    const RARITY = { RARE: 6, EPIC: 3, LEGENDARY: 1 }; // legendaries really are rare
+    const id = weighted(fresh.map(k => [k, RARITY[PETS[k].rare] || 1])), def = PETS[id];
     Shop.grant('pets', id);
     Shop.equip('pets', id);
     Pets.pop(x, y);

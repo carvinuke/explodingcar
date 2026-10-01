@@ -146,8 +146,9 @@ face is just `:|`.
 Now and then an egg sits on the road (single player only). Pick it up and you
 carry it on your head. Get it 50 rows further without dying (the HUD counts
 the rows) and it cracks open into a rare pet you can't buy anywhere. Die and
-it breaks. Each egg hatches a pet you don't have yet; once you have all five,
-eggs are full of coins instead.
+it breaks. Each egg hatches a pet you don't have yet (rares are the most
+common, legendaries the rarest); once you have all twelve, eggs are full of
+coins instead. A Ghostie pet makes eggs show up twice as often.
 
 - *Phoenix Chick* (legendary): once per run, brings you back from any death,
   even the river or the danger line, and torches every car around you.
@@ -158,19 +159,42 @@ eggs are full of coins instead.
   and doubles your XP.
 - *Time Owl* (rare): all traffic moves slower, and time slows down when a car
   is about to hit you.
+- *Stone Golem* (legendary): blocks a hit every 20 seconds, as often as it
+  takes (its eyes dim while it recharges).
+- *Fairy* (epic): gives you a random power-up every 25 seconds.
+- *Space Buddy* (epic): UFOs won't take you, and every secret event or Reverse
+  Day you survive pays 50 coins.
+- *Frost Fox* (epic): freezes all traffic for 3 seconds every 30 seconds.
+- *Treasure Mole* (rare): digs up 25 coins every 40 rows.
+- *Robo Pup* (rare): fetches power-ups from far away, and they last 50% longer.
+- *Lucky Cat* (rare): far more coins show up on the road.
 
 ## Progression
 
 - **Levels and XP:** every run earns XP (rows, coins, close calls, events
   survived and new trophies; Hardcore pays 1.5x). Each level pays coins, and
-  some unlock skins: Silver Chick (level 3), Robo Chick (5), Neon Chick (8),
-  Diamond Chick (12), Golden Chicken (16) and a Phoenix that's always on fire
-  (20). The report shows the XP you earned and your progress.
-- **Shop:** spend coins on skins (Hard Hat Chick, Duck, Frog, Raccoon, and
-  Big J, a grey body under a round helmet with a very unimpressed red face, and
-  Big S, the same but with a blue `:|` face), pets (see below), hats
-  (party hat, sunglasses, traffic cone, cowboy hat, top hat, crown) and hop
-  trails (sparkles, bubbles, confetti, fire, rainbow).
+  levels all the way up to 50 unlock things: Silver Chick (level 3), Robo
+  Chick (5), Neon Chick (8), the Halo (10), Diamond Chick (12), the Shooting
+  Stars trail (14), Golden Chicken (16), the Wizard Hat (18), a Phoenix that's
+  always on fire (20), the Galaxy trail (22), Galaxy Chick (25), the Space
+  Helmet (28), Lava Dino (30), the Lightning trail (32), Crystal Fox (35), the
+  Crown of Fire (38), Shadow Cat (40), the Aurora trail (42), Cosmic Big J (45),
+  and at level 50, Golden Big J and the Pure Gold trail. The report shows the
+  XP you earned and what the next level unlocks.
+- **Shop:** 159 cosmetics in four tabs, with a collection counter at the top.
+  Unlocking everything takes a day or two of playing.
+  - **Skins (62):** chicks in every colour, Crow, Cardinal, Blue Jay, Rubber
+    Duck, Flamingo, Toucan and City Pigeon; four-legged critters (Pig, Mouse,
+    Ginger Cat, Bunny, Black Cat, Puppy, Moo Cow, Fox, Bear, Tiger, Monkey,
+    Koala, Panda, Dino, Robot, Alien, Lil Devil and a winged Dragon); one-offs
+    (Snowman, Pumpkin, Slime, Ghost and Burger); and Big J, Big S (`:|`) and
+    their cousins Big G (happy), Big O (sleepy), Big P (shocked) and Rainbow
+    Big J (6,700 coins).
+  - **Hats (36):** from a beanie, cap and bow up to a viking helmet, sombrero,
+    mohawk, antlers, mushroom cap, tiara, jack-o-lantern and devil horns.
+  - **Trails (27):** hearts, leaves, snowflakes, music notes, slime, pixels,
+    cherry blossoms, ink, bats, little ghosts, coins, cash and more.
+  - **Pets (34):** see below, plus the egg-only ones above.
 - **Pets:** a companion that follows you around, each with a trick:
   - *Duckling:* +25% XP every run.
   - *Dog:* runs off to fetch coins near you.
@@ -183,14 +207,30 @@ eggs are full of coins instead.
   - *Turtle:* surfaces under you if you fall in the water, then needs 12
     seconds' rest.
   - *Mini Tornado:* vacuums up every coin nearby.
+  - *Pet Rock:* does absolutely nothing. It's a rock.
+  - *Hamster:* 1 in 5 coins is worth double.
+  - *Slimeling:* squeezes out a coin every 15 rows.
+  - *Crab:* +25 coins every time you reach a new biome.
+  - *Penguin Chick:* ice doesn't make you slide.
+  - *Bat:* close calls are worth double points.
+  - *Fox Kit:* +20% XP every run.
+  - *Snail:* the danger line creeps up 15% slower.
+  - *Bumblebee:* power-ups last 30% longer.
+  - *Bunny:* you start every run with a shield.
+  - *Panda:* missions pay 25% more.
+  - *Ghostie:* eggs show up twice as often.
+  - *Goldfish* (trophy): a fish in a bowl that gently pulls coins toward you.
 - **More power-ups:** Jetpack (blast off and land on safe ground about 5 rows
   ahead), Ghost (cars and trains pass straight through you for 4 seconds),
   Shrink (a tiny chicken with a tiny hitbox for 7 seconds) and Horn (every car
   nearby slams on its brakes, even speeders).
-- **Trophies:** 31 achievements, such as surviving three explosions in one run,
-  a close call with a train, getting trampled by a deer, or getting picked up
-  by a tornado and living. Three of them unlock skins you can't buy: the Crash
-  Test Dummy, Penguin and Zombie Chick.
+- **Trophies:** 38 achievements, such as surviving three explosions in one run,
+  a close call with a train, getting trampled by a deer, getting picked up
+  by a tornado and living, playing 500 runs, reaching row 500, or owning 40,
+  90 and finally every cosmetic. Many unlock things you can't buy: the Crash
+  Test Dummy, Penguin, Zombie Chick, Old Timer and Rainbow Chick skins, the
+  Eggshell and Driver Cap hats, the Earthquake, Turbo and Diamonds trails, and
+  the Goldfish.
 - **Stats:** lifetime totals in the trophy room: runs, time played, rows,
   coins, wrecks, close calls, trains dodged, best scores per mode and deaths by
   cause.
@@ -206,7 +246,7 @@ eggs are full of coins instead.
 Open **Settings** from the title screen, the pause screen or the game-over
 report. Your choices are saved in the browser.
 
-- **Sound** (also `M`) and **Screen shake**.
+- **Sound** (also `M`) and **Screen shake** (camera shake on crashes and hits).
 - **Reduced motion:** no shake, zoom punches or blur, softer flashes. It's on by
   default if your system asks for reduced motion.
 - **Colorblind-friendly:** warnings use shapes and stripes, not just red: a
@@ -215,6 +255,9 @@ report. Your choices are saved in the browser.
 - **Ghost of best run** and **Death replay** (a slow-motion instant replay of
   how you died, which any key or tap skips).
 - **Controls:** rebind the four movement keys.
+- **Reset all data:** wipes your coins, levels, cosmetics, trophies, stats,
+  best scores and missions (your settings and controls are kept). It shows a
+  warning first, and you have to confirm twice.
 - **Graphic mode:** off by default. Turning it on shows a warning you have to
   confirm first. When it's on:
   - Every death gets cartoon gore. Getting run over flattens the chick in a
