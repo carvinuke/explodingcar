@@ -680,7 +680,7 @@ const Vehicles = {
   director(dt, playerRow, fz) {
     this.directorT -= dt;
     if (this.directorT > 0) return;
-    if (Upgrades.has('sunday')) { this.directorT = 2; return; } // Sunday Drivers: nobody speeds
+    if (Upgrades.has('sunday')) { this.directorT = 2; return; } // the Sunday Drivers upgrade: nobody speeds
     const d = difficulty(Game.leader().maxRow);
     const cands = [];
     const lenR = VEHICLE_TYPES.sports.len * TILE;

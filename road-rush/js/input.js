@@ -79,18 +79,6 @@ const Input = {
       if (!e.repeat && !e.metaKey && !e.ctrlKey) { e.preventDefault(); Game.skipReplay(); }
       return;
     }
-    if (Game.state === 'upgrade') { // checkpoint: 1/2/3 pick a card (Enter/Space takes the focused one)
-      const k = { Digit1: 0, Digit2: 1, Digit3: 2, Numpad1: 0, Numpad2: 1, Numpad3: 2 }[e.code];
-      if (k !== undefined && !e.repeat) { e.preventDefault(); Upgrades.choose(k); }
-      else if (ARROWS[e.code] || this.route(e.code)) { // arrows move between the cards
-        e.preventDefault();
-        const cards = [...document.querySelectorAll('.upg-card')];
-        const i = cards.indexOf(document.activeElement), d = this.route(e.code) ? this.route(e.code).dir : ARROWS[e.code];
-        const n = clamp((i < 0 ? 0 : i) + (d === 'right' || d === 'down' ? 1 : -1), 0, cards.length - 1);
-        if (cards[n]) cards[n].focus({ preventScroll: true });
-      }
-      return;
-    }
     const r = this.route(e.code);
     const confirm = e.code === 'Space' || e.code === 'Enter';
     if (r || e.code === 'Space' || ARROWS[e.code]) e.preventDefault();
@@ -135,12 +123,7 @@ const Input = {
       else if (pressed(13) || ay > 0.6) dir = 'down';
       else if (pressed(14) || ax < -0.6) dir = 'left';
       else if (pressed(15) || ax > 0.6) dir = 'right';
-      if (!UI.modal && Game.state === 'upgrade') { // controller: left/right picks a card, A takes it
-        const cards = [...document.querySelectorAll('.upg-card')];
-        let i = Math.max(0, cards.indexOf(document.activeElement));
-        if (dir && dir !== prev.dir && (dir === 'left' || dir === 'right')) { i = clamp(i + (dir === 'right' ? 1 : -1), 0, cards.length - 1); if (cards[i]) cards[i].focus({ preventScroll: true }); }
-        if (edge(0)) Upgrades.choose(i);
-      } else if (!UI.modal) {
+      if (!UI.modal) {
         if (Game.state === 'replay' && (edge(0) || edge(1) || edge(9))) Game.skipReplay();
         else if (edge(9)) Game.togglePause();
         else if (edge(0)) {

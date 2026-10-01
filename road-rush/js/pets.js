@@ -39,7 +39,7 @@ const Pets = {
   },
 
   // Level 5: the pet's perk gets stronger.
-  maxed() { return !!this.pet && (PetLevels.maxed(this.pet.type) || (Upgrades.has('bestfriend') && Game.players.length === 1)); },
+  maxed() { return !!this.pet && PetLevels.maxed(this.pet.type); },
   up(normal, max) { return this.maxed() ? max : normal; },
 
   // A pet's passive perk from its PETS entry (luck, xp, grip...), if one is out.

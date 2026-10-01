@@ -237,26 +237,6 @@ const PETS = {
 };
 const EGG_PETS = Object.keys(PETS).filter(k => PETS[k].egg);
 
-// How you go when you get hit (on top of the usual crash).
-const DEATHS = {
-  none:      { name: 'Classic', price: 0 },
-  confetti:  { name: 'Party Popper', price: 150 },
-  hearts:    { name: 'Heartbreak', price: 200 },
-  pixels:    { name: 'Game Over', price: 250 },
-  bubbles:   { name: 'Bubble Pop', price: 250 },
-  coins:     { name: 'Jackpot', price: 350 },
-  smoke:     { name: 'Ninja Vanish', price: 450 },
-  ghost:     { name: 'Spirit', price: 500 },
-  stone:     { name: 'Statue', price: 600 },
-  ice:       { name: 'Frozen Solid', price: 700 },
-  lightning: { name: 'Thunderstruck', price: 800 },
-  fireworks: { name: 'Fireworks', price: 900 },
-  rainbow:   { name: 'Rainbow Blast', price: 1000 },
-  blackhole: { name: 'Black Hole', price: 1500 },
-  golden:    { name: 'Golden Statue', price: 0, unlock: 'legend' },
-  supernova: { name: 'Supernova', price: 0, box: true, rare: 'MYSTERY', perk: 'A blinding blast that wrecks every car on screen' },
-};
-
 // Marks you leave on the ground for a few seconds.
 const PRINTS = {
   none:    { name: 'No footprints', price: 0 },
@@ -344,12 +324,12 @@ Object.assign(TITLES, {
   gearhead:  { name: 'Gearhead', price: 0, roadex: 'vehicles' },
   weirdo:    { name: 'Weirdo Magnet', price: 0, roadex: 'events' },
   globe:     { name: 'Globetrotter', price: 0, roadex: 'biomes' },
-  minmaxer:  { name: 'Min-Maxer', price: 0, roadex: 'upgrades' },
+  minmaxer:  { name: 'Min-Maxer', price: 0, unlock: 'buildmaster' },
   reborn:    { name: 'Reborn', price: 0, prestige: 1 },
   immortal:  { name: 'Immortal', price: 0, prestige: 10 },
   goldchild: { name: 'Golden Child', price: 0, unlock: 'golden' },
   sewerrat:  { name: 'Sewer Rat', price: 0, unlock: 'spelunker' },
-  theory:    { name: 'Theorycrafter', price: 0, unlock: 'buildmaster' },
+  theory:    { name: 'Theorycrafter', price: 0, unlock: 'maxedout' },
   ranger:    { name: 'Park Ranger', price: 0, unlock: 'biomemaster' },
   carto:     { name: 'Cartographer', price: 0, unlock: 'cartographer' },
   evolver:   { name: 'Evolutionist', price: 0, unlock: 'evolution' },
@@ -372,20 +352,19 @@ const PET_MAX = {
   mimic: 'Eats coins from further away',
 };
 
-const SHOP_TABS = { skins: SKINS, hats: HATS, trails: TRAILS, pets: PETS, deaths: DEATHS, prints: PRINTS, titles: TITLES };
+const SHOP_TABS = { skins: SKINS, hats: HATS, trails: TRAILS, pets: PETS, prints: PRINTS, titles: TITLES };
 // Which Shop field holds each tab's equipped item, and its storage key.
 const SLOTS = {
   skins: ['current', 'skin', 'chick'], hats: ['hat', 'hat'], trails: ['trail', 'trail'], pets: ['pet', 'pet'],
-  deaths: ['death', 'death'], prints: ['print', 'print'], titles: ['title', 'title'],
+  prints: ['print', 'print'], titles: ['title', 'title'],
 };
 
 const Shop = {
-  owned: { skins: ['chick'], hats: ['none'], trails: ['none'], pets: ['none'], deaths: ['none'], prints: ['none'], titles: ['none'] },
+  owned: { skins: ['chick'], hats: ['none'], trails: ['none'], pets: ['none'], prints: ['none'], titles: ['none'] },
   current: 'chick',
   hat: null,
   trail: null,
   pet: null,
-  death: null,
   print: null,
   title: null,
 

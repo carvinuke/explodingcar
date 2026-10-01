@@ -54,6 +54,7 @@ const Game = {
     Trophies.load();
     Levels.load();
     Prestige.load();
+    Upgrades.load();
     Mastery.load();
     Roadex.load();
     Shards.load();
@@ -107,7 +108,6 @@ const Game = {
     Replay.reset();
     Rage.reset();
     Egg.reset();
-    DeathFX.reset();
     Prints.reset();
     Boxes.reset();
     Upgrades.reset();
@@ -158,7 +158,8 @@ const Game = {
   start(mode = this.mode) {
     Sound.init();
     Sound.click();
-    const fresh = this.state !== 'title' || mode !== this.mode;
+    const gapNow = (this.modeDef(mode).gapMul || 1) * Upgrades.gap(); // a Fewer Cars level bought on the title screen needs a new road
+    const fresh = this.state !== 'title' || mode !== this.mode || Math.abs(World.gapMul - gapNow) > 1e-6;
     this.mode = mode;
     if (fresh) this.reset((Math.random() * 4294967296) >>> 0);
     this.state = 'playing';
@@ -172,6 +173,7 @@ const Game = {
     Pets.reset();
     Graves.start();
     if (Pets.perk('startShield')) Player.shield += Pets.perk('startShield'); // the bunny brings a shield
+    Upgrades.start(Player); // starting shields, extra time
     Missions.startRun();
     Trophies.startRun(mode);
     const M = this.modeDef();
@@ -237,7 +239,7 @@ const Game = {
         Trophies.add('rails');
       }
       this.updateScore();
-      Upgrades.onRow(p); // checkpoints and row-based upgrades
+      Upgrades.onRow(p); // the odometer
     }
   },
 
@@ -254,7 +256,7 @@ const Game = {
   // `n`: how many coins it's worth (the golden goose's eggs are worth 10).
   addCoin(it, p = Player, n = 1) {
     if (p.id === 0 && Math.random() < (Pets.perk('luck') || 0)) { n *= 2; FX.text(it.x, it.y + 24, 'LUCKY!', '#7ed957', 13); }
-    else if (p.id === 0 && Math.random() < 0.25 * Upgrades.n('piggy')) { n *= 2; FX.text(it.x, it.y + 24, 'PIGGY BANK!', '#ff9fb8', 13); }
+    else if (p.id === 0 && Math.random() < 0.05 * Upgrades.n('piggy')) { n *= 2; FX.text(it.x, it.y + 24, 'LUCKY!', '#7ed957', 13); }
     const k = Golden.mult() * (this.modeDef().coinMult || 1) * (p.id === 0 && Pets.has('unicorn') ? Pets.up(2, 3) : 1) * (p.id === 0 && this.fever ? 3 : 1) * n;
     p.coins += k;
     if (p.id === 0) this.coins = p.coins;
@@ -283,9 +285,7 @@ const Game = {
     if (this.state !== 'playing' || !p.alive) return;
     p.combo = this.time - p.comboT < Upgrades.combo() ? p.combo + 1 : 1;
     p.comboT = this.time;
-    const dare = p.id === 0 && Upgrades.has('daredevil');
-    const pts = 15 * p.combo * mult * (p.id === 0 ? Pets.perk('closeBonus') || 1 : 1) * (dare ? 2 : 1);
-    if (dare) { p.coins++; this.coins = p.coins; }
+    const pts = 15 * p.combo * mult * (p.id === 0 ? Pets.perk('closeBonus') || 1 : 1);
     this.addBonus(pts, p);
     FX.text(p.x, p.y + 26, p.combo > 1 ? `CLOSE CALL x${p.combo}  +${pts}` : `CLOSE CALL +${pts}`, '#7fe0ff', 14 + Math.min(8, p.combo));
     Sound.near(p.combo);
@@ -400,7 +400,7 @@ const Game = {
       if (row.type !== 'road') continue;
       for (const v of row.lane.vehicles) {
         if (p.pw.ghost > 0 && !v.wreck) continue; // ghost: cars drive straight through you
-        const small = p.pw.shrink > 0, slim = p.id === 0 ? Upgrades.slim() : 0; // Slim Fit upgrade
+        const small = p.pw.shrink > 0, slim = p.id === 0 ? Upgrades.slim() : 0; // the Slim Fit upgrade
         if (Math.abs((v.drunk ? v.y : row.y) - p.y) > (small ? 0.42 : 0.58 - 0.05 * slim) * TILE) continue; // drunk drivers weave between lanes
         if (v.abducted || v.z > 30 || v.animal) continue;
         if (Math.abs(v.x - p.x) > v.len / 2 - 2 + (small ? 0.08 : 0.24 - 0.07 * slim) * TILE) continue;
@@ -439,7 +439,7 @@ const Game = {
     const p = opts.p || Player;
     if (!p.alive || Admin.god) return;
     if (this.state === 'playing' && Pets.saves(p, source)) return; // the cat takes the hit
-    if (this.state === 'playing' && (Upgrades.shrugs(p, source) || Upgrades.saves(p, source))) return; // run upgrades
+    if (this.state === 'playing' && (Upgrades.shrugs(p, source) || Upgrades.saves(p, source))) return; // Lucky Charm, Second Wind
     const sameMoment = this.state === 'dying' && this.deathT === 0 && this.players.length > 1;
     if (this.state !== 'playing' && !sameMoment) return;
     const gore = Settings.gore && source !== 'danger' && source !== 'pit';
@@ -483,7 +483,6 @@ const Game = {
         FX.feathers(p.x, p.y, skin);
       }
     }
-    DeathFX.play(p); // your death effect, on top
     Cam.addTrauma(gore ? 1 : 0.7);
     Cam.punch += gore ? 0.1 : 0.08;
     this.slowmo(gore ? 0.18 : 0.25, gore ? 1.3 : 0.9);
@@ -548,7 +547,7 @@ const Game = {
       Ghost.save();
     }
     // prestige and an evolved pet pay a bonus on top
-    this.bonusCoins = Math.round(this.coins * (Prestige.bonus() * (Evolve.active() ? 1.1 : 1) - 1));
+    this.bonusCoins = Math.round(this.coins * (Prestige.bonus() * (Evolve.active() ? 1.1 : 1) + Upgrades.savings() - 1));
     this.bank += this.coins + this.bonusCoins;
     Store.set('coins', this.bank);
     Stats.add('coins', this.coins);
@@ -575,7 +574,7 @@ const Game = {
       versus: versus ? { winner: this.winner, wins: this.versusWins, rows: this.players.map(p => p.maxRow), scores: this.players.map(p => p.score) } : null,
       trophies: Trophies.fresh.slice(), xp: versusRun ? null : this.xpInfo,
       boxes: versusRun ? [] : this.boxInfo || [], pet: versusRun ? null : this.petInfo,
-      upgrades: versusRun ? [] : Upgrades.order.slice(), bonus: versusRun ? 0 : this.bonusCoins, golden: Golden.active,
+      bonus: versusRun ? 0 : this.bonusCoins, golden: Golden.active,
     });
   },
 
@@ -607,7 +606,7 @@ const Game = {
 
   updateWeather(dt) {
     const w = this.weather;
-    const want = Admin.weather || (Upgrades.has('sunny') ? 'clear' : World.weatherAt(Math.max(0, this.leader().maxRow + 4)));
+    const want = Admin.weather || World.weatherAt(Math.max(0, this.leader().maxRow + 4));
     if (w.type !== 'clear' && w.amt > 0.5) Roadex.see('weather', w.type);
     if (w.type !== want) {
       w.amt = approach(w.amt, 0, dt * 0.6);
@@ -630,7 +629,6 @@ const Game = {
     UI.zoneToast(z);
     Mastery.cross(z); // you crossed the last one
     Roadex.see('biomes', z);
-    if (Upgrades.has('shieldzone') && this.players.length === 1) { Player.shield++; FX.text(Player.x, Player.y + 30, 'SHIELD FACTORY!', '#8fd0ff', 15); }
     const zc = Pets.perk('zoneCoins'); // the crab loves sightseeing
     if (zc && this.players.length === 1) this.giveCoins(zc, Player, `NEW BIOME! +${zc}`);
     if (this.tracksProgress()) Stats.zone(z);
@@ -682,7 +680,6 @@ const Game = {
     Pets.update(dt);
     Storms.update(wdt);
     Rage.update(dt);
-    DeathFX.update(dt);
     Prints.update(dt);
     Egg.update();
     Graves.update();
@@ -738,7 +735,7 @@ const Game = {
       if (Settings.lowGfx) FX.quality = Math.min(FX.quality, 0.6);
       if (this.state === 'playing') Renderer.adapt(this.frameAvg, realDt);
     }
-    if (this.state !== 'paused' && this.state !== 'upgrade') {
+    if (this.state !== 'paused') {
       if (this.slow.t > 0) {
         this.slow.t -= realDt;
         this.timeScale = this.slow.scale;

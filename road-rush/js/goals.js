@@ -79,7 +79,6 @@ const ROADEX = {
   powerups: { name: 'Power-ups', entries: () => { const o = {}; for (const k in POWERUPS) o[k] = POWERUPS[k].name; return o; } },
   biomes: { name: 'Biomes', entries: () => { const o = {}; for (const z in ZONES) o[z] = zoneName(z); return o; } },
   weather: { name: 'Weather', entries: () => ({ rain: 'Rain', snow: 'Snow', dust: 'Dust storm', fog: 'Fog', leaves: 'Falling leaves', night: 'Night' }) },
-  upgrades: { name: 'Run upgrades', entries: () => { const o = {}; for (const k in UPGRADES) o[k] = UPGRADES[k].name; return o; } },
   specials: { name: 'Specials', entries: () => ({ box: 'Mystery box', egg: 'Mystery egg', stand: 'Roadside stand', room: 'Secret room', golden: 'Golden run', fever: 'Combo fever' }) },
 };
 for (const k in ROADEX) ROADEX[k].list = ROADEX[k].entries();
@@ -119,7 +118,7 @@ const Roadex = {
   see(page, id) {
     const s = this.seen[page];
     if (!s || s.has(id) || !ROADEX[page].list[id]) return;
-    if (Game.state !== 'playing' && Game.state !== 'upgrade') return;
+    if (Game.state !== 'playing') return;
     if (!Game.tracksProgress()) return;
     s.add(id);
     this.save();
