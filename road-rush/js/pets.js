@@ -27,7 +27,15 @@ const Pets = {
       hopT: 0, face: 1, fetch: null, catUsed: false, ph: rand(6), blink: rand(3),
       dropT: rand(4, 7), turtleT: 0, warned: new Set(),
       reborn: false, fireT: 0, breath: 0, flame: null, layT: rand(5, 7), owlT: 0, rainbows: [],
+      golemT: 0, fairyT: 25, frostT: 30, ready: true,
     };
+  },
+
+  // A pet's passive perk from its PETS entry (luck, xp, grip...), if one is out.
+  perk(key) {
+    if (!this.pet || Game.players.length > 1) return undefined;
+    const d = PETS[this.pet.type];
+    return d ? d[key] : undefined;
   },
 
   // A pet just hatched right here: start it at the egg, not somewhere behind you.
@@ -46,7 +54,7 @@ const Pets = {
     if (!pet) return;
     const p = Player;
     pet.ph += dt;
-    const flying = ['drone', 'pigeon', 'parrot', 'twister', 'phoenix', 'dragon', 'owl'].includes(pet.type);
+    const flying = pet.type === 'twister' || !!(PETS[pet.type] && PETS[pet.type].fly);
     const active = Game.state === 'playing' && p.alive;
     if (pet.turtleT > 0) pet.turtleT -= dt;
     // the pigeon drops coins
@@ -114,6 +122,47 @@ const Pets = {
         Game.slowmo(0.25, 0.75);
         FX.text(pet.x, pet.y + 36, 'HOO! LOOK OUT!', '#9fe7ff', 14);
         Sound.whoosh(0.6, 0);
+      }
+    }
+    // the golem recharges its block
+    if (pet.golemT > 0) pet.golemT -= dt;
+    pet.ready = pet.golemT <= 0;
+    // the fairy hands out power-ups
+    if (pet.type === 'fairy' && active) {
+      pet.fairyT -= dt;
+      if (pet.fairyT <= 0) {
+        pet.fairyT = 25;
+        const types = Object.keys(POWERUPS);
+        Powers.grant(pick(types), { x: p.x, y: p.y }, p);
+        FX.text(pet.x, pet.y + 40, 'A GIFT!', '#ff9fe0', 14);
+      }
+    }
+    // the frost fox freezes all traffic
+    if (pet.type === 'frostfox' && active) {
+      pet.frostT -= dt;
+      if (pet.frostT <= 0) {
+        pet.frostT = 30;
+        Powers.freeze = Math.max(Powers.freeze, 3);
+        FX.ice(p.x, p.y);
+        Sound.freeze();
+        FX.text(pet.x, pet.y + 36, 'FROST BREATH!', '#bfe8ff', 15);
+      }
+    }
+    // the robo pup fetches power-ups from far away
+    if (pet.type === 'robopup' && active) {
+      for (const it of Items.list) {
+        if (it.type === 'coin' || it.type === 'egg' || it.type === 'goldegg') continue;
+        const dx = p.x - it.x, dy = p.y - it.y, d = Math.hypot(dx, dy);
+        if (d < 6 * TILE && d > 1) { const s = Math.min(d, 260 * dt); it.x += (dx / d) * s; it.y += (dy / d) * s; }
+      }
+    }
+    // a gentle coin pull (goldfish)
+    const mg = PETS[pet.type] && PETS[pet.type].magnet;
+    if (mg && active) {
+      for (const it of Items.list) {
+        if (it.type !== 'coin') continue;
+        const dx = p.x - it.x, dy = p.y - it.y, d = Math.hypot(dx, dy);
+        if (d < mg * TILE && d > 1) { const s = Math.min(d, 120 * dt); it.x += (dx / d) * s; it.y += (dy / d) * s; }
       }
     }
     // the unicorn's rainbow steps fade once you've left them
@@ -300,9 +349,21 @@ const Pets = {
     Trophies.add('reborn');
   },
 
-  // Cat: nine lives. Phoenix: rebirth. Returns true if the pet saved you.
+  // Cat: nine lives. Golem: a block every 20 seconds. Phoenix: rebirth.
+  // Returns true if the pet saved you.
   saves(p, source) {
     if (p.id === 0 && this.has('phoenix') && !this.pet.reborn) { this.rebirth(p); return true; }
+    const physical = !(source === 'danger' || source === 'drown' || source === 'swept' || source === 'pit');
+    if (p.id === 0 && this.has('golem') && this.pet.golemT <= 0 && physical) {
+      this.pet.golemT = 20;
+      p.grace = 1.6;
+      FX.shieldBreak(p.x, p.y);
+      FX.text(p.x, p.y + 30, 'GOLEM BLOCK!', '#9fe7ff', 18);
+      Sound.shieldBreak();
+      Sound.stomp(0.6);
+      Cam.addTrauma(0.4);
+      return true;
+    }
     if (p.id !== 0 || !this.has('cat') || this.pet.catUsed) return false;
     if (source === 'danger' || source === 'drown' || source === 'swept' || source === 'pit') return false;
     this.pet.catUsed = true;

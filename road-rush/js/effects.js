@@ -185,6 +185,108 @@ const FX = (() => {
   }
 
   // ---- Drawing (world transform already applied) ----------------------------
+  // Little shapes for the hop trails (also used by the shop previews).
+  function glyph(c, kind, x, y, sz, color, rot = 0) {
+    c.save();
+    c.translate(x, y);
+    if (rot) c.rotate(rot);
+    c.fillStyle = color;
+    c.strokeStyle = color;
+    const r = sz / 2;
+    c.beginPath();
+    switch (kind) {
+      case 'heart':
+        c.moveTo(0, r * 0.9);
+        c.bezierCurveTo(-r * 1.6, -r * 0.2, -r * 0.6, -r * 1.4, 0, -r * 0.4);
+        c.bezierCurveTo(r * 0.6, -r * 1.4, r * 1.6, -r * 0.2, 0, r * 0.9);
+        c.fill();
+        break;
+      case 'star':
+        for (let i = 0; i < 10; i++) {
+          const a = -Math.PI / 2 + (i * Math.PI) / 5, rr = i % 2 ? r * 0.45 : r;
+          c.lineTo(Math.cos(a) * rr, Math.sin(a) * rr);
+        }
+        c.closePath();
+        c.fill();
+        break;
+      case 'note':
+        c.ellipse(-r * 0.3, r * 0.5, r * 0.45, r * 0.32, -0.4, 0, 6.2832);
+        c.fill();
+        c.fillRect(r * 0.05, -r, r * 0.16, r * 1.5);
+        c.fillRect(r * 0.05, -r, r * 0.55, r * 0.22);
+        break;
+      case 'leaf':
+      case 'petal':
+      case 'feather':
+        c.ellipse(0, 0, kind === 'feather' ? r * 0.35 : r * 0.5, r, 0, 0, 6.2832);
+        c.fill();
+        if (kind !== 'petal') { c.fillStyle = 'rgba(0,0,0,0.2)'; c.fillRect(-0.3, -r, 0.6, r * 2); }
+        break;
+      case 'bolt':
+        c.moveTo(r * 0.2, -r); c.lineTo(-r * 0.5, r * 0.1); c.lineTo(-r * 0.05, r * 0.1);
+        c.lineTo(-r * 0.25, r); c.lineTo(r * 0.5, -r * 0.15); c.lineTo(r * 0.05, -r * 0.15);
+        c.closePath();
+        c.fill();
+        break;
+      case 'bat':
+        c.moveTo(0, -r * 0.2);
+        c.lineTo(-r, -r * 0.6); c.lineTo(-r * 0.7, r * 0.1); c.lineTo(-r * 0.35, -r * 0.05);
+        c.lineTo(0, r * 0.4);
+        c.lineTo(r * 0.35, -r * 0.05); c.lineTo(r * 0.7, r * 0.1); c.lineTo(r, -r * 0.6);
+        c.closePath();
+        c.fill();
+        break;
+      case 'ghost':
+        c.arc(0, -r * 0.2, r * 0.6, Math.PI, 0);
+        c.lineTo(r * 0.6, r * 0.7); c.lineTo(r * 0.2, r * 0.45); c.lineTo(-r * 0.2, r * 0.7); c.lineTo(-r * 0.6, r * 0.45);
+        c.closePath();
+        c.fill();
+        c.fillStyle = '#2b2b40';
+        c.fillRect(-r * 0.3, -r * 0.3, r * 0.18, r * 0.25);
+        c.fillRect(r * 0.12, -r * 0.3, r * 0.18, r * 0.25);
+        break;
+      case 'coin':
+        c.ellipse(0, 0, r * Math.max(0.2, Math.abs(Math.cos(rot * 3))), r, 0, 0, 6.2832);
+        c.fill();
+        c.fillStyle = 'rgba(255,255,220,0.7)';
+        c.fillRect(-r * 0.15, -r * 0.5, r * 0.3, r);
+        break;
+      case 'cash':
+        c.fillRect(-r, -r * 0.55, r * 2, r * 1.1);
+        c.fillStyle = 'rgba(0,60,0,0.35)';
+        c.beginPath(); c.arc(0, 0, r * 0.35, 0, 6.2832); c.fill();
+        break;
+      case 'diamond':
+        c.moveTo(0, -r); c.lineTo(r * 0.7, -r * 0.2); c.lineTo(0, r); c.lineTo(-r * 0.7, -r * 0.2);
+        c.closePath();
+        c.fill();
+        c.fillStyle = 'rgba(255,255,255,0.6)';
+        c.beginPath(); c.moveTo(0, -r); c.lineTo(r * 0.35, -r * 0.2); c.lineTo(0, -r * 0.2); c.fill();
+        break;
+      case 'snowflake':
+        c.lineWidth = Math.max(0.8, sz * 0.12);
+        for (let k = 0; k < 3; k++) {
+          const a = (k * Math.PI) / 3;
+          c.moveTo(Math.cos(a) * r, Math.sin(a) * r); c.lineTo(-Math.cos(a) * r, -Math.sin(a) * r);
+        }
+        c.stroke();
+        break;
+      case 'ink':
+        c.arc(0, 0, r * 0.6, 0, 6.2832);
+        c.arc(r * 0.75, -r * 0.4, r * 0.22, 0, 6.2832);
+        c.arc(-r * 0.7, r * 0.5, r * 0.18, 0, 6.2832);
+        c.fill();
+        break;
+      case 'drop':
+        c.moveTo(0, -r); c.quadraticCurveTo(r * 0.8, r * 0.2, 0, r * 0.7); c.quadraticCurveTo(-r * 0.8, r * 0.2, 0, -r);
+        c.fill();
+        break;
+      default: // pixel
+        c.fillRect(-r * 0.6, -r * 0.6, r * 1.2, r * 1.2);
+    }
+    c.restore();
+  }
+
   function draw(c) {
     for (const p of live) {
       if (ADDITIVE[p.kind]) continue;
@@ -252,6 +354,10 @@ const FX = (() => {
             c.fillRect(-sz * 0.6, -sz * 0.2, sz * 1.2, sz * 0.3);
           }
           c.restore();
+          break;
+        case 'glyph':
+          c.globalAlpha = p.alpha * fade;
+          glyph(c, p.part, p.x, py, sz, p.color, p.rot);
           break;
         default: // debris, shard, confetti, feather, gib, rock
           c.globalAlpha = p.alpha * fade;
@@ -1046,7 +1152,74 @@ const FX = (() => {
   }
 
   // Cosmetic trail left behind on every hop.
+  // How each trail looks: [glyph, colors] (also drives the shop previews).
+  const TRAIL_LOOK = {
+    hearts: ['heart', ['#ff5c8a', '#ff2d55', '#ff9fb8']], leaves: ['leaf', ['#e8742a', '#d1401c', '#f2b705', '#a8641f']],
+    snow: ['snowflake', ['#ffffff', '#dff3ff']], notes: ['note', ['#3a2a8f', '#1d1d1f', '#c2185b']],
+    pixels: ['pixel', ['#ff5c8a', '#34c6ea', '#7ed957', '#ffd23f', '#a95cff']], petals: ['petal', ['#ffc4dc', '#ffb3d1', '#ffe0ec']],
+    bats: ['bat', ['#3d2a52', '#2b1d3a']], ghosts: ['ghost', ['#f7f7fb']], coins: ['coin', ['#ffd23f', '#f0b400']],
+    money: ['cash', ['#7ed957', '#5ab04a']], stars: ['star', ['#ffe95c', '#fff6b0', '#ffffff']], lightning: ['bolt', ['#fff6b0', '#ffe95c', '#bfe8ff']],
+    ink: ['ink', ['#1d1d1f', '#2b2b40']], slime: ['drop', ['#7ed957', '#5ad14a']], feathers: ['feather', ['#ffffff', '#f2f2ee']],
+    diamonds: ['diamond', ['#b9f2ff', '#7fd6ef', '#ffffff']], gold: ['diamond', ['#ffd23f', '#ffe98a', '#f0b400']],
+    galaxy: ['star', ['#c79bff', '#7fb2ff', '#ffffff']], aurora: ['pixel', ['#5affc8', '#5ad1ff', '#b07aff']],
+    smoke: ['pixel', ['#9a9aa2']], quake: ['pixel', ['#8a6a4a']], turbo: ['pixel', ['#ffffff']],
+  };
+
   function hopTrail(x, y, kind) {
+    const look = TRAIL_LOOK[kind];
+    const g = (n, o) => { for (let i = 0; i < n; i++) spawn('glyph', x + rand(-8, 8), y + rand(-5, 5), rand(o.z0 || 4, o.z1 || 14), { ...o, part: look[0], color: pick(look[1]), rot: o.spin ? rand(6.28) : 0, rotV: o.spin ? rand(-o.spin, o.spin) : 0 }); };
+    switch (kind) {
+      case 'hearts': g(3, { vz: rand(25, 45), g: -10, drag: 1, life: 1, size: rand(4, 6), size2: 2 }); return;
+      case 'leaves': g(3, { vx: rand(-30, 30), vz: rand(40, 70), g: 90, drag: 1.5, life: 1.3, size: 5, spin: 6 }); return;
+      case 'snow': g(3, { vx: rand(-15, 15), vz: rand(15, 30), g: 20, drag: 1, life: 1.4, size: 4.5, spin: 2 }); return;
+      case 'notes': g(2, { vx: rand(-20, 20), vz: rand(30, 50), g: -5, drag: 1, life: 1.1, size: 6 }); return;
+      case 'pixels': g(5, { vx: rand(-60, 60), vy: rand(-40, 40), vz: rand(60, 120), g: 400, drag: 1, life: 0.8, size: 3 }); return;
+      case 'petals': g(3, { vx: rand(-25, 25), vz: rand(25, 50), g: 40, drag: 1.4, life: 1.5, size: 4.5, spin: 5 }); return;
+      case 'bats': g(2, { vx: rand(-60, 60), vz: rand(50, 90), g: -20, drag: 0.6, life: 1, size: 7, size2: 4 }); return;
+      case 'ghosts': g(2, { vz: rand(25, 40), g: -10, drag: 1, life: 1.2, size: 7, size2: 4, alpha: 0.75 }); return;
+      case 'coins': g(3, { vx: rand(-40, 40), vy: rand(-20, 20), vz: rand(120, 180), g: 600, bounce: 0.4, drag: 0.8, life: 1, size: 5, spin: 4 }); return;
+      case 'money': g(3, { vx: rand(-40, 40), vz: rand(50, 90), g: 60, drag: 1.8, life: 1.4, size: 6, spin: 4 }); return;
+      case 'ink': g(2, { z0: 1, z1: 2, life: 2.2, size: rand(5, 8) }); return;
+      case 'slime': g(3, { vx: rand(-20, 20), vz: rand(30, 60), g: 300, bounce: 0.2, life: 1, size: 4.5 }); return;
+      case 'feathers': g(3, { vx: rand(-30, 30), vz: rand(40, 70), g: 50, drag: 2, life: 1.4, size: 6, spin: 3 }); return;
+      case 'diamonds':
+      case 'gold':
+        g(3, { vx: rand(-40, 40), vz: rand(60, 110), g: 250, drag: 1, life: 1, size: 5, spin: 5 });
+        for (let i = 0; i < 3; i++) spawn('glow', x + rand(-8, 8), y + rand(-5, 5), rand(4, 18), { vz: 20, life: 0.6, size: 2.6, size2: 0.4, color: look[1][0] });
+        return;
+      case 'stars':
+        g(3, { vx: rand(-90, 90), vy: rand(-50, 50), vz: rand(40, 90), g: 0, drag: 2, life: 0.8, size: 6, size2: 2, spin: 6 });
+        for (let i = 0; i < 2; i++) spawn('glow', x, y, 10, { vx: rand(-80, 80), vz: rand(20, 60), drag: 2, life: 0.5, size: 3, size2: 0.5, color: '#fff6b0' });
+        return;
+      case 'galaxy':
+        for (let i = 0; i < 5; i++) spawn('glow', x + rand(-8, 8), y + rand(-5, 5), rand(4, 18), { vz: rand(5, 20), drag: 2, life: rand(0.7, 1.1), size: rand(3, 6), size2: 1, color: pick(['#7b5be0', '#4a7bff', '#c46bff']), alpha: 0.6 });
+        g(2, { vz: rand(10, 30), drag: 1, life: 1, size: 3.5, spin: 3 });
+        return;
+      case 'lightning':
+        g(2, { z0: 6, z1: 20, life: 0.25, size: 9, size2: 6, rot: rand(-0.4, 0.4) });
+        sparks(x, y, 8, 6, ['#ffffff', '#fff6b0', '#bfe8ff'], 220);
+        return;
+      case 'aurora': {
+        const h = (performance.now() / 10) % 360;
+        for (let i = 0; i < 6; i++) spawn('glow', x + rand(-10, 10), y + rand(-4, 4), rand(6, 26), { vz: rand(15, 40), drag: 1, life: rand(0.9, 1.4), size: rand(3, 6), size2: 0.5, color: `hsl(${(h + rand(-40, 40) + 150) % 360},90%,65%)`, alpha: 0.6 });
+        return;
+      }
+      case 'smoke':
+        for (let i = 0; i < 4; i++) spawn('smoke', x + rand(-6, 6), y + rand(-4, 4), rand(2, 8), { vz: rand(15, 35), g: -10, drag: 1, life: rand(0.8, 1.2), size: rand(3, 4), size2: rand(8, 11), color: pick(['#9a9aa2', '#b8b8c0', '#7d7d86']), alpha: 0.55 });
+        return;
+      case 'quake':
+        for (let i = 0; i < 10; i++) {
+          const a = (i / 10) * 6.2832;
+          spawn('dust', x, y, 2, { vx: Math.cos(a) * 120, vy: Math.sin(a) * 90, drag: 4, life: 0.5, size: 3, size2: 7, color: '#c9b38a', alpha: 0.6 });
+        }
+        for (let i = 0; i < 4; i++) spawn('debris', x, y, 3, { vx: rand(-60, 60), vy: rand(-40, 40), vz: rand(80, 160), g: 800, bounce: 0.3, life: 0.8, size: rand(2, 3.5), color: pick(['#8a6a4a', '#6b4a3a', '#9aa0a8']), rotV: rand(-10, 10) });
+        return;
+      case 'turbo':
+        for (let i = 0; i < 5; i++) spawn('spark', x + rand(-6, 6), y + rand(-6, 6), rand(4, 18), { vx: rand(-260, 260), vy: rand(-80, 80), drag: 4, life: 0.3, size: 1.6, color: pick(['#ffffff', '#bfe8ff', '#ffe95c']) });
+        for (let i = 0; i < 3; i++) spawn('dust', x, y, 2, { vx: rand(-60, 60), vy: rand(-40, 40), drag: 3, life: 0.4, size: 3, size2: 6, color: '#e8e8f0', alpha: 0.5 });
+        return;
+    }
+
     if (kind === 'sparkle') {
       for (let i = 0; i < 4; i++) spawn('glow', x + rand(-8, 8), y + rand(-5, 5), rand(6, 22), { vz: rand(10, 40), drag: 2, life: rand(0.5, 0.8), size: rand(2, 3.4), size2: 0.5, color: pick(['#fff6b0', '#ffffff', '#ffd84d']) });
     } else if (kind === 'fire') {
@@ -1076,7 +1249,7 @@ const FX = (() => {
 
   return {
     spawn, update, reset, draw, drawDecals, drawPools, drawBlasts, drawTexts, drawWeather, drawLens, drawFlash,
-    sparks, carCrash, carCrashViolent, secondaryBlast, tankerBlast, trainCrash, meteorImpact, debrisRain, scorchMark,
+    glyph, TRAIL_LOOK, sparks, carCrash, carCrashViolent, secondaryBlast, tankerBlast, trainCrash, meteorImpact, debrisRain, scorchMark,
     wreckFire, wreckSmoke, laser, ripple, splash, bubbles,
     splat, pool, track, cloud, lensSplat, roadkill, trainRoadkill, crushed, piranhas, bleed, scorch, puff,
     dust, pickup, coin, feathers, ice, shieldBreak, text, flashScreen, beef, whack, hopTrail, twigs, lights, fountain,

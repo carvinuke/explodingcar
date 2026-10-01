@@ -111,9 +111,7 @@ const Admin = {
       setTimeout(() => { delete btn.dataset.armed; btn.textContent = 'Reset all progress'; }, 3000);
       return;
     }
-    for (const k of ['coins', 'xp', 'skins', 'hats', 'trails', 'skin', 'hat', 'trail', 'trophies', 'stats', 'best', 'best.hardcore', 'best.time', 'missions', 'missionsDone', 'runs', 'ghost.best', 'ghost.hardcore', 'ghost.time']) {
-      try { localStorage.removeItem('roadrush.' + k); } catch (e) { /* ignore */ }
-    }
+    Store.wipeProgress();
     location.reload();
   },
 

@@ -35,7 +35,8 @@ const Items = {
     }
     if (!free.length) return;
     // a mystery egg, now and then (the roll always happens, so the road stays the same for a seed)
-    if (Gen.chance(0.014) && Egg.canSpawn(row.i) && !this.list.some(it => it.type === 'egg')) {
+    if (Pets.has('luckycat') && Math.random() < 0.35) this.add('coin', pick(free), row.i); // far more coins
+    if (Gen.chance(0.014 * (Pets.perk('eggLuck') || 1)) && Egg.canSpawn(row.i) && !this.list.some(it => it.type === 'egg')) {
       this.add('egg', Gen.pick(free), row.i);
       return;
     }
@@ -99,10 +100,10 @@ const Powers = {
       p.shield++;
       if (p.shield > 1) { FX.text(it.x, it.y + 32, `x${p.shield} SHIELDS`, def.color, 16); }
     }
-    else if (type === 'freeze') { this.freeze = def.dur; FX.ice(it.x, it.y); Sound.freeze(); }
+    else if (type === 'freeze') { this.freeze = def.dur * this.boost(p); FX.ice(it.x, it.y); Sound.freeze(); }
     else if (type === 'jetpack') p.jetpack();
     else if (type === 'horn') this.horn(p);
-    else p.pw[type] = def.dur;
+    else p.pw[type] = def.dur * this.boost(p);
     Sound.powerup();
     FX.pickup(it.x, it.y, def.color);
     FX.text(it.x, it.y + 14, def.name.toUpperCase() + '!', def.color, 19);
@@ -114,6 +115,9 @@ const Powers = {
       Trophies.max('powerTypes', this.seen.size);
     }
   },
+
+  // Bee and Robo Pup make power-ups last longer.
+  boost(p) { return p.id === 0 ? Pets.perk('powerBoost') || 1 : 1; },
 
   // Horn: every car near you slams on its brakes (even reckless drivers).
   horn(p) {
