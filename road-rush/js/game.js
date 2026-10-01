@@ -257,7 +257,7 @@ const Game = {
   addCoin(it, p = Player, n = 1) {
     if (p.id === 0 && Math.random() < (Pets.perk('luck') || 0)) { n *= 2; FX.text(it.x, it.y + 24, 'LUCKY!', '#7ed957', 13); }
     else if (p.id === 0 && Math.random() < 0.05 * Upgrades.n('piggy')) { n *= 2; FX.text(it.x, it.y + 24, 'LUCKY!', '#7ed957', 13); }
-    const k = Golden.mult() * (this.modeDef().coinMult || 1) * (p.id === 0 && Pets.has('unicorn') ? Pets.up(2, 3) : 1) * (p.id === 0 && this.fever ? 3 : 1) * n;
+    const k = Golden.mult() * (this.modeDef().coinMult || 1) * (p.id === 0 && Pets.has('unicorn') ? Pets.up(2, 3) : 1) * (p.id === 0 && Pets.has('luckystar') ? Pets.up(2, 3) : 1) * (p.pw.shrink > 0 ? 2 : 1) * (p.id === 0 && this.fever ? 3 : 1) * n;
     p.coins += k;
     if (p.id === 0) this.coins = p.coins;
     this.addBonus(25 * n, p);
@@ -403,6 +403,7 @@ const Game = {
         const small = p.pw.shrink > 0, slim = p.id === 0 ? Upgrades.slim() : 0; // the Slim Fit upgrade
         if (Math.abs((v.drunk ? v.y : row.y) - p.y) > (small ? 0.42 : 0.58 - 0.05 * slim) * TILE) continue; // drunk drivers weave between lanes
         if (v.abducted || v.z > 30 || v.animal) continue;
+        if (small && VEHICLE_TYPES[v.type].h >= 0.6) continue; // shrunk: buses, vans and trucks roll right over you
         if (Math.abs(v.x - p.x) > v.len / 2 - 2 + (small ? 0.08 : 0.24 - 0.07 * slim) * TILE) continue;
         if (v.wreck) { // a sliding wreck shoves you aside instead of killing you
           if (!v.bumped && !p.knock && Math.abs(v.slide) * fz > 40) {

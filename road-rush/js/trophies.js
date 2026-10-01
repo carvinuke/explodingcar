@@ -92,6 +92,8 @@ const TROPHIES = [
   { id: 'roadexall', name: 'Encyclopedia', desc: 'Complete the whole Roadex', test: () => Roadex.allDone() },
   { id: 'prestige', name: 'Born Again', desc: 'Prestige for the first time', test: () => Prestige.n >= 1 },
   { id: 'crafty', name: 'Crafty', desc: 'Craft a mystery box exclusive from shards', test: (r, s) => (s.crafted || 0) >= 1 },
+  { id: 'clawwin', name: 'Prize Winner', desc: 'Win a prize from the claw machine', test: (r, s) => (s.clawWins || 0) >= 1 },
+  { id: 'clawjackpot', name: 'Jackpot!', desc: 'Win a Jackpot pet from the claw machine', test: (r, s) => (s.clawJackpots || 0) >= 1 },
   { id: 'gentle', name: 'Careful Driver', desc: 'Get through a Reverse Day without hitting a single chicken', test: r => r.revClean >= 1 },
 ];
 

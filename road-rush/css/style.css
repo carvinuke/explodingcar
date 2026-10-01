@@ -942,3 +942,30 @@ kbd {
 .t-room { background: #2b2622; color: #ffe9b0; box-shadow: inset 0 0 0 2px #ffd23f, inset 0 0 0 4px #2b2622; }
 .t-mastery { background: var(--sign-green); color: var(--sign-white); box-shadow: inset 0 0 0 2px var(--sign-white), inset 0 0 0 4px var(--sign-green); }
 .t-roadex { background: var(--paper); color: var(--ink); box-shadow: inset 0 0 0 2px var(--sign-green), inset 0 0 0 4px var(--paper); }
+
+/* ---- Claw machine: a neon arcade cabinet ----------------------------------------------- */
+.claw-btn { box-shadow: inset 0 -3px 0 #ff4fe0; }
+.claw-cab { width: min(440px, 100%); padding: 6px; border-radius: 16px; background: linear-gradient(180deg, #5b2a9e, #2a1450); color: var(--sign-white); box-shadow: 0 0 0 3px #ff4fe0, 0 18px 40px rgba(0, 0, 0, 0.55), 0 0 40px rgba(255, 80, 230, 0.35); animation: slide-up 0.25s ease-out; }
+.claw-inner { display: flex; flex-direction: column; gap: 12px; padding: 16px 18px 18px; border: 3px solid rgba(255, 255, 255, 0.85); border-radius: 12px; }
+.claw-inner h2 { margin: 0; font-size: 24px; font-weight: 900; letter-spacing: 0.12em; color: #ffe95c; text-shadow: 0 0 10px rgba(255, 233, 92, 0.6); }
+.claw-canvas { display: block; width: 100%; max-width: 360px; aspect-ratio: 4 / 3; align-self: center; border-radius: 8px; box-shadow: inset 0 0 0 2px #4df0ff, 0 0 18px rgba(77, 240, 255, 0.25); }
+.claw-result { min-height: 1.4em; margin: 0; text-align: center; font-size: 15px; font-weight: 800; }
+.claw-result.win { color: #c79bff; animation: pop-in 0.4s ease-out; }
+.claw-result.jackpot { color: #ffe95c; font-size: 17px; text-shadow: 0 0 12px rgba(255, 233, 92, 0.8); animation: pop-in 0.5s ease-out; }
+.claw-btns { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.claw-btns .coin-ico { display: inline-block; vertical-align: -2px; }
+.claw-btns .gold { background: linear-gradient(180deg, #fff3b0, #ffd23f); }
+.claw-odds { margin: 0; font-size: 12px; font-weight: 600; line-height: 1.45; opacity: 0.85; text-align: center; }
+.claw-label { margin: 0; font-size: 12px; font-weight: 900; letter-spacing: 0.14em; text-transform: uppercase; color: #4df0ff; }
+.claw-prizes { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 5px; }
+.claw-prizes li { padding: 3px 8px 2px; border-radius: 4px; background: rgba(0, 0, 0, 0.3); font-size: 12px; font-weight: 800; opacity: 0.75; }
+.claw-prizes li.jackpot { box-shadow: inset 0 0 0 1.5px #ffe95c; color: #ffe95c; }
+.claw-prizes li.got { opacity: 1; background: rgba(255, 255, 255, 0.18); }
+.claw-inner > .btn-plate { align-self: flex-start; }
+.rarity.r-claw { background: #ff4fe0; color: #fff; }
+.rarity.r-jackpot { background: linear-gradient(90deg, #ffd23f, #ff4fe0, #4df0ff); color: var(--ink); }
+
+/* ---- "So close" notes on the report ------------------------------------------------- */
+.close-list { list-style: none; margin: 10px 20px 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.close-list li { padding: 5px 10px 4px; border-radius: 4px; background: #e8f6ee; color: #1f5c3a; font: 700 13px var(--font-mono); box-shadow: inset 3px 0 0 #2fa84f; }
+.close-list li::before { content: 'SO CLOSE  '; color: #2fa84f; }

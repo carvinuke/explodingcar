@@ -539,6 +539,7 @@ const Admin = {
     btn(r, 'Max every upgrade', () => { for (const id in UPGRADES) Upgrades.levels[id] = Upgrades.max(id); Upgrades.save(); Trophies.check(); this.flash('Every upgrade maxed (from the next run)'); });
     btn(r, 'Secret manhole', () => this.giveManhole(), 'gold');
     btn(r, 'Golden run (next run)', () => { Golden.force = true; this.flash('Your next run will be golden'); }, 'gold');
+    btn(r, 'Win a claw Jackpot pet', () => { const u = Claw.unowned(true); if (!u.length) { this.flash('You have every Jackpot pet'); return; } Claw.win(pick(u), 'pet'); Stats.add('clawJackpots'); Trophies.check(); this.flash('Jackpot pet won'); }, 'gold');
     btn(r, '+20 box shards', () => { Shards.add(20); this.flash(`${Shards.n} shards`); });
     btn(r, 'All biome stars', () => this.allStars());
     btn(r, 'Fill the Roadex', () => this.fillRoadex());

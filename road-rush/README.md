@@ -188,6 +188,27 @@ coins instead. A Ghostie pet makes eggs show up twice as often.
 - *Robo Pup* (rare): fetches power-ups from far away, and they last 50% longer.
 - *Lucky Cat* (rare): far more coins show up on the road.
 
+## Claw machine
+
+The Claw Machine button on the title screen. A **Grab** costs 500 coins and a
+**Gold Grab** costs 1,000 (double the odds). Watch the claw drop, grab and
+carry its prize to the chute:
+
+- **0.5%** (1% on a Gold Grab): a **Jackpot pet** you can't get anywhere else.
+  The **Magnet Bot** is a permanent magnet that pulls in every coin and
+  power-up nearby; the **Lucky Star** makes every coin worth double and gives
+  you a shield at the start of every run.
+- **10%** (20%): a claw-only cosmetic: Plushie Chick, Arcade Chick, Claw Hat,
+  Prize Tickets trail, Arcade Lights and Jackpot auras, Arcade Tokens
+  footprints, and the High Roller and Claw Master titles.
+- Otherwise you get 100 coins back (200 on a Gold Grab).
+
+## So close
+
+The report at the end of a run points out what you nearly reached: "Just 70
+points from your best!", "30 XP to level 5", "80 coins from a claw machine
+grab", your next upgrade, or a mission you're most of the way through.
+
 ## Upgrades
 
 The shop's Upgrades tab sells permanent upgrades for every single-player run.
@@ -260,8 +281,14 @@ Two more things keep going between runs:
   Crown of Fire (38), Shadow Cat (40), the Aurora trail (42), Cosmic Big J (45),
   and at level 50, Golden Big J and the Pure Gold trail. The report shows the
   XP you earned and what the next level unlocks.
-- **Shop:** 228 cosmetics in six tabs, plus the Upgrades tab, with a collection counter at the top.
+- **Shop:** 267 cosmetics in seven tabs, plus the Upgrades tab, with a collection counter at the top.
   Unlocking everything takes a day or two of playing.
+  - **Auras (30):** a glow that's always around you: Soft Glow, Sparkle Cloud,
+    Love Bubble, Leaf Whirl, Sakura Breeze, Frost Swirl, Flame Ring, Toxic
+    Fumes, Coin Orbit, Bat Swarm, Haunted, Static Charge, Shadow Smoke,
+    Rainbow Ring, Glitch Field, Diamond Dust, Moon Orbit, Solar Flare, Golden
+    Halo and more, plus Northern Lights, Galaxy and The Void (levels 24, 33
+    and 44), Storm Cell and Royal Glow (trophies) and the Prestige Aura.
   - **Footprints (14):** marks you leave on the ground for a few seconds:
     chicken tracks, paw prints, hearts, snow boots, stars, slime, pixels,
     flickering fire, flowers that pop up, ghostly steps, neon, rainbow and
@@ -325,7 +352,9 @@ Two more things keep going between runs:
   - *Goldfish* (trophy): a fish in a bowl that gently pulls coins toward you.
 - **More power-ups:** Jetpack (blast off and land on safe ground about 5 rows
   ahead), Ghost (cars and trains pass straight through you for 4 seconds),
-  Shrink (a tiny chicken with a tiny hitbox for 7 seconds) and Horn (every car
+  Shrink (8 seconds as a tiny chicken: a tiny hitbox, buses, vans, trucks,
+  ambulances and fire trucks roll right over you, your hops are quicker, and
+  every coin is worth double) and Horn (every car
   nearby slams on its brakes, even speeders), plus:
   - *Pogo Stick:* for 6 seconds every forward hop clears two rows.
   - *Time Stop:* rare. For 2.5 seconds the whole world freezes (cars, trains,
@@ -335,7 +364,7 @@ Two more things keep going between runs:
     still on the water, it pops.
   - *Decoy:* leaves a fake you behind for 10 seconds. The giant goose, UFOs,
     meteors and lightning go after it instead of you.
-- **Trophies:** 50 achievements, such as surviving three explosions in one run,
+- **Trophies:** 52 achievements, such as surviving three explosions in one run,
   a close call with a train, getting trampled by a deer, getting picked up
   by a tornado and living, playing 500 runs, reaching row 500, or owning 40,
   90 and finally every cosmetic. Many unlock things you can't buy: the Crash
@@ -400,7 +429,7 @@ for the rest of the session. From there you can:
 - give yourself any pet (including the egg-only ones)
 - start a Reverse Day, drop an egg in front of you, hatch one on the spot,
   max out Big J's rage, spawn a roadside stand, a mystery box or a secret
-  manhole, start combo fever, max every upgrade, make your next run
+  manhole, start combo fever, max every upgrade, win a claw machine Jackpot pet, make your next run
   golden, max out your pet's level, add box shards, or earn every biome star
   and fill the Roadex
 - grant any power-up, start any secret event, or summon a tornado, lightning,
@@ -441,6 +470,7 @@ Plain scripts that share a few global objects, loaded in order by `index.html`:
 | `js/storms.js` | `Storms`: lightning and tornadoes |
 | `js/extras.js` | `Prints` (footprints), `Boxes` (mystery boxes) and `PetLevels` |
 | `js/upgrades.js` | `Upgrades` (the shop's permanent upgrades), `Golden` (golden runs) and `SecretRoom` |
+| `js/claw.js` | `Auras` (drawing every aura), `Claw` (the claw machine) and `SoClose` (report notes) |
 | `js/goals.js` | `Mastery` (biome stars), `Roadex`, `Prestige`, `Shards` and `Evolve` (pet evolutions) |
 | `js/specials.js` | `Rage` (Big J's rage stomp and Big S's calm), `Egg` (carrying and hatching) and `Graves` (where you died last run) |
 | `js/reverse.js` | `Reverse`: Reverse Day, where you drive and the chickens cross |

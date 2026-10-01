@@ -86,7 +86,7 @@ const Prints = {
           break;
         }
         default: { // hearts, stars, slime, pixel, ghost: glyphs
-          const look = { hearts: ['heart', '#ff5c8a'], stars: ['star', '#ffe95c'], slime: ['drop', '#7ed957'], pixel: ['pixel', ['#ff5c8a', '#34c6ea', '#7ed957', '#ffd23f'][f.n % 4]], ghost: ['ghost', 'rgba(240,240,255,0.8)'] }[f.kind];
+          const look = { hearts: ['heart', '#ff5c8a'], stars: ['star', '#ffe95c'], slime: ['drop', '#7ed957'], pixel: ['pixel', ['#ff5c8a', '#34c6ea', '#7ed957', '#ffd23f'][f.n % 4]], ghost: ['ghost', 'rgba(240,240,255,0.8)'], tokens: ['coin', '#c79bff'] }[f.kind];
           if (look) for (const dx of [-4, 4]) FX.glyph(c, look[0], dx, 0, 6, look[1], 0);
         }
       }
@@ -152,7 +152,7 @@ const Boxes = {
 
   give([tab, id], rare) {
     Shop.grant(tab, id);
-    const tabName = { skins: 'skin', hats: 'hat', trails: 'trail', pets: 'pet', prints: 'footprints', titles: 'title' }[tab];
+    const tabName = { skins: 'skin', hats: 'hat', trails: 'trail', pets: 'pet', auras: 'aura', prints: 'footprints', titles: 'title' }[tab];
     return { tab, id, name: SHOP_TABS[tab][id].name, kind: tabName, rare, shards: 1 };
   },
 };
