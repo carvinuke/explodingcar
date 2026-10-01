@@ -759,15 +759,17 @@ const UI = {
     this.openModal('claw', 'screen-claw', 'btn-claw-grab');
     const cv = this.$('claw-canvas');
     const dpr = Math.min(2, window.devicePixelRatio || 1);
-    cv.width = 360 * dpr; cv.height = 270 * dpr;
+    cv.width = CLAW_BOX.W * dpr; cv.height = CLAW_BOX.H * dpr;
     this.clawCtx = cv.getContext('2d');
     this.clawCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    // the prize pile, fixed for this visit
-    this.clawPile = [];
-    for (let k = 0; k < 34; k++) this.clawPile.push({ x: 40 + (k % 12) * 23 + rand(-6, 6), y: 232 - Math.floor(k / 12) * 17 + rand(-4, 4), r: rand(9, 12), c: pick(['#ff5c8a', '#34c6ea', '#ffd23f', '#7ed957', '#a95cff', '#ff9f1c']) });
+    if (!ClawSim.claw || !ClawSim.busy()) ClawSim.init();
+    let last = performance.now();
     const loop = () => {
       if (this.modal !== 'claw') return;
-      this.drawClaw(performance.now() / 1000);
+      const now = performance.now();
+      ClawSim.update((now - last) / 1000);
+      last = now;
+      ClawSim.draw(this.clawCtx, now / 1000);
       requestAnimationFrame(loop);
     };
     requestAnimationFrame(loop);
@@ -800,16 +802,18 @@ const UI = {
     const res = Claw.grab(tier);
     if (!res) return;
     Sound.click();
-    this.clawAnim = { t0: performance.now() / 1000, res, x: rand(60, 300), done: false };
+    this.clawAnim = { res };
     this.$('claw-result').textContent = '';
     this.$('claw-result').className = 'claw-result';
     this.renderClaw();
     this.refreshMeta();
+    ClawSim.grab(res.kind, () => this.clawReveal());
   },
 
   clawReveal() {
-    const a = this.clawAnim, r = a.res, el = this.$('claw-result');
-    a.done = true;
+    const a = this.clawAnim;
+    if (!a) return;
+    const r = a.res, el = this.$('claw-result');
     if (r.kind === 'pet') {
       el.textContent = `JACKPOT! You won the ${r.name}! It's yours to equip in the shop.`;
       el.className = 'claw-result jackpot';
@@ -824,92 +828,9 @@ const UI = {
       el.className = 'claw-result';
       Sound.coin();
     }
+    ClawSim.refill();
     this.clawAnim = null;
     this.renderClaw();
-  },
-
-  // The machine: the claw drops, grabs, and carries a prize to the chute.
-  drawClaw(now) {
-    const c = this.clawCtx, W = 360, H = 270;
-    c.clearRect(0, 0, W, H);
-    c.fillStyle = '#241640';
-    c.fillRect(0, 0, W, H);
-    c.fillStyle = 'rgba(255,255,255,0.04)';
-    for (let x = 0; x < W; x += 18) c.fillRect(x, 0, 1, H);
-    // the chute
-    c.fillStyle = '#120a22';
-    c.fillRect(8, 160, 52, 110);
-    c.strokeStyle = '#ff4fe0';
-    c.lineWidth = 2;
-    c.strokeRect(8, 160, 52, 110);
-    const a = this.clawAnim;
-    let cx = 180 + Math.sin(now * 0.8) * 30, cy = 30, open = 1, carry = null;
-    if (a) {
-      const t = now - a.t0, ease = k => k * k * (3 - 2 * k), seg = (t0, t1) => ease(clamp((t - t0) / (t1 - t0), 0, 1));
-      const startX = 180;
-      cx = lerp(startX, a.x, seg(0, 0.8));
-      cy = 30 + 150 * seg(0.8, 1.6) - 150 * seg(1.9, 2.7);
-      open = 1 - seg(1.6, 1.9) + seg(3.4, 3.6);
-      cx = lerp(cx, 34, seg(2.7, 3.4));
-      const held = t >= 1.8 && t < 3.5;
-      if (held) carry = a.res.kind;
-      if (t >= 3.5 && t < 4.1) { carry = a.res.kind; cy += (t - 3.5) * 260; }
-      if (t >= 4.1 && !a.done) this.clawReveal();
-    }
-    // the prizes
-    for (const b of this.clawPile) {
-      if (a && carry && Math.abs(b.x - a.x) < 12 && b.y < 210) continue; // the one in the claw
-      c.fillStyle = b.c;
-      c.beginPath(); c.arc(b.x, b.y, b.r, 0, 6.2832); c.fill();
-      c.fillStyle = 'rgba(255,255,255,0.75)';
-      c.beginPath(); c.arc(b.x, b.y, b.r, Math.PI, 0); c.fill();
-      c.fillStyle = 'rgba(0,0,0,0.12)';
-      c.fillRect(b.x - b.r, b.y - 1, b.r * 2, 2);
-    }
-    // rail and cable
-    c.fillStyle = '#8d97a6';
-    c.fillRect(0, 14, W, 6);
-    c.fillStyle = '#c9d1dc';
-    c.fillRect(cx - 9, 12, 18, 10);
-    c.fillRect(cx - 1, 20, 2, cy - 20);
-    // what's in the claw
-    if (carry) {
-      const py = cy + 20;
-      if (carry === 'coins') {
-        c.fillStyle = '#c98a00'; c.beginPath(); c.arc(cx, py, 11, 0, 6.2832); c.fill();
-        c.fillStyle = '#ffd23f'; c.beginPath(); c.arc(cx, py, 9, 0, 6.2832); c.fill();
-        c.fillStyle = '#fff4b8'; c.fillRect(cx - 3, py - 5, 3, 8);
-      } else {
-        c.save();
-        c.globalCompositeOperation = 'lighter';
-        c.fillStyle = carry === 'pet' ? `hsla(${(now * 200) % 360},100%,65%,0.6)` : 'rgba(200,150,255,0.5)';
-        c.beginPath(); c.arc(cx, py, 20, 0, 6.2832); c.fill();
-        c.restore();
-        c.fillStyle = carry === 'pet' ? `hsl(${(now * 200) % 360},90%,60%)` : '#a95cff';
-        c.beginPath(); c.arc(cx, py, 11, 0, 6.2832); c.fill();
-        c.fillStyle = 'rgba(255,255,255,0.8)';
-        c.beginPath(); c.arc(cx, py, 11, Math.PI, 0); c.fill();
-      }
-    }
-    // the claw
-    c.strokeStyle = '#e8ecf2';
-    c.lineWidth = 3;
-    c.lineCap = 'round';
-    c.fillStyle = '#c9d1dc';
-    c.fillRect(cx - 8, cy, 16, 7);
-    c.beginPath();
-    for (const s of [-1, 1]) {
-      const sp = 6 + open * 9;
-      c.moveTo(cx + s * 6, cy + 7); c.lineTo(cx + s * sp, cy + 20); c.lineTo(cx + s * (sp - 6 - open * 2), cy + 31);
-    }
-    c.stroke();
-    // glass shine and marquee lights
-    c.fillStyle = 'rgba(255,255,255,0.06)';
-    c.beginPath(); c.moveTo(250, 0); c.lineTo(290, 0); c.lineTo(200, H); c.lineTo(160, H); c.fill();
-    for (let k = 0; k < 18; k++) {
-      c.fillStyle = (k + ((now * 8) | 0)) % 3 === 0 ? ['#ff4fe0', '#4df0ff', '#ffe95c'][k % 3] : '#4a3a6a';
-      c.beginPath(); c.arc(10 + k * 20, 6, 3, 0, 6.2832); c.fill();
-    }
   },
 
   // ---- Goals: biome mastery, the Roadex and prestige -------------------------------
