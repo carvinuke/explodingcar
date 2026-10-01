@@ -120,14 +120,14 @@ const Draw = (() => {
   }
 
   // Drawn facing +x; the renderer mirrors it for leftbound traffic.
-  function vehicle(c, v, frost, time = 0) {
+  // Everything about a car that doesn't move: drawn once per look and cached.
+  function vehicleBody(c, v) {
     const T = VEHICLE_TYPES[v.type];
     const L = v.len, hy = LANE_D / 2, pal = v.pal;
     const z0 = 4, zt = z0 + T.h * TILE;
     const fx = L / 2, bx = -L / 2;
     const cab = T.cab, ch = cab ? cab[2] * TILE : 0;
     const x0 = cab ? bx + cab[0] * L : 0, x1 = cab ? bx + cab[1] * L : 0;
-    const spin = (v.x * v.dir) / 5;
 
     // crisp dark outline around the silhouette
     c.fillStyle = 'rgba(14,16,20,0.5)';
@@ -244,6 +244,28 @@ const Draw = (() => {
         box(c, bx + 1, bx + 3, -hy + 1, hy - 1, zt, zt + 4, pal.top, pal.front);
         if (v.base.charCodeAt(2) % 2) box(c, bx + 7, bx + 19, -6, 4, zt, zt + 8, '#c7955e', '#9c6f3f'); // cargo crate
       }
+      if (t === 'logtruck') { // a stack of logs on the bed
+        c.fillStyle = pal.dark;
+        c.fillRect(bx, P(hy, zt), x0 - bx - 2, LANE_D * GY);
+        for (const [y0, y1, z] of [[-hy + 1, -1, zt], [1, hy - 1, zt], [-hy / 2, hy / 2, zt + 7]]) {
+          box(c, bx + 2, x0 - 4, y0, y1, z, z + 7, '#a8754a', '#7a522c');
+          c.fillStyle = '#d9b38a';
+          c.fillRect(x0 - 6, P(y1, z + 7), 2, (y1 - y0) * GY);
+        }
+        for (const x of [bx + 8, x0 - 14]) box(c, x, x + 2, -hy, -hy + 2, zt, zt + 14, '#3a3d44', '#26282d');
+      }
+      if (t === 'forklift') { // mast and forks out front
+        box(c, fx - 2, fx + 1, -hy + 3, -hy + 6, z0, zt + ch + 6, '#3a3d44', '#26282d');
+        box(c, fx - 2, fx + 1, hy - 6, hy - 3, z0, zt + ch + 6, '#3a3d44', '#26282d');
+        box(c, fx, fx + 12, -hy + 4, -hy + 6, z0 + 1, z0 + 2.5, '#9aa0a8', '#6d737c');
+        box(c, fx, fx + 12, hy - 6, hy - 4, z0 + 1, z0 + 2.5, '#9aa0a8', '#6d737c');
+        box(c, bx - 2, bx + 6, -hy + 2, hy - 2, z0 + 2, zt + 4, '#3a3d44', '#26282d'); // counterweight
+      }
+      if (t === 'tractor') { // exhaust stack and hood grille
+        box(c, x1 + 4, x1 + 6.5, -2, 0.5, zt, zt + ch + 6, '#3a3d44', '#26282d');
+        c.fillStyle = 'rgba(0,0,0,0.25)';
+        for (let x = x1 + 3; x < fx - 2; x += 3) c.fillRect(x, P(-hy, zt - 2), 1.2, (zt - z0 - 6) * GZ);
+      }
       if (t === 'sedan' || t === 'police') { // trunk and hood seams
         c.fillStyle = 'rgba(0,0,0,0.18)';
         c.fillRect(x0 - 8, P(hy - 2, zt), 1, (LANE_D - 4) * GY);
@@ -296,6 +318,21 @@ const Draw = (() => {
       c.fillRect(pil + 4, P(-hy, zt - 4), 3, 1.2);
     }
 
+  }
+
+  function vehicle(c, v, frost, time = 0) {
+    const T = VEHICLE_TYPES[v.type];
+    const L = v.len, hy = LANE_D / 2, pal = v.pal;
+    const z0 = 4, zt = z0 + T.h * TILE;
+    const fx = L / 2, bx = -L / 2;
+    const cab = T.cab, ch = cab ? cab[2] * TILE : 0;
+    const x0 = cab ? bx + cab[0] * L : 0, x1 = cab ? bx + cab[1] * L : 0;
+    const spin = (v.x * v.dir) / 5;
+
+    const key = `veh|${v.type}|${L}|${v.base}|${pal.top}|${pal.lit}`;
+    if (!Sprites.drawKey(c, key, g => vehicleBody(g, v))) vehicleBody(c, v);
+    const t = v.type;
+
     // police and responders: a flashing light bar (keeps flashing on the wreck for a bit)
     if (v.police || v.responder) {
       if (pal.lit && v.police) {
@@ -320,7 +357,7 @@ const Draw = (() => {
     }
 
     // wheels
-    const big = t === 'sports' || t === 'bus' || t === 'tanker';
+    const big = t === 'sports' || t === 'bus' || t === 'tanker' || t === 'tractor' || t === 'logtruck';
     for (const w of T.wheels) wheel(c, pal, w * L, hy, spin, big);
 
     // graphic mode: the car that ran the chick over keeps the evidence
@@ -1302,6 +1339,13 @@ const Draw = (() => {
       c.fillRect(cx - 0.6, cy - R + 3.5, 1.2, 2 * R - 7);
     } else {
       const fx = cx + s * 2.2;
+      if (sk.neutral && (p.rage || 0) > 0.25) { // Big S: a cool blue calm, face unchanged
+        c.save();
+        c.globalCompositeOperation = 'lighter';
+        c.fillStyle = `rgba(90,150,255,${0.1 + 0.25 * p.rage})`;
+        c.beginPath(); c.arc(fx, cy, R + 2 + p.rage * 5, 0, 6.2832); c.fill();
+        c.restore();
+      }
       if (rage > 0.25) { // a hot red glow around the face
         c.save();
         c.globalCompositeOperation = 'lighter';
@@ -1813,6 +1857,50 @@ const Draw = (() => {
     c.fillRect(-w * 0.4, cy - 4, Math.max(1, w * 0.3), 7);
   }
 
+  // Where you died last run.
+  function grave(c) {
+    c.fillStyle = 'rgba(70,50,30,0.35)';
+    c.beginPath(); c.ellipse(0, P(0, 0), 10, 10 * GY, 0, 0, 6.2832); c.fill();
+    box(c, -1.6, 1.6, -1.2, 1.2, 0, 15, '#e8e8f0', '#b8b8c4');
+    box(c, -5, 5, -1.2, 1.2, 9, 12, '#e8e8f0', '#b8b8c4');
+    c.fillStyle = '#ff6b8a';
+    c.fillRect(-4, P(-2, 1) - 1, 2.5, 2.5);
+    c.fillStyle = '#ffd23f';
+    c.fillRect(2, P(-3, 1) - 1, 2.2, 2.2);
+  }
+
+  // A roadside stand: walk in to buy what's on the sign with this run's coins.
+  function stand(c, it, time) {
+    const sold = it.sold;
+    for (const x of [-12, 10]) box(c, x, x + 2, -1, 1, 0, 26, '#8a5d33', '#6b4526');
+    box(c, -13, 13, -5, 2, 0, 9, '#c9985f', '#946a3b');
+    c.fillStyle = 'rgba(0,0,0,0.15)';
+    c.fillRect(-13, P(-5, 6), 26, 1.2);
+    for (let k = 0; k < 6; k++) box(c, -14 + k * 28 / 6, -14 + (k + 1) * 28 / 6, -7, 3, 26, 29, k % 2 ? '#ffffff' : '#e63946', k % 2 ? '#e6e6e6' : '#b8222e');
+    if (sold) {
+      c.fillStyle = '#16181c';
+      c.fillRect(-9, P(-5.5, 7.5), 18, 5);
+      c.fillStyle = '#ffd23f';
+      c.font = `900 4.5px ${UI_FONT}`;
+      c.textAlign = 'center';
+      c.fillText('SOLD', 0, P(-5.5, 7.5) + 3.8);
+      return;
+    }
+    const def = POWERUPS[it.offer];
+    const cy = P(0, 38 + Math.sin(time * 3 + it.phase) * 2);
+    c.fillStyle = def.dark;
+    c.beginPath(); c.arc(0, cy + 1.5, 8, 0, 6.2832); c.fill();
+    c.fillStyle = def.color;
+    c.beginPath(); c.arc(0, cy, 8, 0, 6.2832); c.fill();
+    icon(c, it.offer, 0, cy, 5, '#fff');
+    c.fillStyle = '#ffd23f';
+    c.fillRect(-9, P(-5.5, 7.5), 18, 5);
+    c.fillStyle = '#16181c';
+    c.font = `900 4.5px ${UI_FONT}`;
+    c.textAlign = 'center';
+    c.fillText(`${it.price} COINS`, 0, P(-5.5, 7.5) + 3.8);
+  }
+
   // A mystery egg (carry it 50 rows) or a golden egg laid by the goose (10 coins).
   function eggShape(c, x, y, r) {
     c.beginPath();
@@ -1966,12 +2054,49 @@ const Draw = (() => {
           c.stroke();
         }
         break;
+      case 'pogo': // a spring
+        c.lineWidth = r * 0.2;
+        c.beginPath();
+        c.moveTo(x - r * 0.5, y + r * 0.8);
+        for (let k = 0; k < 5; k++) c.lineTo(x + (k % 2 ? 0.5 : -0.5) * r, y + r * (0.5 - k * 0.3));
+        c.stroke();
+        c.fillRect(x - r * 0.7, y + r * 0.75, r * 1.4, r * 0.25);
+        c.fillRect(x - r * 0.15, y - r, r * 0.3, r * 0.35);
+        break;
+      case 'timestop': // an hourglass
+        poly(c, x, y, r, [[-0.65, -0.9], [0.65, -0.9], [0.1, 0], [0.65, 0.9], [-0.65, 0.9], [-0.1, 0]]);
+        c.fill();
+        c.fillRect(x - r * 0.8, y - r, r * 1.6, r * 0.2);
+        c.fillRect(x - r * 0.8, y + r * 0.8, r * 1.6, r * 0.2);
+        break;
+      case 'coinrain': // a cloud dropping coins
+        c.beginPath(); c.arc(x - r * 0.35, y - r * 0.35, r * 0.4, 0, 6.2832); c.arc(x + r * 0.25, y - r * 0.45, r * 0.48, 0, 6.2832); c.arc(x + r * 0.6, y - r * 0.2, r * 0.3, 0, 6.2832); c.fill();
+        c.fillRect(x - r * 0.75, y - r * 0.35, r * 1.5, r * 0.35);
+        for (const [dx, dy] of [[-0.45, 0.45], [0.15, 0.75], [0.55, 0.35]]) { c.beginPath(); c.arc(x + dx * r, y + dy * r, r * 0.17, 0, 6.2832); c.fill(); }
+        break;
+      case 'bubble':
+        c.lineWidth = r * 0.16;
+        c.beginPath(); c.arc(x, y, r * 0.8, 0, 6.2832); c.stroke();
+        c.beginPath(); c.arc(x - r * 0.3, y - r * 0.3, r * 0.2, 0, 6.2832); c.fill();
+        break;
+      case 'decoy': // a little chick with a question mark
+        c.fillRect(x - r * 0.55, y - r * 0.25, r * 1.1, r * 1.05);
+        c.fillRect(x - r * 0.2, y - r * 0.5, r * 0.4, r * 0.25);
+        c.font = `900 ${r * 0.9}px ${UI_FONT}`;
+        c.textAlign = 'center';
+        c.fillText('?', x + r * 0.6, y - r * 0.35);
+        break;
       case 'rage': // Big J's angry V and frown
         c.lineWidth = r * 0.26;
         c.beginPath(); c.moveTo(x - r * 0.7, y - r * 0.75); c.lineTo(x, y - r * 0.15); c.lineTo(x + r * 0.7, y - r * 0.75); c.stroke();
         c.fillRect(x - r * 0.62, y - r * 0.02, r * 0.3, r * 0.26);
         c.fillRect(x + r * 0.32, y - r * 0.02, r * 0.3, r * 0.26);
         c.beginPath(); c.arc(x, y + r * 0.95, r * 0.5, Math.PI * 1.18, Math.PI * 1.82); c.stroke();
+        break;
+      case 'calm': // :|
+        c.fillRect(x - r * 0.45, y - r * 0.55, r * 0.22, r * 0.5);
+        c.fillRect(x + r * 0.23, y - r * 0.55, r * 0.22, r * 0.5);
+        c.fillRect(x - r * 0.5, y + r * 0.3, r, r * 0.18);
         break;
       case 'egg':
         eggShape(c, x, y + r * 0.15, r * 0.72);
@@ -1987,7 +2112,7 @@ const Draw = (() => {
     c.restore();
   }
 
-  const HUD_ICONS = { rage: { color: '#e0231a', dark: '#8a0f0a' }, egg: { color: '#ff8ad8', dark: '#b04c94' } };
+  const HUD_ICONS = { rage: { color: '#e0231a', dark: '#8a0f0a' }, calm: { color: '#1a6bff', dark: '#0f3f99' }, egg: { color: '#ff8ad8', dark: '#b04c94' } };
   function iconURL(type, size = 56) {
     const cv = document.createElement('canvas');
     cv.width = cv.height = size;
@@ -2095,6 +2220,58 @@ const Draw = (() => {
       c.fillRect(L / 8, P(-6, 5), L / 4, 1.2);
       c.fillStyle = 'rgba(255,255,255,0.4)';
       c.fillRect(-L / 2 - 2, P(-hy, 0), L + 4, 2);
+      return;
+    }
+    if (l.style === 'lily') { // a lily pad: wobbles, then sinks if you stand on it too long
+      const load = l.load || 0, sunk = l.sinkT || 0;
+      const sinkA = sunk ? Math.max(0, 1 - sunk / 0.6) : 1;
+      if (sinkA <= 0) return;
+      c.globalAlpha = sinkA;
+      const wob = load > 0.3 ? Math.sin(time * (14 + load * 20)) * load * 1.5 : 0;
+      c.translate(wob, P(0, -load * 3 - (sunk ? 5 * (1 - sinkA) : 0)));
+      const r = L * 0.5;
+      c.fillStyle = '#3f7d34';
+      c.beginPath(); c.ellipse(0, P(0, 0.5), r, r * GY * 0.9, 0, 0.35, 6.2832 - 0.1); c.lineTo(0, P(0, 0.5)); c.fill();
+      c.fillStyle = load > 0.55 ? '#7da84a' : '#5fae4a';
+      c.beginPath(); c.ellipse(0, P(0, 2), r - 1, (r - 1) * GY * 0.9, 0, 0.35, 6.2832 - 0.1); c.lineTo(0, P(0, 2)); c.fill();
+      c.strokeStyle = 'rgba(40,90,30,0.5)';
+      c.lineWidth = 0.8;
+      c.beginPath(); for (const a of [1.2, 2.4, 3.6, 4.8]) { c.moveTo(0, P(0, 2)); c.lineTo(Math.cos(a) * r * 0.8, P(Math.sin(a) * r * 0.8, 2)); } c.stroke();
+      if ((l.id % 3) === 0) { c.fillStyle = '#ffb3d1'; c.beginPath(); c.arc(r * 0.35, P(-r * 0.3, 4), 2.6, 0, 6.2832); c.fill(); c.fillStyle = '#ffe066'; c.fillRect(r * 0.35 - 0.6, P(-r * 0.3, 4) - 0.6, 1.2, 1.2); }
+      c.globalAlpha = 1;
+      return;
+    }
+    if (l.style === 'ferry') { // a small ferry boat with a cabin
+      box(c, -L / 2, L / 2, -hy - 1, hy + 1, -4, 7, '#f4f4f0', '#c9cdd4');
+      c.fillStyle = '#2667cc';
+      c.fillRect(-L / 2, P(-hy - 1, 3), L, 2.5 * GZ);
+      c.fillStyle = '#c1121f';
+      c.fillRect(-L / 2, P(-hy - 1, -1), L, 2 * GZ);
+      c.fillStyle = '#b88a58'; // deck planks
+      c.fillRect(-L / 2 + 3, P(hy - 1, 7), L - 6, (2 * hy - 2) * GY);
+      c.fillStyle = 'rgba(80,50,20,0.25)';
+      for (let x = -L / 2 + 8; x < L / 2 - 4; x += 8) c.fillRect(x, P(hy - 1, 7), 1, (2 * hy - 2) * GY);
+      const cx = (l.dir || 1) * L * 0.28;
+      box(c, cx - 12, cx + 12, -4, hy - 1, 7, 20, '#ffffff', '#dfe3ea');
+      c.fillStyle = '#4f73a0';
+      for (const x of [cx - 9, cx - 2, cx + 5]) c.fillRect(x, P(-4, 17), 5, 4 * GZ);
+      box(c, cx - 3, cx + 3, 0, 5, 20, 27, '#e63946', '#b8222e'); // funnel
+      c.fillStyle = 'rgba(255,255,255,0.4)';
+      c.fillRect(-L / 2 - 3, P(-hy - 1, -1), L + 6, 2);
+      return;
+    }
+    if (l.style === 'bubble') { // a big soap bubble holding you up
+      const a = Math.max(0, Math.min(1, l.fade));
+      const wob = Math.sin(time * 6) * 0.06;
+      c.globalAlpha = a * (a < 0.55 && ((time * 12) | 0) % 2 ? 0.4 : 1);
+      c.fillStyle = 'rgba(190,235,255,0.35)';
+      c.beginPath(); c.ellipse(0, P(0, 2), L * 0.55 * (1 + wob), hy * GY * 1.1 * (1 - wob), 0, 0, 6.2832); c.fill();
+      c.strokeStyle = 'rgba(255,255,255,0.8)';
+      c.lineWidth = 1.4;
+      c.stroke();
+      c.fillStyle = 'rgba(255,255,255,0.7)';
+      c.beginPath(); c.ellipse(-L * 0.25, P(4, 3), 4, 2, -0.3, 0, 6.2832); c.fill();
+      c.globalAlpha = 1;
       return;
     }
     if (l.style === 'rainbow') { // the unicorn's rainbow: a step of light on the water
@@ -3053,7 +3230,8 @@ const Draw = (() => {
 
   // Green guide sign where a new biome starts.
   function welcome(c, o) {
-    const name = { country: 'COUNTRYSIDE', city: 'CITY LIMITS', desert: 'DESERT', snow: 'MOUNTAIN PASS', beach: 'THE BEACH' }[o.zone];
+    const name = { country: 'COUNTRYSIDE', city: 'CITY LIMITS', desert: 'DESERT', snow: 'MOUNTAIN PASS', beach: 'THE BEACH',
+      farm: 'FARMLAND', swamp: 'THE SWAMP', autumn: 'AUTUMN WOODS', harbor: 'THE HARBOR' }[o.zone] || ZONES[o.zone].name;
     c.translate(o.side * 18, 0);
     for (const x of [-26, 24]) box(c, x, x + 2.5, -2, 2, 0, 44, '#a5abb5', '#7c828c');
     const y0 = P(-3, 76), y1 = P(-3, 42);
@@ -3075,7 +3253,126 @@ const Draw = (() => {
 
   // ---- Animals and people ----------------------------------------------------------
   // Cow standing in a lane (drawn facing +x).
+  // ---- New biome scenery -------------------------------------------------------
+  function hay(c) {
+    box(c, -14, 14, -9, 9, 0, 14, '#e9c46a', '#c9a23b');
+    c.fillStyle = 'rgba(120,80,20,0.35)';
+    for (const x of [-7, 0, 7]) c.fillRect(x - 0.6, P(-9, 14), 1.2, 14 * GZ);
+    c.fillStyle = 'rgba(255,240,180,0.5)';
+    for (let k = 0; k < 6; k++) c.fillRect(-12 + k * 4.5, P(-4 + (k % 3) * 4, 14), 3, 1);
+  }
+
+  function corn(c, o) {
+    const h = o.h || 34;
+    for (const [x, y, k] of [[-8, -4, 0], [3, 2, 1], [-2, -7, 2], [8, -3, 1], [-6, 5, 2]]) {
+      const hh = h - k * 4;
+      box(c, x - 1, x + 1, y - 1, y + 1, 0, hh, '#7fb84a', '#5f9437');
+      c.fillStyle = '#6aa43f';
+      for (const z of [hh * 0.35, hh * 0.6, hh * 0.85]) {
+        c.beginPath(); c.moveTo(x, P(y, z)); c.lineTo(x + (k % 2 ? 7 : -7), P(y, z - 4)); c.lineTo(x, P(y, z - 2)); c.fill();
+      }
+      box(c, x - 1.6, x + 1.6, y - 1.6, y + 1.6, hh * 0.55, hh * 0.55 + 5, '#ffd23f', '#e0a800'); // a cob
+      c.fillStyle = '#d9c47a';
+      c.fillRect(x - 0.5, P(y, hh + 3), 1, 3 * GZ);
+    }
+  }
+
+  function scarecrow(c) {
+    box(c, -1, 1, -1, 1, 0, 30, '#8a5d33', '#6b4526');
+    box(c, -12, 12, -1, 1, 20, 22, '#8a5d33', '#6b4526');
+    box(c, -6, 6, -3, 3, 12, 24, '#4a7bd1', '#3a62a8');
+    c.fillStyle = '#e9c46a';
+    for (const x of [-12, 10]) c.fillRect(x, P(-1, 19), 3, 4);
+    box(c, -4, 4, -3.5, 3.5, 24, 31, '#f2d9a0', '#d9bd80');
+    c.fillStyle = '#1d1d1f';
+    c.fillRect(-2.5, P(-3.5, 29), 1.5, 1.5);
+    c.fillRect(1, P(-3.5, 29), 1.5, 1.5);
+    box(c, -7, 7, -6, 6, 31, 32.5, '#8a6a3a', '#6b502a');
+    box(c, -4, 4, -3.5, 3.5, 32.5, 37, '#9a7a4a', '#7a5d33');
+  }
+
+  function reeds(c) {
+    for (const [x, y, h] of [[-6, -3, 22], [-2, 2, 28], [3, -5, 24], [7, 1, 19], [0, -1, 16]]) {
+      box(c, x - 0.7, x + 0.7, y - 0.7, y + 0.7, 0, h, '#6a8a3a', '#4f6b2a');
+      if (h > 18) box(c, x - 1.6, x + 1.6, y - 1.6, y + 1.6, h - 6, h, '#7a4a22', '#5a3416'); // cattail
+    }
+    c.fillStyle = 'rgba(40,70,40,0.35)';
+    c.beginPath(); c.ellipse(0, P(0, 0), 12, 12 * GY, 0, 0, 6.2832); c.fill();
+  }
+
+  function stump(c) {
+    box(c, -8, 8, -7, 7, 0, 9, '#8a6040', '#6b4526');
+    c.fillStyle = '#c9a070';
+    c.beginPath(); c.ellipse(0, P(0, 9), 7, 6 * GY, 0, 0, 6.2832); c.fill();
+    c.strokeStyle = 'rgba(110,70,40,0.6)';
+    c.lineWidth = 0.8;
+    for (const r of [2, 4.5]) { c.beginPath(); c.ellipse(0, P(0, 9), r, r * 0.85 * GY, 0, 0, 6.2832); c.stroke(); }
+    c.fillStyle = '#6a9a4a';
+    c.fillRect(4, P(-7, 6), 4, 3);
+  }
+
+  function crate(c, o) {
+    const col = o.color || '#b88a58', f = shade(col, -0.22);
+    box(c, -10, 10, -9, 9, 0, 17, col, f);
+    c.fillStyle = shade(col, -0.35);
+    c.fillRect(-10, P(-9, 17), 20, 1.6);
+    c.fillRect(-10, P(-9, 1.6), 20, 1.6);
+    c.save();
+    c.beginPath(); c.rect(-10, P(-9, 17), 20, 17 * GZ); c.clip();
+    c.lineWidth = 1.6;
+    c.strokeStyle = shade(col, -0.35);
+    c.beginPath(); c.moveTo(-10, P(-9, 17)); c.lineTo(10, P(-9, 0)); c.stroke();
+    c.restore();
+  }
+
+  function barrel(c) {
+    box(c, -7, 7, -6, 6, 0, 18, '#3a86ff', '#2667cc');
+    c.fillStyle = '#1d4f9e';
+    for (const z of [4, 14]) c.fillRect(-7, P(-6, z + 1), 14, 2 * GZ);
+    c.fillStyle = '#5aa0ff';
+    c.beginPath(); c.ellipse(0, P(0, 18), 6.5, 5.5 * GY, 0, 0, 6.2832); c.fill();
+  }
+
+  function bollard(c) {
+    box(c, -4, 4, -4, 4, 0, 10, '#2b2d33', '#1a1b1f');
+    box(c, -5.5, 5.5, -5.5, 5.5, 10, 12, '#3a3d44', '#26282d');
+    c.strokeStyle = '#d9c39a'; // mooring rope
+    c.lineWidth = 1.4;
+    c.beginPath(); c.ellipse(0, P(0, 7), 5, 3, 0, 0, 6.2832); c.stroke();
+  }
+
+  function container(c, o) {
+    const col = o.color || '#c1121f', f = shade(col, -0.25);
+    for (let k = 0; k < (o.stack || 1); k++) {
+      const z = k * 26;
+      box(c, -38, 38, -16, 16, z, z + 26, col, f);
+      c.fillStyle = shade(col, -0.35);
+      for (let x = -35; x < 36; x += 5) c.fillRect(x, P(-16, z + 24), 1.4, 22 * GZ);
+    }
+  }
+
+  function sheep(c, v, time) {
+    const hy = 9, z0 = 7, zt = 20;
+    for (const [lx, ly] of [[-10, -6], [-10, 4], [7, -6], [7, 4]]) box(c, lx, lx + 3, ly, ly + 2.5, 0, z0, '#2b2522', '#1a1614');
+    box(c, -13, 11, -hy, hy, z0, zt, '#f7f5ee', '#dcd8cc');
+    c.fillStyle = '#ffffff'; // fluffy bumps
+    for (const [x, y] of [[-8, 3], [-1, -4], [5, 4], [-5, -6], [2, 0]]) { c.beginPath(); c.arc(x, P(y, zt + 1), 3.6, 0, 6.2832); c.fill(); }
+    const bob = Math.sin(time * 2.2 + v.x * 0.1) * 0.8;
+    box(c, 11, 18, -4, 4, zt - 8 + bob, zt + bob, '#2b2522', '#1a1614');
+    c.fillStyle = '#f7f5ee';
+    c.fillRect(12, P(-4, zt + 1 + bob), 6, 2.5);
+    c.fillStyle = '#ffffff';
+    c.fillRect(15.5, P(-4, zt - 3 + bob), 1.4, 1.4);
+    box(c, 10, 12, -6, -4, zt - 4 + bob, zt - 2 + bob, '#2b2522', '#1a1614');
+    box(c, 10, 12, 4, 6, zt - 4 + bob, zt - 2 + bob, '#2b2522', '#1a1614');
+    if (v.wreck && v.gore) {
+      c.fillStyle = '#9e0b1a';
+      c.fillRect(-6, P(-hy, zt - 2), 12, 8 * GZ);
+    }
+  }
+
   function cow(c, v, time) {
+    if (v.sheep) { sheep(c, v, time); return; }
     const hy = 11, z0 = 9, zt = 24;
     const W = '#f4f1ea', WF = '#d8d2c6', B = '#2b2522';
     for (const [lx, ly] of [[-13, -8], [-13, 6], [11, -8], [11, 6]]) box(c, lx, lx + 4, ly, ly + 3, 0, z0, W, WF);
@@ -3228,7 +3525,8 @@ const Draw = (() => {
 
   return {
     LANE_D, box, shadow, vehiclePalette, wreckPalette, vehicle, warning,
-    tree, bush, rock, lamp, sign, player, hint, ghost, bestGhost, stars, bubble, coin, powerItem, icon, iconURL, egg, eggPic, headTop,
+    hay, corn, scarecrow, reeds, stump, crate, barrel, bollard, container,
+    tree, bush, rock, lamp, sign, player, hint, ghost, bestGhost, stars, bubble, coin, powerItem, icon, iconURL, egg, eggPic, headTop, grave, stand,
     trainCar, log, xing,
     cactus, deadbush, skull, mesa, planter, hydrant, bin, mailbox, bench, snowman, building, buildingWindows,
     pit, cone, barrier, worksign, excavator, welcome, cow, deer, weed, medic, tag,

@@ -339,6 +339,29 @@ const Admin = {
     this.flash('Hatching...');
   },
 
+  spawnStand() {
+    if (Game.players.length > 1) { this.flash('Stands are single-player only'); return; }
+    if (!this.ensureRun()) return;
+    this.after(() => {
+      for (let r = Player.row + 1; r <= Player.row + 6; r++) {
+        const R = World.rows.get(r);
+        if (!R || R.type !== 'grass') continue;
+        const c = [0, 1, -1, 2, -2].map(d => Player.col + d).find(c => c > 0 && c < COLS - 1 && !R.blocked[c]);
+        if (c === undefined) continue;
+        const [offer, price] = pick(STAND_OFFERS);
+        Items.list.push({ kind: 'item', type: 'stand', x: cellX(c), y: r * TILE, row: r, phase: 0, offer, price, sold: false, warned: false });
+        return;
+      }
+    });
+    this.flash('A roadside stand, just ahead');
+  },
+
+  fever() {
+    if (!this.ensureRun()) return;
+    this.after(() => { Player.comboT = Game.time; Player.combo = 9; Game.nearMiss(1, Player); });
+    this.flash('Combo fever!');
+  },
+
   maxRage() {
     if (!this.ensureRun()) return;
     if (!Player.skin().rage) { Shop.grant('skins', 'bigj'); Shop.equip('skins', 'bigj'); }
@@ -460,12 +483,14 @@ const Admin = {
     btn(r, 'Drop an egg', () => this.giveEgg());
     btn(r, 'Hatch an egg now', () => this.hatchNow(), 'gold');
     btn(r, 'Max rage (Big J stomp)', () => this.maxRage(), 'danger');
+    btn(r, 'Roadside stand', () => this.spawnStand());
+    btn(r, 'Combo fever', () => this.fever(), 'gold');
 
     r = section('Pets');
     for (const k in PETS) btn(r, PETS[k].name, () => this.givePet(k));
 
     r = section('Weather and time');
-    for (const w of ['auto', 'clear', 'rain', 'snow', 'dust']) btn(r, w === 'auto' ? 'Weather: auto' : w[0].toUpperCase() + w.slice(1), () => this.setWeather(w));
+    for (const w of ['auto', 'clear', 'rain', 'snow', 'dust', 'fog', 'leaves']) btn(r, w === 'auto' ? 'Weather: auto' : w[0].toUpperCase() + w.slice(1), () => this.setWeather(w));
     for (const [ph, label] of [[0.2, 'Morning'], [0.5, 'Sunset'], [0.7, 'Night']]) btn(r, label, () => this.setTime(ph));
 
     r = section('Travel');

@@ -6,6 +6,35 @@
 
 const River = {
   ids: 0,
+  steps: [], // still stepping stones on the water: rainbow steps and bubbles
+
+  // A step that holds still under p until they leave it (or the bubble runs out).
+  addStep(p, row, style) {
+    const step = { kind: 'log', id: ++this.ids, len: 0.9 * TILE, x: p.x, y: row.y, bob: 0, dir: row.river.dir, style, still: true, fade: 0.4, owner: p };
+    row.river.logs.push(step);
+    this.steps.push({ log: step, row });
+    if (style === 'bubble') Sound.bubble();
+    return step;
+  },
+
+  updateSteps(dt) {
+    for (let i = this.steps.length - 1; i >= 0; i--) {
+      const s = this.steps[i], l = s.log, p = l.owner;
+      const held = p.ride === l && p.alive && (l.style !== 'bubble' || p.pw.bubble > 0);
+      if (held) { l.fade = Math.min(1, l.fade + dt * 4); continue; }
+      if (l.style === 'bubble' && p.ride === l && l.fade > 0.5) { // the bubble is giving out
+        l.fade = Math.min(l.fade, 0.5);
+        FX.text(p.x, p.y + 30, 'POP!', '#bfe8ff', 14);
+      }
+      l.fade -= dt * (l.style === 'bubble' ? 0.7 : 1.6);
+      if (l.fade <= 0) {
+        l.gone = true;
+        const k = s.row.river.logs.indexOf(l);
+        if (k >= 0) s.row.river.logs.splice(k, 1);
+        this.steps.splice(i, 1);
+      }
+    }
+  },
 
   makeLog(R, y) {
     return { kind: 'log', id: ++this.ids, len: rand(R.lenMin, R.lenMax), x: 0, y, bob: rand(6.28), dir: R.dir, style: R.style };
@@ -29,11 +58,13 @@ const River = {
   },
 
   update(dt, fz) {
+    this.updateSteps(dt);
     for (const row of World.rows.values()) {
       if (row.type !== 'river') continue;
       const R = row.river, dir = R.dir, logs = R.logs;
       const dx = dir * R.speed * fz * dt;
       for (const l of logs) { if (!l.still) l.x += dx; l.bob += dt * 2; }
+      if (R.style === 'lily') this.sinkPads(row, dt);
       const uEnd = R.xEnd * dir;
       for (let i = logs.length - 1; i >= 0; i--) if (logs[i].x * dir - logs[i].len / 2 > uEnd) logs.splice(i, 1);
       // spawn behind the rear-most log once the gap has opened up
@@ -49,9 +80,24 @@ const River = {
     }
   },
 
+  // Lily pads (swamp): stand on one too long and it sinks, then bobs back up later.
+  sinkPads(row, dt) {
+    for (const l of row.river.logs) {
+      if (l.sinkT) {
+        l.sinkT += dt;
+        if (l.sinkT > 3.2) { l.sinkT = 0; l.load = 0; } // back up
+        continue;
+      }
+      const ridden = Game.players.some(p => p.ride === l && p.alive);
+      l.load = ridden ? (l.load || 0) + dt / 1.2 : Math.max(0, (l.load || 0) - dt * 0.6);
+      if (ridden && l.load > 0.5 && Math.random() < dt * 12) FX.bubbles(l.x + rand(-8, 8), row.y);
+      if (l.load >= 1) { l.sinkT = 0.001; FX.splash(l.x, row.y, 8); Sound.splash(0.3); }
+    }
+  },
+
   // The log under world x, if any (the player's centre must be on it).
   logAt(row, x) {
-    for (const l of row.river.logs) if (Math.abs(l.x - x) <= l.len / 2 - 2) return l;
+    for (const l of row.river.logs) if ((!l.sinkT || l.sinkT < 0.3) && Math.abs(l.x - x) <= l.len / 2 - 2) return l;
     return null;
   },
 };

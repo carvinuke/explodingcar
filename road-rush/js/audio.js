@@ -413,6 +413,48 @@ const Sound = (() => {
       [392, 523, 659, 784, 1047].forEach((f, i) => tone('triangle', f, f * 1.5, 0.3, 0.1, 0.25 + i * 0.07));
     },
 
+    timeStop(on) {
+      if (!ok()) return;
+      if (on) { tone('sine', 900, 120, 0.6, 0.12); noise('lowpass', 1200, 200, 0.6, 0.15); }
+      else { tone('sine', 120, 900, 0.4, 0.1); }
+    },
+
+    boing() {
+      if (!ok()) return;
+      tone('sine', 180, 520, 0.18, 0.12);
+      tone('triangle', 260, 640, 0.14, 0.05, 0.03);
+    },
+
+    bubble() {
+      if (!ok()) return;
+      tone('sine', 500, 1100, 0.12, 0.08);
+    },
+
+    croak() { // swamp frogs
+      if (!ok()) return;
+      tone('square', 140, 110, 0.12, 0.035, 0, rand(-0.6, 0.6));
+      tone('square', 150, 100, 0.12, 0.03, 0.15, rand(-0.6, 0.6));
+    },
+
+    fever(on) { // combo fever
+      if (!ok()) return;
+      if (on) [523, 659, 784, 1047, 1319, 1568].forEach((f, i) => tone('triangle', f, 0, 0.14, 0.11, i * 0.05));
+      else tone('sine', 660, 330, 0.3, 0.08);
+    },
+
+    calm() { // Big S stops traffic
+      if (!ok()) return;
+      tone('sine', 220, 220, 1.2, 0.12);
+      tone('sine', 330, 330, 1.2, 0.08, 0.05);
+      tone('sine', 440, 440, 1.0, 0.05, 0.1);
+    },
+
+    cash() { // roadside stand
+      if (!ok()) return;
+      tone('square', 1200, 1200, 0.05, 0.05);
+      tone('triangle', 1600, 2000, 0.25, 0.1, 0.06);
+    },
+
     flip() { // reverse day starts or ends
       if (!ok()) return;
       tone('sine', 300, 1200, 0.35, 0.12);

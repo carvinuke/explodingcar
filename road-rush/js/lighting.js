@@ -153,7 +153,8 @@ const Lighting = {
         default: break;
       }
     });
-    if (World.zoneAt(Math.round(Cam.y / TILE)) === 'country' && !Game.weather.amt) this.fireflies(gg, time, dark);
+    const fz = World.zoneAt(Math.round(Cam.y / TILE));
+    if ((fz === 'country' || fz === 'swamp' || fz === 'farm') && (!Game.weather.amt || Game.weather.type === 'fog')) this.fireflies(gg, time, dark);
     g.globalAlpha = 1;
     g.globalCompositeOperation = 'source-over';
     c.setTransform(1, 0, 0, 1, 0, 0);

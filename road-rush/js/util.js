@@ -102,6 +102,8 @@ const Settings = {
   gore: false,
   shake: true,
   ghost: true,
+  graves: true,      // a marker where you died last run
+  lowGfx: false,     // performance mode
   replay: true,
   motion: false,     // reduced motion
   colorblind: false,
@@ -114,6 +116,8 @@ const Settings = {
     this.shake = s.shake !== false;
     this.ghost = s.ghost !== false;
     this.replay = s.replay !== false;
+    this.graves = s.graves !== false;
+    this.lowGfx = s.lowGfx === true;
     this.motion = s.motion === undefined ? prefersReduced : s.motion === true;
     this.colorblind = s.colorblind === true;
     this.keys = { ...DEFAULT_KEYS };
@@ -123,7 +127,7 @@ const Settings = {
   },
   save() {
     Store.set('settings', {
-      gore: this.gore, shake: this.shake, ghost: this.ghost, replay: this.replay,
+      gore: this.gore, shake: this.shake, ghost: this.ghost, replay: this.replay, graves: this.graves, lowGfx: this.lowGfx,
       motion: this.motion, colorblind: this.colorblind, keys: this.keys,
     });
   },

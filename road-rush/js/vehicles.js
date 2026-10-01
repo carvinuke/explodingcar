@@ -28,6 +28,12 @@ const VEHICLE_TYPES = {
                colors: ['#f6f6f2'], responder: true },
   firetruck: { name: 'a fire truck',   len: 2.6,  h: 0.66, cab: null,              speed: 1.2,  wheels: [-0.38, -0.22, 0.3],
                colors: ['#d62828'], responder: true },
+  tractor:   { name: 'a tractor',      len: 1.3,  h: 0.3,  cab: [0.1, 0.48, 0.42], speed: 0.55, wheels: [-0.27, 0.3],
+               colors: ['#2f8a3a', '#d62828', '#1d5fbf'], bigWheels: true },
+  logtruck:  { name: 'a logging truck', len: 2.8, h: 0.3,  cab: [0.74, 0.97, 0.34], speed: 0.85, wheels: [-0.4, -0.25, 0.1, 0.36],
+               colors: ['#e63946', '#264653', '#f4a261'] },
+  forklift:  { name: 'a forklift',     len: 1.0,  h: 0.25, cab: [0.12, 0.62, 0.48], speed: 0.6,  wheels: [-0.28, 0.25],
+               colors: ['#ffb000', '#f26722'] },
   cow:       { name: 'a cow',          len: 1.15, h: 0.5,  cab: null,              speed: 0,    wheels: [],
                colors: ['#f4f1ea'], animal: true },
 };
@@ -140,6 +146,10 @@ const Vehicles = {
   // as it gets harder. Each biome has its own mix.
   weightsFor(d, zone = 'country') {
     const city = zone === 'city', desert = zone === 'desert', snow = zone === 'snow', beach = zone === 'beach';
+    if (zone === 'farm') return [['small', 2], ['sedan', 2], ['pickup', 3], ['tractor', 3], ['van', 1], ['tanker', d > 0.2 ? 0.4 : 0]].filter(e => e[1] > 0);
+    if (zone === 'autumn') return [['small', 2], ['sedan', 2.5], ['pickup', 2.5], ['logtruck', 2.2], ['van', 1], ['sports', d > 0.08 ? 0.6 : 0]].filter(e => e[1] > 0);
+    if (zone === 'harbor') return [['small', 1.5], ['van', 2.5], ['pickup', 1.5], ['forklift', 3], ['tanker', d > 0.2 ? 1 : 0.3], ['bus', d > 0.2 ? 0.4 : 0]].filter(e => e[1] > 0);
+    if (zone === 'swamp') return [['small', 2], ['sedan', 2], ['pickup', 3.5], ['van', 1]];
     return [
       ['small', city ? 2.5 : 3], ['sedan', 3], ['taxi', city ? 2.2 : 0],
       ['pickup', desert ? 3.2 : snow ? 2.4 : 1.8], ['van', city ? 2 : beach ? 2.6 : 1.4],
@@ -587,8 +597,8 @@ const Vehicles = {
   hitAnimal(row, cow, fromX, power = 1) {
     this.toss(cow, fromX, power * 0.8);
     cow.vz = rand(260, 340);
-    FX.text(cow.x, cow.y + 20, 'MOO!', '#ffffff', 22);
-    Sound.moo(true);
+    FX.text(cow.x, cow.y + 20, cow.sheep ? 'BAA!' : 'MOO!', '#ffffff', 22);
+    if (!cow.sheep) Sound.moo(true);
     if (Settings.gore) FX.beef(cow.x, cow.y);
     else FX.dust(cow.x, cow.y, 14);
     Cam.addTrauma(0.2);

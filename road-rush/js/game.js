@@ -81,6 +81,7 @@ const Game = {
   },
   // Who a secret event picks on.
   target() {
+    if (Powers.decoy && Powers.decoy.alive) return Powers.decoy; // the decoy draws the danger
     const alive = this.players.filter(p => p.alive);
     return alive.length ? pick(alive) : Player;
   },
@@ -100,6 +101,7 @@ const Game = {
     Replay.reset();
     Rage.reset();
     Egg.reset();
+    River.steps.length = 0;
     Reverse.reset();
     World.reset(seed, { speedMul: M.speedMul, gapMul: M.gapMul, powerups: M.powerups });
     if (this.players.length > 1) { Player.reset(3); Player2.reset(7); }
@@ -125,6 +127,7 @@ const Game = {
     this.winner = null;
     this.xpInfo = null;
     this.lastTick = 99;
+    this.fever = false;
   },
 
   bestFor(mode) {
@@ -152,6 +155,7 @@ const Game = {
       Stats.add('runs');
     }
     Pets.reset();
+    Graves.start();
     if (Pets.perk('startShield')) Player.shield += Pets.perk('startShield'); // the bunny brings a shield
     Missions.startRun();
     Trophies.startRun(mode);
@@ -231,7 +235,7 @@ const Game = {
   // `n`: how many coins it's worth (the golden goose's eggs are worth 10).
   addCoin(it, p = Player, n = 1) {
     if (p.id === 0 && Math.random() < (Pets.perk('luck') || 0)) { n *= 2; FX.text(it.x, it.y + 24, 'LUCKY!', '#7ed957', 13); }
-    const k = (this.modeDef().coinMult || 1) * (p.id === 0 && Pets.has('unicorn') ? 2 : 1) * n;
+    const k = (this.modeDef().coinMult || 1) * (p.id === 0 && Pets.has('unicorn') ? 2 : 1) * (p.id === 0 && this.fever ? 3 : 1) * n;
     p.coins += k;
     if (p.id === 0) this.coins = p.coins;
     this.addBonus(25 * n, p);
@@ -264,6 +268,14 @@ const Game = {
     FX.text(p.x, p.y + 26, p.combo > 1 ? `CLOSE CALL x${p.combo}  +${pts}` : `CLOSE CALL +${pts}`, '#7fe0ff', 14 + Math.min(8, p.combo));
     Sound.near(p.combo);
     Rage.add(p, 0.25); // Big J: every close call makes him angrier
+    if (p.id === 0 && p.combo >= 10 && !this.fever && this.players.length === 1) { // combo fever
+      this.fever = true;
+      Sound.fever(true);
+      FX.flashScreen(0.3, '255,210,60');
+      FX.text(p.x, p.y + 80, 'COMBO FEVER! COINS x3', '#ffd23f', 22);
+      UI.toast('t-fever', 'COMBO FEVER', 'Coins are worth triple until your combo breaks', 2600);
+      if (this.tracksProgress()) Stats.add('fevers');
+    }
     if (p.id === 0) {
       Missions.max('combo', p.combo);
       Trophies.max('combo', p.combo);
@@ -493,6 +505,8 @@ const Game = {
   endRun() {
     this.state = 'dying';
     this.deathT = 0;
+    this.fever = false;
+    Graves.record(Player);
     if (this.players.length > 1) {
       if (this.winner) this.versusWins[this.winner.id]++;
       Stats.add('versusGames');
@@ -613,24 +627,30 @@ const Game = {
     }
     const fz = this.trafficFactor();
     this.skidCooldown -= dt;
+    const wdt = Powers.stop > 0 ? 0 : dt; // time stop: the world holds still, you don't
 
-    River.update(dt, fz);
-    Events.update(dt);
+    River.update(wdt, fz);
+    Events.update(wdt);
     for (const p of this.players) p.update(dt, this.time);
-    Vehicles.update(dt, fz);
-    Rail.update(dt, fz);
-    Work.update(dt);
-    Animals.update(dt);
+    Vehicles.update(wdt, fz);
+    Rail.update(wdt, fz);
+    Work.update(wdt);
+    Animals.update(wdt);
     Pets.update(dt);
-    Storms.update(dt);
+    Storms.update(wdt);
     Rage.update(dt);
     Egg.update();
-    Vehicles.drunkDirector(dt);
-    if ((playing || this.state === 'title') && Powers.freeze <= 0) Vehicles.director(dt, this.leader().row, fz);
+    Graves.update();
+    if (this.fever && (this.time - Player.comboT >= 3 || !Player.alive)) { // the combo broke
+      this.fever = false;
+      if (Player.alive) { Sound.fever(false); FX.text(Player.x, Player.y + 50, 'FEVER OVER', '#e8d080', 14); }
+    }
+    Vehicles.drunkDirector(wdt);
+    if ((playing || this.state === 'title') && Powers.freeze <= 0 && Powers.stop <= 0) Vehicles.director(wdt, this.leader().row, fz);
     if (playing) {
       this.checkHits();
       for (const p of this.players) if (p.alive) Items.update(dt, p);
-      this.updateDanger(dt);
+      this.updateDanger(wdt);
       if (this.tracksProgress()) Ghost.update(this.time);
       for (const p of this.players) if (this.time - p.lastMoveT > 0.9) p.streak = 0;
       this.updateTimer(dt);
@@ -670,6 +690,8 @@ const Game = {
       this.frameAvg = lerp(this.frameAvg || 1 / 60, raw, 0.05);
       if (this.frameAvg > 1 / 45) FX.quality -= 0.01;
       else if (this.frameAvg < 1 / 56) FX.quality += 0.002;
+      if (Settings.lowGfx) FX.quality = Math.min(FX.quality, 0.6);
+      if (this.state === 'playing') Renderer.adapt(this.frameAvg, realDt);
     }
     if (this.state !== 'paused') {
       if (this.slow.t > 0) {
