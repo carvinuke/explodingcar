@@ -142,7 +142,7 @@ const Reverse = {
     Player.grace = Math.max(Player.grace, 2);
     const title = r.points <= 0 ? 'LICENCE REVOKED' : 'BACK TO NORMAL';
     UI.toast('t-reverse', title, `Dodged ${r.dodged} · hit ${r.hit} · ${r.coins >= 0 ? '+' : ''}${r.coins} coins`, 4200);
-    if (Pets.has('alien')) Game.giveCoins(50, Player, 'SPACE BUDDY +50', '#9bff7a');
+    if (Pets.has('alien')) Game.giveCoins(Pets.up(50, 100), Player, `SPACE BUDDY +${Pets.up(50, 100)}`, '#9bff7a');
     if (Game.tracksProgress()) {
       Stats.add('revDodged', r.dodged);
       Trophies.max('revDodge', r.dodged);

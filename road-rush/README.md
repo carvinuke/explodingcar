@@ -200,8 +200,23 @@ coins instead. A Ghostie pet makes eggs show up twice as often.
   Crown of Fire (38), Shadow Cat (40), the Aurora trail (42), Cosmic Big J (45),
   and at level 50, Golden Big J and the Pure Gold trail. The report shows the
   XP you earned and what the next level unlocks.
-- **Shop:** 159 cosmetics in four tabs, with a collection counter at the top.
+- **Shop:** 215 cosmetics in seven tabs, with a collection counter at the top.
   Unlocking everything takes a day or two of playing.
+  - **Death effects (15):** how you go when you get hit, on top of the
+    crash: Party Popper, Heartbreak, Game Over pixels, Bubble Pop, Jackpot,
+    Ninja Vanish (you disappear in smoke), Spirit (your ghost floats up),
+    Statue, Frozen Solid, Thunderstruck, Fireworks, Rainbow Blast, Black Hole,
+    and the Golden Statue for reaching level 50.
+  - **Footprints (14):** marks you leave on the ground for a few seconds:
+    chicken tracks, paw prints, hearts, snow boots, stars, slime, pixels,
+    flickering fire, flowers that pop up, ghostly steps, neon, rainbow and
+    diamonds.
+  - **Titles (22):** a title shown under your score, like Road Runner,
+    Daredevil or Chicken Royalty, or earned ones like Egg Hunter, Rage
+    Machine, World Traveler, Master and Legend.
+  - **Outfits:** three saved slots at the top of the shop. Save what you're
+    wearing (character, hat, trail, pet, death effect, footprints and title)
+    and switch back to it in one tap.
   - **Skins (62):** chicks in every colour, Crow, Cardinal, Blue Jay, Rubber
     Duck, Flamingo, Toucan and City Pigeon; four-legged critters (Pig, Mouse,
     Ginger Cat, Bunny, Black Cat, Puppy, Moo Cow, Fox, Bear, Tiger, Monkey,
@@ -214,6 +229,21 @@ coins instead. A Ghostie pet makes eggs show up twice as often.
   - **Trails (27):** hearts, leaves, snowflakes, music notes, slime, pixels,
     cherry blossoms, ink, bats, little ghosts, coins, cash and more.
   - **Pets (34):** see below, plus the egg-only ones above.
+- **Mystery boxes:** a rare purple box on the road. Grab it and it's opened on
+  the report at the end of the run: coins, a cosmetic you don't have yet, or
+  one of nine mystery-box exclusives you can't get any other way: the Disco
+  Chick (a dance floor lights up under you), the Glitch Chick (flickers
+  between dimensions), the Storm Cloud hat (your own raincloud, with
+  lightning), the Black Hole trail (a vortex that pulls in coins next to
+  you), the Mimic (a treasure-chest pet that eats the coins you hop past and
+  gives them to you), the Supernova death effect (wrecks every car on
+  screen), the Midas Touch footprints (now and then a step leaves you a
+  coin), and the titles The Chosen One and Lucky Duck.
+- **Pet levels:** your pet earns the same XP you do each run and levels up to
+  5. At level 5 its perk gets stronger: the cat blocks two hits, the phoenix
+  brings you back twice, the dog fetches from further away, the duckling
+  gives +40% XP, and so on (the shop card shows each pet's level and its
+  level-5 upgrade).
 - **Pets:** a companion that follows you around, each with a trick:
   - *Duckling:* +25% XP every run.
   - *Dog:* runs off to fetch coins near you.
@@ -251,7 +281,7 @@ coins instead. A Ghostie pet makes eggs show up twice as often.
     still on the water, it pops.
   - *Decoy:* leaves a fake you behind for 10 seconds. The giant goose, UFOs,
     meteors and lightning go after it instead of you.
-- **Trophies:** 38 achievements, such as surviving three explosions in one run,
+- **Trophies:** 39 achievements, such as surviving three explosions in one run,
   a close call with a train, getting trampled by a deer, getting picked up
   by a tornado and living, playing 500 runs, reaching row 500, or owning 40,
   90 and finally every cosmetic. Many unlock things you can't buy: the Crash
@@ -314,8 +344,9 @@ for the rest of the session. From there you can:
 - spawn any vehicle just ahead, clear all traffic, fill the road with coins,
   blow up every car on screen, or kill yourself to see the replay
 - give yourself any pet (including the egg-only ones)
-- start a Reverse Day, drop an egg in front of you, hatch one on the spot, or
-  max out Big J's rage
+- start a Reverse Day, drop an egg in front of you, hatch one on the spot,
+  max out Big J's rage, spawn a roadside stand or a mystery box, start combo
+  fever, or max out your pet's level
 - grant any power-up, start any secret event, or summon a tornado, lightning,
   a drunk driver, a reckless driver, a cow, deer or a seagull
 - force the weather or jump to morning, sunset or night
@@ -352,6 +383,7 @@ Plain scripts that share a few global objects, loaded in order by `index.html`:
 | `js/trophies.js` | `Stats`, `Trophies` and `Levels` |
 | `js/events.js` | `Events`: secret events |
 | `js/storms.js` | `Storms`: lightning and tornadoes |
+| `js/extras.js` | `DeathFX`, `Prints` (footprints), `Boxes` (mystery boxes) and `PetLevels` |
 | `js/specials.js` | `Rage` (Big J's rage stomp and Big S's calm), `Egg` (carrying and hatching) and `Graves` (where you died last run) |
 | `js/reverse.js` | `Reverse`: Reverse Day, where you drive and the chickens cross |
 | `js/camera.js` | `Cam`: follow (one or two players), shake, zoom |

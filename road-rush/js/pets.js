@@ -16,6 +16,13 @@
 // - Golden Goose: lays golden eggs worth 10 coins; double XP
 // - Time Owl: slower traffic, and bullet time when a car is about to hit you
 
+// What a numeric perk becomes at pet level 5.
+const PERK_MAX = {
+  luck: v => v + 0.1, xp: v => v + 0.15, danger: v => v - 0.07, powerBoost: v => v + 0.2, missionBonus: v => v + 0.15,
+  closeBonus: v => v + 1, eggLuck: v => v + 1, zoneCoins: v => v + 25, rowCoins: v => Math.round(v * 0.66), magnet: v => v + 0.8,
+  startShield: v => v + 1,
+};
+
 const Pets = {
   pet: null,
 
@@ -24,18 +31,23 @@ const Pets = {
     if (!type) { this.pet = null; return; }
     this.pet = {
       kind: 'pet', type, x: Player.x - 0.7 * TILE, y: Player.y - 0.6 * TILE, z: 0,
-      hopT: 0, face: 1, fetch: null, catUsed: false, ph: rand(6), blink: rand(3),
+      hopT: 0, face: 1, fetch: null, catUsed: 0, ph: rand(6), blink: rand(3),
       dropT: rand(4, 7), turtleT: 0, warned: new Set(),
-      reborn: false, fireT: 0, breath: 0, flame: null, layT: rand(5, 7), owlT: 0,
+      reborn: 0, fireT: 0, breath: 0, flame: null, layT: rand(5, 7), owlT: 0,
       golemT: 0, fairyT: 25, frostT: 30, ready: true,
     };
   },
+
+  // Level 5: the pet's perk gets stronger.
+  maxed() { return !!this.pet && PetLevels.maxed(this.pet.type); },
+  up(normal, max) { return this.maxed() ? max : normal; },
 
   // A pet's passive perk from its PETS entry (luck, xp, grip...), if one is out.
   perk(key) {
     if (!this.pet || Game.players.length > 1) return undefined;
     const d = PETS[this.pet.type];
-    return d ? d[key] : undefined;
+    const v = d ? d[key] : undefined;
+    return v !== undefined && PERK_MAX[key] && this.maxed() ? PERK_MAX[key](v) : v;
   },
 
   // A pet just hatched right here: start it at the egg, not somewhere behind you.
@@ -61,7 +73,7 @@ const Pets = {
     if (pet.type === 'pigeon' && active) {
       pet.dropT -= dt;
       if (pet.dropT <= 0) {
-        pet.dropT = rand(5, 8);
+        pet.dropT = this.up(rand(5, 8), rand(3, 5));
         const r = p.row + randInt(1, 3), R = World.rows.get(r);
         if (R && R.type !== 'river') {
           const free = [];
@@ -76,7 +88,7 @@ const Pets = {
     }
     // the parrot warns you
     if (pet.type === 'parrot' && active) {
-      for (let r = p.row + 1; r <= p.row + 5; r++) {
+      for (let r = p.row + 1; r <= p.row + this.up(5, 8); r++) {
         const R = World.rows.get(r);
         if (!R) continue;
         if (R.type === 'rail' && R.rail.state === 'warn' && !pet.warned.has(R)) {
@@ -100,7 +112,7 @@ const Pets = {
     if (pet.type === 'goose' && active) {
       pet.layT -= dt;
       if (pet.layT <= 0) {
-        pet.layT = rand(6, 9);
+        pet.layT = this.up(rand(6, 9), rand(4, 6));
         const r = p.row + randInt(1, 2), R = World.rows.get(r);
         if (R && R.type !== 'river') {
           const free = [];
@@ -118,7 +130,7 @@ const Pets = {
     if (pet.type === 'owl') {
       if (pet.owlT > 0) pet.owlT -= dt;
       else if (active && !p.hop && this.threat(p, 0.5)) {
-        pet.owlT = 4;
+        pet.owlT = this.up(4, 2.5);
         Game.slowmo(0.25, 0.75);
         FX.text(pet.x, pet.y + 36, 'HOO! LOOK OUT!', '#9fe7ff', 14);
         Sound.whoosh(0.6, 0);
@@ -131,7 +143,7 @@ const Pets = {
     if (pet.type === 'fairy' && active) {
       pet.fairyT -= dt;
       if (pet.fairyT <= 0) {
-        pet.fairyT = 25;
+        pet.fairyT = this.up(25, 18);
         const types = Object.keys(POWERUPS);
         Powers.grant(pick(types), { x: p.x, y: p.y }, p);
         FX.text(pet.x, pet.y + 40, 'A GIFT!', '#ff9fe0', 14);
@@ -141,7 +153,7 @@ const Pets = {
     if (pet.type === 'frostfox' && active) {
       pet.frostT -= dt;
       if (pet.frostT <= 0) {
-        pet.frostT = 30;
+        pet.frostT = this.up(30, 22);
         Powers.freeze = Math.max(Powers.freeze, 3);
         FX.ice(p.x, p.y);
         Sound.freeze();
@@ -153,7 +165,7 @@ const Pets = {
       for (const it of Items.list) {
         if (it.type === 'coin' || it.type === 'egg' || it.type === 'goldegg' || it.type === 'stand') continue;
         const dx = p.x - it.x, dy = p.y - it.y, d = Math.hypot(dx, dy);
-        if (d < 6 * TILE && d > 1) { const s = Math.min(d, 260 * dt); it.x += (dx / d) * s; it.y += (dy / d) * s; }
+        if (d < this.up(6, 9) * TILE && d > 1) { const s = Math.min(d, 260 * dt); it.x += (dx / d) * s; it.y += (dy / d) * s; }
       }
     }
     // a gentle coin pull (goldfish)
@@ -170,20 +182,21 @@ const Pets = {
       for (const it of Items.list) {
         if (it.type !== 'coin') continue;
         const dx = p.x - it.x, dy = p.y - it.y, d = Math.hypot(dx, dy);
-        if (d < 4.2 * TILE && d > 1) { const s = Math.min(d, 330 * dt); it.x += (dx / d) * s; it.y += (dy / d) * s; }
+        if (d < this.up(4.2, 6) * TILE && d > 1) { const s = Math.min(d, 330 * dt); it.x += (dx / d) * s; it.y += (dy / d) * s; }
       }
       if (Math.random() < dt * 20) FX.spawn('dust', pet.x + rand(-6, 6), pet.y, 2, { vx: rand(-30, 30), vz: rand(20, 50), g: -10, drag: 1.5, life: 0.5, size: 2, size2: 6, color: '#b7ae9e', alpha: 0.5 });
     }
     // where to be: a little behind and beside the player
     let tx = p.x - (p.facing === 'left' ? -1 : 1) * 0.65 * TILE, ty = p.y - 0.55 * TILE;
     let speed = 7;
-    // the dog fetches coins
-    if (pet.type === 'dog' && Game.state === 'playing' && p.alive) {
+    // the dog fetches coins; the mimic eats the ones you hopped past
+    const mimic = pet.type === 'mimic';
+    if ((pet.type === 'dog' || mimic) && Game.state === 'playing' && p.alive) {
       if (pet.fetch && !Items.list.includes(pet.fetch)) pet.fetch = null;
       if (!pet.fetch) {
-        let best = null, bd = 3.2 * TILE;
+        let best = null, bd = (mimic ? this.up(2.5, 4) : this.up(3.2, 5)) * TILE;
         for (const it of Items.list) {
-          if (it.type !== 'coin' || it.gull) continue;
+          if (it.type !== 'coin' || it.gull || (mimic && it.row >= p.row)) continue;
           const d = Math.hypot(it.x - p.x, it.y - p.y);
           if (d < bd) { bd = d; best = it; }
         }
@@ -198,7 +211,7 @@ const Pets = {
           Items.list.splice(Items.list.indexOf(it), 1);
           pet.fetch = null;
           Game.addCoin(it, p);
-          FX.text(pet.x, pet.y + 18, 'WOOF!', '#ffe9b0', 12);
+          FX.text(pet.x, pet.y + 18, mimic ? 'CHOMP!' : 'WOOF!', '#ffe9b0', 12);
         }
       }
     }
@@ -207,7 +220,7 @@ const Pets = {
       for (const it of Items.list) {
         if (it.type !== 'coin') continue;
         const dx = p.x - it.x, dy = p.y - it.y, d = Math.hypot(dx, dy);
-        if (d < 2.2 * TILE && d > 1) { const s = Math.min(d, 200 * dt); it.x += (dx / d) * s; it.y += (dy / d) * s; }
+        if (d < this.up(2.2, 3.2) * TILE && d > 1) { const s = Math.min(d, 200 * dt); it.x += (dx / d) * s; it.y += (dy / d) * s; }
       }
     }
     const dx = tx - pet.x, dy = ty - pet.y, dist = Math.hypot(dx, dy);
@@ -271,7 +284,7 @@ const Pets = {
     // anything about to hit you (mid-hop, `row` is already the row you're landing in)
     const v = this.threat(p, 0.9);
     if (!v) return;
-    pet.fireT = 2.2;
+    pet.fireT = this.up(2.2, 1.5);
     pet.breath = 0.4;
     pet.face = sign(v.x - pet.x) || 1;
     pet.flame = { v, t: 0 };
@@ -291,7 +304,7 @@ const Pets = {
   // Phoenix Chick: whatever killed you, you rise again (once per run).
   rebirth(p) {
     const pet = this.pet;
-    pet.reborn = true;
+    pet.reborn = (pet.reborn || 0) + 1; // twice per run at level 5
     const ox = p.x, oy = p.y;
     // somewhere safe: the first grass row from here on, clear of the danger line
     const from = Math.max(p.row, Math.ceil(Game.danger.y / TILE) + 3);
@@ -340,10 +353,10 @@ const Pets = {
   // Cat: nine lives. Golem: a block every 20 seconds. Phoenix: rebirth.
   // Returns true if the pet saved you.
   saves(p, source) {
-    if (p.id === 0 && this.has('phoenix') && !this.pet.reborn) { this.rebirth(p); return true; }
+    if (p.id === 0 && this.has('phoenix') && (this.pet.reborn || 0) < this.up(1, 2)) { this.rebirth(p); return true; }
     const physical = !(source === 'danger' || source === 'drown' || source === 'swept' || source === 'pit');
     if (p.id === 0 && this.has('golem') && this.pet.golemT <= 0 && physical) {
-      this.pet.golemT = 20;
+      this.pet.golemT = this.up(20, 14);
       p.grace = 1.6;
       FX.shieldBreak(p.x, p.y);
       FX.text(p.x, p.y + 30, 'GOLEM BLOCK!', '#9fe7ff', 18);
@@ -352,9 +365,9 @@ const Pets = {
       Cam.addTrauma(0.4);
       return true;
     }
-    if (p.id !== 0 || !this.has('cat') || this.pet.catUsed) return false;
+    if (p.id !== 0 || !this.has('cat') || (this.pet.catUsed || 0) >= this.up(1, 2)) return false;
     if (source === 'danger' || source === 'drown' || source === 'swept' || source === 'pit') return false;
-    this.pet.catUsed = true;
+    this.pet.catUsed = (this.pet.catUsed || 0) + 1; // two lives at level 5
     p.grace = 1.6;
     FX.shieldBreak(p.x, p.y);
     FX.text(p.x, p.y + 30, 'NINE LIVES!', '#ffd6a0', 18);
@@ -367,7 +380,7 @@ const Pets = {
   turtleCatch(p, row) {
     const pet = this.pet;
     if (p.id !== 0 || !this.has('turtle') || pet.turtleT > 0) return null;
-    pet.turtleT = 12;
+    pet.turtleT = this.up(12, 6);
     const shell = { kind: 'log', id: ++River.ids, len: 0.95 * TILE, x: p.x, y: row.y, bob: 0, dir: row.river.dir, style: 'turtle' };
     row.river.logs.push(shell);
     FX.text(p.x, p.y + 30, 'TURTLE SAVE!', '#7ed957', 16);

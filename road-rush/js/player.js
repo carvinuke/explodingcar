@@ -49,6 +49,7 @@ const PlayerProto = {
     this.bonus = 0;
     this.coins = 0;
     this.sheet = 0; // graphic mode: paramedics covered the body
+    this.statue = null; // death effect: turned to stone, ice or gold
     this.rage = 0;  // Big J only: 0..1, stomps at 1
     this.stomp = null;
   },
@@ -239,6 +240,7 @@ const PlayerProto = {
     }
     this.logChain = 0;
     if (row.type === 'work' && row.pit[this.col]) { Game.kill('pit', { p: this }); return; }
+    Prints.step(this);
     if (row.type === 'road' && row.flood) FX.splash(this.x, this.y, 8);
     if (row.leaves && row.leaves[this.col] && !fromKnock && !(this.pw.speed > 0)) { // a leaf pile: crunch, and the next hop is slow
       this.slowHop = true;

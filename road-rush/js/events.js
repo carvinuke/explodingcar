@@ -92,7 +92,7 @@ const HANDLERS = {
           }
         }
         for (const p of Game.players) {
-          if (!e.grabbed && vulnerable(p) && !p.abduct && !(p.id === 0 && Pets.has('alien')) && Math.abs(p.x - e.x) < 0.8 * TILE && Math.abs(p.y - e.gy) < 0.5 * TILE) {
+          if (!e.grabbed && vulnerable(p) && !p.abduct && !(p.id === 0 && (Pets.has('alien') || (Pets.has('minij') && Pets.maxed()))) && Math.abs(p.x - e.x) < 0.8 * TILE && Math.abs(p.y - e.gy) < 0.5 * TILE) {
             e.grabbed = true;
             p.startAbduct(e);
           }
@@ -514,7 +514,7 @@ const Events = {
     this.active = null;
     this.cd = rand(50, 90);
     if (!silent && Game.state === 'playing' && Player.alive) {
-      if (Pets.has('alien')) Game.giveCoins(50, Player, 'SPACE BUDDY +50', '#9bff7a');
+      if (Pets.has('alien')) Game.giveCoins(Pets.up(50, 100), Player, `SPACE BUDDY +${Pets.up(50, 100)}`, '#9bff7a');
       Missions.add('events');
       Trophies.add('events');
       Stats.add('events');

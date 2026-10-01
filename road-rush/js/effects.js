@@ -1245,6 +1245,13 @@ const FX = (() => {
         }
         for (let i = 0; i < 4; i++) spawn('debris', x, y, 3, { vx: rand(-60, 60), vy: rand(-40, 40), vz: rand(80, 160), g: 800, bounce: 0.3, life: 0.8, size: rand(2, 3.5), color: pick(['#8a6a4a', '#6b4a3a', '#9aa0a8']), rotV: rand(-10, 10) });
         return;
+      case 'blackhole':
+        for (let i = 0; i < 8; i++) {
+          const a = rand(6.2832), r = rand(10, 18);
+          spawn('glow', x + Math.cos(a) * r, y + Math.sin(a) * r * 0.6, rand(3, 10), { vx: -Math.cos(a) * 40 - Math.sin(a) * 50, vy: -Math.sin(a) * 30 + Math.cos(a) * 40, drag: 1, life: 0.6, size: rand(2, 3.5), size2: 0.3, color: pick(['#7b3cff', '#c46bff', '#3a1a8f']), alpha: 0.8 });
+        }
+        spawn('smoke', x, y, 3, { life: 0.7, size: 4, size2: 14, color: '#1a0f33', alpha: 0.5 });
+        return;
       case 'turbo':
         for (let i = 0; i < 5; i++) spawn('spark', x + rand(-6, 6), y + rand(-6, 6), rand(4, 18), { vx: rand(-260, 260), vy: rand(-80, 80), drag: 4, life: 0.3, size: 1.6, color: pick(['#ffffff', '#bfe8ff', '#ffe95c']) });
         for (let i = 0; i < 3; i++) spawn('dust', x, y, 2, { vx: rand(-60, 60), vy: rand(-40, 40), drag: 3, life: 0.4, size: 3, size2: 6, color: '#e8e8f0', alpha: 0.5 });

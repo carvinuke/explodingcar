@@ -1734,6 +1734,26 @@ const Draw = (() => {
         c.fillRect(-1.5, P(-7, top + 3) - 1, 3, 2.5);
         break;
       }
+      case 'raincloud': { // your own little storm
+        const t = now(), cz = top + 16 + Math.sin(t * 2) * 1;
+        c.fillStyle = '#9aa3b5';
+        for (const [x, r] of [[-6, 5], [0, 6.5], [6, 5], [-2, 4.5]]) { c.beginPath(); c.arc(x, P(0, cz + (x === 0 ? 2 : 0)), r, 0, 6.2832); c.fill(); }
+        c.fillStyle = '#b8c0d0';
+        for (const [x, r] of [[-5, 3.5], [1, 4.5]]) { c.beginPath(); c.arc(x, P(0, cz + 3), r, 0, 6.2832); c.fill(); }
+        c.strokeStyle = 'rgba(150,200,255,0.8)';
+        c.lineWidth = 1;
+        c.beginPath();
+        for (let k = 0; k < 5; k++) {
+          const ph = (t * 2.2 + k * 0.37) % 1, x = -7 + k * 3.5;
+          c.moveTo(x, P(0, cz - 4 - ph * 14)); c.lineTo(x - 0.8, P(0, cz - 7 - ph * 14));
+        }
+        c.stroke();
+        if ((t % 3.1) < 0.12) { // a little flash of lightning
+          c.fillStyle = '#fff6b0';
+          c.beginPath(); c.moveTo(1, P(0, cz - 3)); c.lineTo(-2, P(0, cz - 9)); c.lineTo(0.5, P(0, cz - 9)); c.lineTo(-1.5, P(0, cz - 15)); c.lineTo(3, P(0, cz - 7.5)); c.lineTo(0.5, P(0, cz - 7.5)); c.closePath(); c.fill();
+        }
+        break;
+      }
       case 'eggshell':
         box(c, -hw - 0.5, hw + 0.5, -D - 0.5, D + 0.5, top, top + 5, '#fff6e6', '#e9dcc4');
         box(c, -hw + 2, hw - 2, -D + 2, D - 2, top + 5, top + 8, '#fff6e6', '#e9dcc4');
@@ -1855,6 +1875,30 @@ const Draw = (() => {
     c.beginPath(); c.ellipse(0, cy, Math.max(0.5, w - 2), 7, 0, 0, 6.2832); c.fill();
     c.fillStyle = '#fff4b8';
     c.fillRect(-w * 0.4, cy - 4, Math.max(1, w * 0.3), 7);
+  }
+
+  // A mystery box: opened on the report at the end of the run.
+  function mysteryBox(c, it, time) {
+    const z = 6 + Math.abs(Math.sin(time * 3 + it.phase)) * 5;
+    c.save();
+    c.globalCompositeOperation = 'lighter';
+    c.fillStyle = `rgba(170,110,255,${0.25 + 0.1 * Math.sin(time * 5)})`;
+    c.beginPath(); c.arc(0, P(0, z + 8), 20, 0, 6.2832); c.fill();
+    c.restore();
+    c.translate(0, P(0, z));
+    c.rotate(Math.sin(time * 2 + it.phase) * 0.08);
+    box(c, -8, 8, -7, 7, 0, 13, '#a95cff', '#7a35cc');
+    box(c, -9, 9, -8, 8, 13, 16, '#bf7dff', '#8a45dd');
+    c.fillStyle = '#ffd23f'; // ribbon
+    c.fillRect(-1.5, P(-7, 13), 3, 13 * GZ);
+    c.fillRect(-1.5, P(8, 16), 3, 16 * GY);
+    c.fillRect(-9, P(1, 16) - 1, 18, 2);
+    box(c, -5, -1, -1.5, 1.5, 16, 19, '#ffd23f', '#e0a800');
+    box(c, 1, 5, -1.5, 1.5, 16, 19, '#ffd23f', '#e0a800');
+    c.fillStyle = '#ffffff';
+    c.font = `900 8px ${UI_FONT}`;
+    c.textAlign = 'center';
+    c.fillText('?', -4.5, P(-7, 5));
   }
 
   // Where you died last run.
@@ -2657,6 +2701,30 @@ const Draw = (() => {
       }
     };
     switch (o.type) {
+      case 'mimic': { // a treasure chest with teeth
+        const chomp = Math.abs(Math.sin(time * (o.fetch ? 14 : 3))) * (o.fetch ? 0.6 : 0.2);
+        for (const lx of [-5, 4]) box(c, lx - 1, lx + 1, -3, 3, 0, 2, '#6b4526', '#4d311b');
+        box(c, -8, 8, -5, 5, 2, 9, '#a8754a', '#7a522c');
+        c.fillStyle = '#ffd23f';
+        c.fillRect(-8, P(-5, 9), 16, 1.4);
+        c.fillRect(-1, P(-5, 7), 2, 3);
+        c.save();
+        c.translate(0, P(4, 9));
+        c.rotate(-chomp);
+        c.translate(0, -P(4, 9));
+        box(c, -8.5, 8.5, -5.5, 4.5, 9, 14, '#b88a58', '#8a6238');
+        c.fillStyle = '#ffd23f';
+        c.fillRect(-8.5, P(-5.5, 9.5), 17, 1.4);
+        c.fillStyle = '#ffffff'; // teeth
+        for (let x = -7; x < 8; x += 2.5) { c.beginPath(); c.moveTo(x, P(-5.5, 9)); c.lineTo(x + 1.2, P(-5.5, 7.5)); c.lineTo(x + 2.4, P(-5.5, 9)); c.fill(); }
+        c.restore();
+        c.fillStyle = '#c0102c';
+        c.fillRect(-6, P(-5, 9) + 0.5, 12, 1.5 * chomp * 6);
+        c.fillStyle = '#ffd23f';
+        c.fillRect(3, P(-5.5, 13), 1.6, 1.6);
+        c.fillRect(6, P(-5.5, 13), 1.6, 1.6);
+        break;
+      }
       case 'turtle': {
         const step = Math.sin(time * 6) * 0.8;
         for (const lx of [-5, 4]) box(c, lx - 1.5, lx + 1.5, -3.5, 3.5, 0, 2.5 + step * (lx > 0 ? 1 : -1), '#8cc26b', '#6a9c4d');
@@ -2932,7 +3000,7 @@ const Draw = (() => {
         break;
       }
     }
-    if (['turtle', 'rock', 'hamster', 'bunny', 'fox', 'frostfox', 'panda', 'robopup', 'mole', 'luckycat', 'penguin', 'bat', 'bee', 'snail', 'crab', 'slime', 'ghostie', 'goldfish', 'golem', 'fairy', 'alien'].includes(o.type)) { c.restore(); return; }
+    if (['mimic', 'turtle', 'rock', 'hamster', 'bunny', 'fox', 'frostfox', 'panda', 'robopup', 'mole', 'luckycat', 'penguin', 'bat', 'bee', 'snail', 'crab', 'slime', 'ghostie', 'goldfish', 'golem', 'fairy', 'alien'].includes(o.type)) { c.restore(); return; }
     if (o.type === 'phoenix') { // a tiny firebird with a burning tail
       const flap = Math.sin(time * 16) * 5, fl = Math.sin(time * 23);
       c.save();
@@ -3526,7 +3594,7 @@ const Draw = (() => {
   return {
     LANE_D, box, shadow, vehiclePalette, wreckPalette, vehicle, warning,
     hay, corn, scarecrow, reeds, stump, crate, barrel, bollard, container,
-    tree, bush, rock, lamp, sign, player, hint, ghost, bestGhost, stars, bubble, coin, powerItem, icon, iconURL, egg, eggPic, headTop, grave, stand,
+    tree, bush, rock, lamp, sign, player, hint, ghost, bestGhost, stars, bubble, coin, powerItem, icon, iconURL, egg, eggPic, headTop, grave, stand, mysteryBox,
     trainCar, log, xing,
     cactus, deadbush, skull, mesa, planter, hydrant, bin, mailbox, bench, snowman, building, buildingWindows,
     pit, cone, barrier, worksign, excavator, welcome, cow, deer, weed, medic, tag,

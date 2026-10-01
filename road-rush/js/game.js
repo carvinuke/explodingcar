@@ -54,6 +54,7 @@ const Game = {
     Trophies.load();
     Levels.load();
     Shop.load();
+    PetLevels.load();
     Renderer.init(document.getElementById('view'));
     Lighting.init();
     Replay.init();
@@ -101,6 +102,9 @@ const Game = {
     Replay.reset();
     Rage.reset();
     Egg.reset();
+    DeathFX.reset();
+    Prints.reset();
+    Boxes.reset();
     River.steps.length = 0;
     Reverse.reset();
     World.reset(seed, { speedMul: M.speedMul, gapMul: M.gapMul, powerups: M.powerups });
@@ -126,6 +130,8 @@ const Game = {
     this.timerOn = false;
     this.winner = null;
     this.xpInfo = null;
+    this.petInfo = null;
+    this.boxInfo = null;
     this.lastTick = 99;
     this.fever = false;
   },
@@ -197,7 +203,7 @@ const Game = {
       if (p.id === 0 && this.state === 'playing') {
         const rc = Pets.perk('rowCoins'); // the slimeling squeezes out a coin
         if (rc && p.maxRow % rc === 0) this.giveCoins(1, p, 'SQUISH! +1', '#8dff8a');
-        if (Pets.has('mole') && p.maxRow % 40 === 0) { // the mole digs up treasure
+        if (Pets.has('mole') && p.maxRow % Pets.up(40, 30) === 0) { // the mole digs up treasure
           this.giveCoins(25, p, 'TREASURE! +25');
           FX.dust(p.x, p.y, 14);
           for (let i = 0; i < 8; i++) FX.spawn('glyph', p.x, p.y, 10, { part: 'coin', color: '#ffd23f', vx: rand(-60, 60), vy: rand(-40, 40), vz: rand(120, 200), g: 600, bounce: 0.4, life: 1.2, size: 6, rotV: rand(-6, 6) });
@@ -235,7 +241,7 @@ const Game = {
   // `n`: how many coins it's worth (the golden goose's eggs are worth 10).
   addCoin(it, p = Player, n = 1) {
     if (p.id === 0 && Math.random() < (Pets.perk('luck') || 0)) { n *= 2; FX.text(it.x, it.y + 24, 'LUCKY!', '#7ed957', 13); }
-    const k = (this.modeDef().coinMult || 1) * (p.id === 0 && Pets.has('unicorn') ? 2 : 1) * (p.id === 0 && this.fever ? 3 : 1) * n;
+    const k = (this.modeDef().coinMult || 1) * (p.id === 0 && Pets.has('unicorn') ? Pets.up(2, 3) : 1) * (p.id === 0 && this.fever ? 3 : 1) * n;
     p.coins += k;
     if (p.id === 0) this.coins = p.coins;
     this.addBonus(25 * n, p);
@@ -458,6 +464,7 @@ const Game = {
         FX.feathers(p.x, p.y, skin);
       }
     }
+    DeathFX.play(p); // your death effect, on top
     Cam.addTrauma(gore ? 1 : 0.7);
     Cam.punch += gore ? 0.1 : 0.08;
     this.slowmo(gore ? 0.18 : 0.25, gore ? 1.3 : 0.9);
@@ -527,6 +534,8 @@ const Game = {
     Stats.save();
     Trophies.check();
     this.xpInfo = Levels.award(Levels.forRun(this.mode, Player.maxRow, this.coins, Trophies.run));
+    this.petInfo = PetLevels.award(Shop.pet, this.xpInfo.amount); // your pet levels up with you
+    this.boxInfo = Boxes.open();
     Trophies.check(); // level trophies
   },
 
@@ -544,6 +553,7 @@ const Game = {
       gore: this.goreDeath,
       versus: versus ? { winner: this.winner, wins: this.versusWins, rows: this.players.map(p => p.maxRow), scores: this.players.map(p => p.score) } : null,
       trophies: Trophies.fresh.slice(), xp: versusRun ? null : this.xpInfo,
+      boxes: versusRun ? [] : this.boxInfo || [], pet: versusRun ? null : this.petInfo,
     });
   },
 
@@ -639,6 +649,8 @@ const Game = {
     Pets.update(dt);
     Storms.update(wdt);
     Rage.update(dt);
+    DeathFX.update(dt);
+    Prints.update(dt);
     Egg.update();
     Graves.update();
     if (this.fever && (this.time - Player.comboT >= 3 || !Player.alive)) { // the combo broke

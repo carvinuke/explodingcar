@@ -856,3 +856,20 @@ kbd {
 
 .t-calm { background: #1a4fb8; color: var(--sign-white); box-shadow: inset 0 0 0 2px #1a4fb8, inset 0 0 0 4px var(--sign-white), 0 6px 24px rgba(40, 110, 255, 0.45); }
 .t-fever { background: linear-gradient(135deg, #ffe066, #ffb000); color: var(--ink); box-shadow: inset 0 0 0 2px #ffd23f, inset 0 0 0 4px var(--ink), 0 6px 24px rgba(255, 190, 40, 0.6); }
+
+/* ---- Outfits, titles, mystery boxes, pet levels ------------------------------- */
+.outfits { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.outfit { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 4px 8px; border-radius: 8px; background: rgba(255, 255, 255, 0.08); }
+.outfit canvas { width: 52px; height: 52px; }
+.outfit.empty canvas { opacity: 0.25; }
+.outfit b { font-size: 12px; font-weight: 900; letter-spacing: 0.08em; }
+.outfit-btns { display: flex; gap: 4px; flex-wrap: wrap; justify-content: center; }
+.outfit-btns button { font-size: 11px !important; padding: 6px 8px 4px !important; }
+.skin .petlv { color: #b9f2a6; font-size: 11px; }
+.skin.boxed:not(.locked) { box-shadow: inset 0 0 0 2px #c79bff; }
+.rarity.r-mystery { background: linear-gradient(90deg, #a95cff, #ff5c8a); color: #fff; }
+.title-plate { align-self: flex-start; padding: 3px 8px 2px; border-radius: 4px; background: #1d1b3a; color: #ffd23f; font-size: 11px; font-weight: 900; letter-spacing: 0.12em; text-transform: uppercase; box-shadow: inset 0 0 0 1.5px #ffd23f; }
+.box-strip { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.box-strip li { font-size: 13px; font-weight: 800; color: #6a35cc; }
+.box-strip li.rare { color: #c0108a; animation: pop-in 0.4s ease-out; }
+.box-strip li.pet { color: #2e7d32; }
