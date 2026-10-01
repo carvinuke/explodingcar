@@ -370,13 +370,6 @@ const Admin = {
     this.flash('A mystery box, just ahead');
   },
 
-  upgradeNow() {
-    if (Game.players.length > 1) { this.flash('Upgrades are single-player only'); return; }
-    if (!this.ensureRun()) return;
-    this.after(() => { if (Game.state === 'playing') Upgrades.open(Player); });
-    this.flash('Checkpoint!');
-  },
-
   giveManhole() {
     if (Game.players.length > 1) { this.flash('Secret rooms are single-player only'); return; }
     if (!this.ensureRun()) return;
@@ -543,7 +536,7 @@ const Admin = {
     btn(r, 'Combo fever', () => this.fever(), 'gold');
     btn(r, 'Drop a mystery box', () => this.giveBox(), 'gold');
     btn(r, 'Max pet level', () => this.maxPet());
-    btn(r, 'Upgrade checkpoint now', () => this.upgradeNow(), 'gold');
+    btn(r, 'Max every upgrade', () => { for (const id in UPGRADES) Upgrades.levels[id] = Upgrades.max(id); Upgrades.save(); Trophies.check(); this.flash('Every upgrade maxed (from the next run)'); });
     btn(r, 'Secret manhole', () => this.giveManhole(), 'gold');
     btn(r, 'Golden run (next run)', () => { Golden.force = true; this.flash('Your next run will be golden'); }, 'gold');
     btn(r, '+20 box shards', () => { Shards.add(20); this.flash(`${Shards.n} shards`); });

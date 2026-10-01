@@ -1,180 +1,120 @@
 'use strict';
-// Run upgrades: every 40 rows the game stops at a checkpoint and you pick one
-// of three upgrades for the rest of the run. Most stack. Also golden runs
+// Upgrades: permanent levels you buy with coins in the shop's Upgrades tab
+// (faster hops, more coins, more XP, fewer cars...). They apply to every
+// single-player run, with nothing popping up mid-game. Also golden runs
 // (about 1 run in 40 everything turns gold and coins are worth double) and
 // secret rooms (a rare manhole drops you into a vault full of coins).
 
 const UPGRADE_CATS = {
-  power:   { name: 'Power-ups', color: '#a95cff', icon: '<path d="M13 2 4 14h7l-1 8 9-12h-7z"/>' },
-  traffic: { name: 'Traffic',   color: '#3d9bff', icon: '<path d="M5 11l2-5h10l2 5v6h-2v2h-3v-2H10v2H7v-2H5zm2.5 0h9l-1.2-3H8.7zM7 13v2h2v-2zm8 0v2h2v-2z"/>' },
-  coins:   { name: 'Coins',     color: '#e0a800', icon: '<circle cx="12" cy="12" r="8"/><path d="M12 7v10M9.5 9.5h4a1.5 1.5 0 0 1 0 3h-3a1.5 1.5 0 0 0 0 3h4" stroke="#fff" stroke-width="1.6" fill="none"/>' },
-  defense: { name: 'Defense',   color: '#2fa84f', icon: '<path d="M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5z"/>' },
   move:    { name: 'Movement',  color: '#ff7a1a', icon: '<path d="M4 18h9l7-3v-3l-6 1-3-7H7l1 5-4 2z"/>' },
-  score:   { name: 'Score',     color: '#ff4f8a', icon: '<path d="M12 2l3 6.5 7 .8-5.2 4.8 1.5 7L12 17.6 5.7 21l1.5-7L2 9.3l7-.8z"/>' },
+  coins:   { name: 'Coins',     color: '#e0a800', icon: '<circle cx="12" cy="12" r="8"/><path d="M12 7v10M9.5 9.5h4a1.5 1.5 0 0 1 0 3h-3a1.5 1.5 0 0 0 0 3h4" stroke="#fff" stroke-width="1.6" fill="none"/>' },
+  score:   { name: 'XP & score', color: '#ff4f8a', icon: '<path d="M12 2l3 6.5 7 .8-5.2 4.8 1.5 7L12 17.6 5.7 21l1.5-7L2 9.3l7-.8z"/>' },
+  traffic: { name: 'Traffic',   color: '#3d9bff', icon: '<path d="M5 11l2-5h10l2 5v6h-2v2h-3v-2H10v2H7v-2H5zm2.5 0h9l-1.2-3H8.7zM7 13v2h2v-2zm8 0v2h2v-2z"/>' },
+  power:   { name: 'Power-ups', color: '#a95cff', icon: '<path d="M13 2 4 14h7l-1 8 9-12h-7z"/>' },
+  defense: { name: 'Defense',   color: '#2fa84f', icon: '<path d="M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5z"/>' },
   luck:    { name: 'Luck',      color: '#17b5c9', icon: '<path d="M12 11c-1-4-6-5-6-1s5 3 6 1zm0 0c4-1 5-6 1-6s-3 5-1 6zm0 0c1 4 6 5 6 1s-5-3-6-1zm0 0c-4 1-5 6-1 6s3-5 1-6zm0 0l3 10" stroke="currentColor" stroke-width="1.2"/>' },
 };
 
-const TIER_WEIGHT = { common: 3, rare: 1.6, epic: 0.6 };
-
-// max: how many times it stacks. ok(): whether it can be offered right now.
+// cost: the price of each level, in order. desc(n): what level n gives you.
 const UPGRADES = {
-  // power-ups
-  surge:      { name: 'Power Surge', cat: 'power', tier: 'common', max: 3, desc: 'Power-ups show up 60% more often', ok: () => World.powerups },
-  lasting:    { name: 'Long Lasting', cat: 'power', tier: 'common', max: 3, desc: 'Power-ups last 40% longer', ok: () => World.powerups },
-  overcharge: { name: 'Overcharged', cat: 'power', tier: 'common', max: 3, desc: 'Every power-up you grab also pays 5 coins' , ok: () => World.powerups },
-  carepkg:    { name: 'Care Package', cat: 'power', tier: 'rare', max: 2, desc: 'A free random power-up every 30 rows (every 20 at x2)' },
-  rocket:     { name: 'Rocket Boots', cat: 'power', tier: 'epic', max: 1, desc: 'A free jetpack every 45 rows' },
-  // traffic
-  slowcars:   { name: 'Speed Bumps', cat: 'traffic', tier: 'common', max: 3, desc: 'All traffic drives 10% slower' },
-  slowtrains: { name: 'Late Trains', cat: 'traffic', tier: 'common', max: 2, desc: 'Trains and trams run 25% slower' },
-  airhorn:    { name: 'Air Horn', cat: 'traffic', tier: 'rare', max: 1, desc: 'Every 15 rows you honk, and every car nearby slams its brakes' },
-  sunday:     { name: 'Sunday Drivers', cat: 'traffic', tier: 'rare', max: 1, desc: 'No more reckless drivers or police chases' },
-  // coins
-  coinmore:   { name: 'Loose Change', cat: 'coins', tier: 'common', max: 3, desc: '50% more coins on the road' },
-  piggy:      { name: 'Piggy Bank', cat: 'coins', tier: 'common', max: 3, desc: '1 in 4 coins is worth double' },
-  pmagnet:    { name: 'Pocket Magnet', cat: 'coins', tier: 'common', max: 3, desc: 'Coins near you drift toward you' },
-  interest:   { name: 'Interest', cat: 'coins', tier: 'rare', max: 3, desc: "At every checkpoint, get 10% of this run's coins" },
-  odometer:   { name: 'Odometer', cat: 'coins', tier: 'common', max: 3, desc: '+1 coin every 10 rows' },
-  haggler:    { name: 'Haggler', cat: 'coins', tier: 'rare', max: 1, desc: 'Roadside stands are half price and twice as common' },
-  // defense
-  bodyguard:  { name: 'Bodyguard', cat: 'defense', tier: 'common', max: 9, desc: 'Get two shields right now' },
-  shieldzone: { name: 'Shield Factory', cat: 'defense', tier: 'rare', max: 1, desc: 'A free shield every time you reach a new biome' },
-  secondwind: { name: 'Second Wind', cat: 'defense', tier: 'epic', max: 1, desc: 'Once, come back from any death' },
-  slim:       { name: 'Slim Fit', cat: 'defense', tier: 'rare', max: 2, desc: 'A smaller hitbox against traffic' },
-  lifejacket: { name: 'Life Jacket', cat: 'defense', tier: 'rare', max: 1, desc: 'Falling in the water keeps you afloat, once per biome' },
-  charm:      { name: 'Lucky Charm', cat: 'defense', tier: 'epic', max: 1, desc: "Meteors, giants, the goose and lightning can't kill you" },
   // movement
-  quickfeet:  { name: 'Quick Feet', cat: 'move', tier: 'common', max: 2, desc: 'You hop 15% faster' },
-  headstart:  { name: 'Head Start', cat: 'move', tier: 'common', max: 3, desc: 'The danger line creeps up 20% slower' },
-  // score
-  bookworm:   { name: 'Bookworm', cat: 'score', tier: 'common', max: 3, desc: '+30% XP for this run' },
-  steady:     { name: 'Steady Hands', cat: 'score', tier: 'common', max: 2, desc: 'Close-call combos last 50% longer' },
-  feverpitch: { name: 'Fever Pitch', cat: 'score', tier: 'rare', max: 1, desc: 'Combo fever starts at x6 instead of x10' },
-  daredevil:  { name: 'Daredevil', cat: 'score', tier: 'rare', max: 1, desc: 'Close calls pay a coin and double points' },
+  quickfeet:  { name: 'Faster Jump', cat: 'move', cost: [300, 700, 1500, 3000], desc: n => `Hops are ${n * 6}% faster` },
+  headstart:  { name: 'Head Start', cat: 'move', cost: [250, 600, 1300], desc: n => `The danger line creeps up ${n * 8}% slower` },
+  // coins
+  coinmore:   { name: 'More Coins', cat: 'coins', cost: [300, 700, 1400, 2500, 4000], desc: n => `${n * 15}% more coins on the road` },
+  piggy:      { name: 'Lucky Coins', cat: 'coins', cost: [250, 600, 1200, 2200, 3500], desc: n => `${n * 5}% of coins are worth double` },
+  pmagnet:    { name: 'Coin Magnet', cat: 'coins', cost: [400, 1000, 2200], desc: n => `Coins within ${(1 + 0.5 * n).toFixed(1)} tiles drift to you` },
+  odometer:   { name: 'Odometer', cat: 'coins', cost: [500, 1200, 2500], desc: n => `+${n} coin${n > 1 ? 's' : ''} every 10 rows` },
+  savings:    { name: 'Savings Account', cat: 'coins', cost: [600, 1500, 3000, 5000], desc: n => `+${n * 5}% bonus coins at the end of every run` },
+  haggler:    { name: 'Haggler', cat: 'coins', cost: [900], desc: () => 'Roadside stands are half price and twice as common' },
+  // xp and score
+  bookworm:   { name: 'More XP', cat: 'score', cost: [300, 700, 1400, 2500, 4000], desc: n => `+${n * 10}% XP every run` },
+  steady:     { name: 'Longer Combos', cat: 'score', cost: [300, 800, 1600], desc: n => `Close-call combos last ${n * 20}% longer` },
+  feverpitch: { name: 'Fever Pitch', cat: 'score', cost: [700, 1600, 3000], desc: n => `Combo fever starts at x${10 - n} instead of x10` },
+  // traffic
+  fewercars:  { name: 'Fewer Cars', cat: 'traffic', cost: [400, 900, 1800, 3200, 5000], desc: n => `${n * 7}% more space between cars` },
+  slowcars:   { name: 'Slower Cars', cat: 'traffic', cost: [400, 900, 1800, 3200, 5000], desc: n => `All traffic drives ${n * 4}% slower` },
+  slowtrains: { name: 'Late Trains', cat: 'traffic', cost: [300, 800, 1600], desc: n => `Trains and trams run ${n * 10}% slower` },
+  sunday:     { name: 'Sunday Drivers', cat: 'traffic', cost: [3500], desc: () => 'No more reckless drivers or police chases' },
+  // power-ups
+  surge:      { name: 'More Power-ups', cat: 'power', cost: [300, 700, 1400, 2500, 4000], desc: n => `Power-ups show up ${n * 15}% more often` },
+  lasting:    { name: 'Longer Power-ups', cat: 'power', cost: [300, 700, 1400, 2500, 4000], desc: n => `Power-ups last ${n * 10}% longer` },
+  // defense
+  bodyguard:  { name: 'Starting Shield', cat: 'defense', cost: [1500, 5000], desc: n => `Start every run with ${n} shield${n > 1 ? 's' : ''}` },
+  slim:       { name: 'Slim Fit', cat: 'defense', cost: [800, 2400], desc: n => `A ${n > 1 ? 'much ' : ''}smaller hitbox against traffic` },
+  lifejacket: { name: 'Life Jacket', cat: 'defense', cost: [2000], desc: () => 'Falling in the water keeps you afloat, once per biome' },
+  charm:      { name: 'Lucky Charm', cat: 'defense', cost: [3000], desc: () => "Meteors, giants, the goose and lightning can't kill you" },
+  secondwind: { name: 'Second Wind', cat: 'defense', cost: [8000], desc: () => 'Once per run, come back from any death' },
   // luck
-  treasure:   { name: 'Treasure Hunter', cat: 'luck', tier: 'rare', max: 1, desc: 'Mystery boxes show up three times as often' },
-  eggscout:   { name: 'Egg Scout', cat: 'luck', tier: 'rare', max: 1, desc: 'Eggs show up twice as often' },
-  map:        { name: 'Treasure Map', cat: 'luck', tier: 'rare', max: 1, desc: 'Secret manholes show up three times as often' },
-  bestfriend: { name: 'Best Friend', cat: 'luck', tier: 'rare', max: 1, desc: "Your pet acts like it's level 5", ok: () => !!Shop.pet && !PetLevels.maxed(Shop.pet) },
-  sunny:      { name: 'Sunny Days', cat: 'luck', tier: 'common', max: 1, desc: 'Clear skies for the rest of the run' },
-  gambler:    { name: 'Gambler', cat: 'luck', tier: 'epic', max: 1, desc: 'Get two more random upgrades right now' },
-  extratime:  { name: 'Extra Time', cat: 'luck', tier: 'common', max: 9, desc: '+15 seconds on the clock', ok: () => Game.mode === 'time' },
+  treasure:   { name: 'Box Finder', cat: 'luck', cost: [600, 1500, 3000], desc: n => `Mystery boxes show up ${n * 50}% more often` },
+  eggscout:   { name: 'Egg Finder', cat: 'luck', cost: [500, 1200, 2500], desc: n => `Eggs show up ${n * 40}% more often` },
+  map:        { name: 'Treasure Map', cat: 'luck', cost: [500, 1200, 2500], desc: n => `Secret manholes show up ${n * 60}% more often` },
+  extratime:  { name: 'Extra Time', cat: 'luck', cost: [400, 1000, 2000], desc: n => `+${n * 5} seconds in Time Attack` },
 };
 
-const CHECKPOINT = 40; // rows between upgrade picks
-
 const Upgrades = {
-  picks: {},
-  order: [],
-  next: CHECKPOINT,
-  offer: null,
-  wind: false,      // Second Wind used
+  levels: {},
+  wind: false,      // Second Wind used this run
   jacketZone: null, // the biome the life jacket was last used in
 
-  reset() {
-    this.picks = {};
-    this.order = [];
-    this.next = CHECKPOINT;
-    this.offer = null;
-    this.wind = false;
-    this.jacketZone = null;
+  load() {
+    const v = Store.get('upgrades', {});
+    this.levels = {};
+    if (v && typeof v === 'object') for (const id in UPGRADES) this.levels[id] = clamp(v[id] | 0, 0, UPGRADES[id].cost.length);
+  },
+  save() { Store.set('upgrades', this.levels); },
+
+  reset() { this.wind = false; this.jacketZone = null; },
+
+  // Upgrades only count in single player.
+  on() { return Game.players.length === 1; },
+  level(id) { return this.levels[id] || 0; },
+  max(id) { return UPGRADES[id].cost.length; },
+  n(id) { return this.on() ? this.level(id) : 0; },
+  has(id) { return this.n(id) > 0; },
+  price(id) { return UPGRADES[id].cost[this.level(id)]; },
+  totals() {
+    let have = 0, total = 0;
+    for (const id in UPGRADES) { have += this.level(id); total += this.max(id); }
+    return { have, total };
   },
 
-  allowed() { return Game.players.length === 1 && Game.tracksProgress(); },
-  n(id) { return this.picks[id] || 0; },
-  has(id) { return !!this.picks[id]; },
-  get count() { return this.order.length; },
-
-  // Can this one be offered right now?
-  avail(id) {
-    const u = UPGRADES[id];
-    return this.n(id) < u.max && (!u.ok || u.ok());
-  },
-
-  // Three different upgrades, rarer tiers less often.
-  roll(k = 3, not = []) {
-    const pool = Object.keys(UPGRADES).filter(id => this.avail(id) && !not.includes(id));
-    const out = [];
-    while (out.length < k && pool.length) {
-      const id = weighted(pool.map(i => [i, TIER_WEIGHT[UPGRADES[i].tier]]));
-      out.push(id);
-      pool.splice(pool.indexOf(id), 1);
-    }
-    return out;
+  buy(id) {
+    const lv = this.level(id);
+    if (lv >= this.max(id) || Game.bank < this.price(id)) return false;
+    Game.bank -= this.price(id);
+    Store.set('coins', Game.bank);
+    this.levels[id] = lv + 1;
+    this.save();
+    Stats.add('upgrades');
+    Stats.save();
+    Trophies.check();
+    return true;
   },
 
   // Called whenever player one reaches a new row.
   onRow(p) {
-    if (!this.allowed() || p.id !== 0 || Game.state !== 'playing') return;
-    const r = p.maxRow;
-    if (this.has('odometer') && r % 10 === 0) Game.giveCoins(this.n('odometer'), p, `ODOMETER +${this.n('odometer')}`);
-    if (this.has('carepkg') && r % (this.n('carepkg') > 1 ? 20 : 30) === 0) {
-      const types = Object.keys(POWERUPS).filter(k => k !== 'jetpack');
-      Powers.grant(pick(types), { x: p.x, y: p.y }, p, true);
-      FX.text(p.x, p.y + 60, 'CARE PACKAGE!', '#c79bff', 15);
-    }
-    if (this.has('airhorn') && r % 15 === 0) Powers.horn(p);
-    if (this.has('rocket') && r % 45 === 0 && !p.hop && !p.ride) Powers.grant('jetpack', { x: p.x, y: p.y }, p, true);
-    if (r >= this.next) {
-      this.next += CHECKPOINT;
-      this.open(p);
-    }
+    if (p.id !== 0 || Game.state !== 'playing') return;
+    if (this.has('odometer') && p.maxRow % 10 === 0) { p.coins += this.n('odometer'); Game.coins = p.coins; }
   },
 
-  open(p = Player) {
-    if (this.has('interest') && p.coins > 0) {
-      const n = Math.max(1, Math.round(p.coins * 0.1 * this.n('interest')));
-      Game.giveCoins(n, p, `INTEREST +${n}`, '#7ed957');
-    }
-    this.offer = this.roll();
-    if (!this.offer.length) return;
-    Game.state = 'upgrade';
-    Sound.mission();
-    UI.showUpgrade(this.offer, p.maxRow);
-  },
-
-  choose(i) {
-    if (Game.state !== 'upgrade' || !this.offer || !this.offer[i]) return;
-    const id = this.offer[i];
-    this.offer = null;
-    UI.showUpgrade(null);
-    Game.state = 'playing';
-    Game.last = performance.now();
-    this.apply(id);
-    Sound.powerup();
-  },
-
-  apply(id, quiet = false) {
-    this.picks[id] = this.n(id) + 1;
-    this.order.push(id);
-    Roadex.see('upgrades', id);
-    const p = Player;
-    if (!quiet) FX.text(p.x, p.y + 44, UPGRADES[id].name.toUpperCase() + (this.n(id) > 1 ? ` x${this.n(id)}` : ''), UPGRADE_CATS[UPGRADES[id].cat].color, 18);
-    if (id === 'bodyguard') { p.shield += 2; FX.text(p.x, p.y + 26, `x${p.shield} SHIELDS`, '#8fd0ff', 15); }
-    if (id === 'extratime') Game.timeLeft = Math.min(120, Game.timeLeft + 15);
-    if (id === 'haggler') for (const it of Items.list) if (it.type === 'stand' && !it.sold) it.price = Math.ceil(it.price / 2);
-    if (id === 'gambler') {
-      for (const g of this.roll(2, ['gambler'])) {
-        this.apply(g, true);
-        UI.toast('t-upgrade', `GAMBLER: ${UPGRADES[g].name.toUpperCase()}`, UPGRADES[g].desc, 3200);
-      }
-    }
-    if (Game.tracksProgress()) {
-      Trophies.max('upgrades', this.order.length);
-      Stats.add('upgrades');
-    }
+  start(p) {
+    if (this.has('bodyguard')) p.shield += this.n('bodyguard');
+    if (this.has('extratime') && Game.mode === 'time') Game.timeLeft += 5 * this.n('extratime');
   },
 
   // ---- Hooks for the other systems ----
-  traffic() { return 1 - 0.1 * this.n('slowcars'); },
-  trains() { return 1 - 0.25 * this.n('slowtrains'); },
-  danger() { return 1 - 0.2 * this.n('headstart'); },
-  powerBoost() { return 1 + 0.4 * this.n('lasting'); },
-  hop() { return 1 - 0.15 * this.n('quickfeet'); },
-  xp() { return 1 + 0.3 * this.n('bookworm'); },
-  combo() { return 3 * (1 + 0.5 * this.n('steady')); },
-  fever() { return this.has('feverpitch') ? 6 : 10; },
+  traffic() { return 1 - 0.04 * this.n('slowcars'); },
+  trains() { return 1 - 0.1 * this.n('slowtrains'); },
+  gap() { return 1 + 0.07 * this.n('fewercars'); },
+  danger() { return 1 - 0.08 * this.n('headstart'); },
+  powerBoost() { return 1 + 0.1 * this.n('lasting'); },
+  hop() { return 1 / (1 + 0.06 * this.n('quickfeet')); },
+  xp() { return 1 + 0.1 * this.n('bookworm'); },
+  combo() { return 3 * (1 + 0.2 * this.n('steady')); },
+  fever() { return 10 - this.n('feverpitch'); },
   slim() { return this.n('slim'); },
+  savings() { return 0.05 * this.n('savings'); },
 
   // Second Wind: back on your feet somewhere safe.
   saves(p, source) {
@@ -190,7 +130,6 @@ const Upgrades = {
     Game.slowmo(0.35, 0.6);
     Sound.rebirth();
     FX.text(p.x, p.y + 44, 'SECOND WIND!', '#7ed957', 20);
-    UI.toast('t-upgrade', 'SECOND WIND', 'Back on your feet. That was your one', 3200);
     return true;
   },
 
@@ -199,7 +138,6 @@ const Upgrades = {
     if (p.id !== 0 || !this.has('charm') || !['meteor', 'giant', 'goose', 'lightning'].includes(source)) return false;
     if (p.grace <= 0) {
       FX.shieldBreak(p.x, p.y);
-      FX.text(p.x, p.y + 30, 'LUCKY CHARM!', '#7ed957', 17);
       Sound.shieldBreak();
     }
     p.grace = Math.max(p.grace, 1.5);
@@ -214,7 +152,6 @@ const Upgrades = {
     this.jacketZone = z;
     const ring = { kind: 'log', id: ++River.ids, len: 0.95 * TILE, x: p.x, y: row.y, bob: 0, dir: row.river.dir, style: 'turtle' };
     row.river.logs.push(ring);
-    FX.text(p.x, p.y + 30, 'LIFE JACKET!', '#ff9f1c', 16);
     FX.splash(p.x, p.y, 10);
     return ring;
   },

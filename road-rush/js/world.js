@@ -112,7 +112,7 @@ const World = {
     for (let k = 0; k < 200; k++) this.weatherRolls.push(r());
 
     this.speedMul = opts.speedMul || 1;
-    this.gapMul = opts.gapMul || 1;
+    this.gapMul = (opts.gapMul || 1) * Upgrades.gap(); // the Fewer Cars upgrade
     this.powerups = opts.powerups !== false;
     this.rows.clear();
     this.pathCol = START_COL;

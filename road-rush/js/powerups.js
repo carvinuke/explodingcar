@@ -43,17 +43,17 @@ const Items = {
     if (!free.length) return;
     // a mystery egg, now and then (the roll always happens, so the road stays the same for a seed)
     if (Pets.has('luckycat') && Math.random() < Pets.up(0.35, 0.55)) this.add('coin', pick(free), row.i); // far more coins
-    if (Gen.chance(0.014 * (Pets.perk('eggLuck') || 1) * (Upgrades.has('eggscout') ? 2 : 1)) && Egg.canSpawn(row.i) && !this.list.some(it => it.type === 'egg')) {
+    if (Gen.chance(0.014 * (Pets.perk('eggLuck') || 1) * (1 + 0.4 * Upgrades.n('eggscout'))) && Egg.canSpawn(row.i) && !this.list.some(it => it.type === 'egg')) {
       this.add('egg', Gen.pick(free), row.i);
       return;
     }
     // a mystery box, rarely
-    if (Gen.chance(0.009 * (Upgrades.has('treasure') ? 3 : 1)) && Boxes.canSpawn(row.i)) {
+    if (Gen.chance(0.009 * (1 + 0.5 * Upgrades.n('treasure'))) && Boxes.canSpawn(row.i)) {
       this.add('box', Gen.pick(free), row.i);
       return;
     }
     // a secret manhole: drop into a vault full of coins
-    if (Gen.chance(0.0055 * (Upgrades.has('map') ? 3 : 1)) && row.type === 'grass' && SecretRoom.canSpawn(row.i) && !this.list.some(it => it.type === 'manhole')) {
+    if (Gen.chance(0.0055 * (1 + 0.6 * Upgrades.n('map'))) && row.type === 'grass' && SecretRoom.canSpawn(row.i) && !this.list.some(it => it.type === 'manhole')) {
       this.add('manhole', Gen.pick(free), row.i);
       return;
     }
@@ -67,11 +67,11 @@ const Items = {
         return;
       }
     }
-    if (row.i > 8 && World.powerups && Gen.chance(0.05 * (1 + 0.6 * Upgrades.n('surge')))) {
+    if (row.i > 8 && World.powerups && Gen.chance(0.05 * (1 + 0.15 * Upgrades.n('surge')))) {
       this.add(Gen.weighted(Object.keys(POWERUPS).map(k => [k, POWERUPS[k].weight])), Gen.pick(free), row.i);
       return;
     }
-    if (Gen.chance(Math.min(0.9, (row.type === 'grass' ? 0.3 : 0.18) * (1 + 0.5 * Upgrades.n('coinmore'))))) {
+    if (Gen.chance(Math.min(0.9, (row.type === 'grass' ? 0.3 : 0.18) * (1 + 0.15 * Upgrades.n('coinmore'))))) {
       const c = Gen.pick(free);
       if (row.type === 'grass' && Gen.chance(0.3)) {
         for (let k = -1; k <= 1; k++) if (free.includes(c + k)) this.add('coin', c + k, row.i);
@@ -116,7 +116,7 @@ const Items = {
         if (p.id === 0 && dist < 0.4 * TILE && p.alive && !p.hop && !p.knock && p.z < 4 && Game.state === 'playing') SecretRoom.enter(p, it);
         continue;
       }
-      if (it.type === 'coin' && p.id === 0 && Upgrades.has('pmagnet') && dist < (1 + 0.7 * Upgrades.n('pmagnet')) * TILE && dist > 1) { // Pocket Magnet
+      if (it.type === 'coin' && p.id === 0 && Upgrades.has('pmagnet') && dist < (1 + 0.5 * Upgrades.n('pmagnet')) * TILE && dist > 1) { // Pocket Magnet
         const s = Math.min(dist, 200 * dt);
         it.x += (dx / dist) * s; it.y += (dy / dist) * s;
       }
@@ -158,7 +158,7 @@ const Powers = {
     this.seen = new Set();
   },
 
-  // `free`: handed out by an upgrade, not grabbed (doesn't count for biome mastery).
+  // `free`: handed out, not grabbed (doesn't count against biome mastery).
   grant(type, it, p = Player, free = false) {
     const def = POWERUPS[type];
     if (type === 'shield') { // shields stack
@@ -180,7 +180,6 @@ const Powers = {
     if (p.id === 0) {
       if (!free) Mastery.power();
       Roadex.see('powerups', type);
-      if (Upgrades.has('overcharge')) Game.giveCoins(5 * Upgrades.n('overcharge'), p, `OVERCHARGED +${5 * Upgrades.n('overcharge')}`, '#c79bff');
       Missions.add('powerups');
       this.seen.add(type);
       Trophies.max('powerTypes', this.seen.size);

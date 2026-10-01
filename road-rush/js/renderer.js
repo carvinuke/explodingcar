@@ -174,7 +174,6 @@ const Renderer = {
     }
     FX.drawDecals(c);
     Prints.draw(c, time);
-    DeathFX.drawGround(c, time);
     FX.drawPools(c);
     Events.drawGround(c, time);
     Storms.drawGround(c, time);
@@ -221,7 +220,6 @@ const Renderer = {
     Pets.drawables(list);
     Powers.drawables(list);
     Graves.drawables(list);
-    DeathFX.drawables(list);
     for (const p of Game.players) if (!p.gone) { p.key = p.y - 10; list.push(p); }
     list.sort((a, b) => b.key - a.key);
 
@@ -587,12 +585,6 @@ const Renderer = {
       case 'event': o.draw(c, time); break;
       case 'player': this.player(c, o, time); break;
       case 'grave': c.scale(1.5, 1.5); Draw.grave(c); break;
-      case 'deathghost': { // your spirit floats away
-        c.globalAlpha = Math.max(0, 0.6 * (1 - o.t / 3));
-        Draw.player(c, { facing: 'down', squash: 0, z: o.z, rot: Math.sin(o.t * 2) * 0.15, flap: Math.abs(Math.sin(o.t * 6)), char: 0, blinkSeed: 0 }, o.t, { ...o.sk, top: '#f4f6ff', front: '#cfd6ea', wingTop: o.sk.wingTop ? '#e8ecfa' : null, wingFront: o.sk.wingTop ? '#c4cce0' : null, feet: '#cfd6ea', glow: 'rgba(200,220,255,0.3)' }, null);
-        c.globalAlpha = 1;
-        break;
-      }
       case 'decoy': { // a fake you, blinking faster as it runs out
         const blink = o.t < 2 && ((time * 10) | 0) % 2;
         c.globalAlpha = blink ? 0.45 : 0.85;
@@ -664,10 +656,6 @@ const Renderer = {
     if (p.sink) c.globalAlpha = 1 - p.sink;
     if (p.ride) c.translate(0, P(0, 7));
     let sk = p.skin();
-    if (p.statue) { // death effect: stone, ice or gold
-      const pal = { stone: ['#a3a7ae', '#7b7f87'], ice: ['#d9f4ff', '#9fd8f0'], golden: ['#ffe066', '#e0a800'] }[p.statue];
-      sk = { ...sk, top: pal[0], front: pal[1], wingTop: sk.wingTop && pal[0], wingFront: sk.wingTop && pal[1], feet: pal[1], face: sk.face && pal[1], comb: sk.comb && [pal[0], pal[1]], beak: sk.beak && [pal[0], pal[1]], glow: null, flames: false, rainbow: false };
-    }
     if (sk.disco && p.alive && !p.hop) { // a dance floor lights up under you
       const cols = ['#ff4fa3', '#34c6ea', '#ffd23f', '#7ed957', '#a95cff'];
       c.save();

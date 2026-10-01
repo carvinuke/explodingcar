@@ -298,15 +298,17 @@ const UI = {
     const col = Shop.collection();
     this.$('shop-collection').textContent = `COLLECTION ${col.have} / ${col.total}`;
     this.$('shop-collection-fill').style.width = `${(col.have / col.total) * 100}%`;
-    const labels = { skins: 'Skins', hats: 'Hats', trails: 'Trails', pets: 'Pets', deaths: 'Deaths', prints: 'Footprints', titles: 'Titles' };
+    const labels = { skins: 'Skins', hats: 'Hats', trails: 'Trails', pets: 'Pets', prints: 'Footprints', titles: 'Titles', upgrades: 'Upgrades' };
     this.renderOutfits();
     for (const t of document.querySelectorAll('[data-tab]')) {
       t.setAttribute('aria-selected', t.dataset.tab === tab ? 'true' : 'false');
-      const n = Shop.tabCount(t.dataset.tab);
+      const n = t.dataset.tab === 'upgrades' ? Upgrades.totals() : Shop.tabCount(t.dataset.tab);
       t.innerHTML = `${labels[t.dataset.tab]} <small>${n.have}/${n.total}</small>`;
     }
     const grid = this.$('shop-grid');
     grid.textContent = '';
+    grid.classList.toggle('upg-grid', tab === 'upgrades');
+    if (tab === 'upgrades') { this.renderUpgrades(grid); return; }
     for (const id in table) {
       const item = table[id];
       const owned = Shop.has(tab, id), equipped = Shop.equipped(tab, id);
@@ -414,7 +416,7 @@ const UI = {
     g.clearRect(0, 0, cv.width, cv.height);
     if (tab === 'titles') { this.titlePreview(g, cv, id); return; }
     if (SHOP_TABS[tab][id].box && !Shop.has(tab, id)) { this.mysteryPreview(g, cv); return; }
-    if (tab === 'deaths' || tab === 'prints') { this.effectPreview(g, cv, tab, id); return; }
+    if (tab === 'prints') { this.printPreview(g, cv, id); return; }
     g.save();
     g.translate(cv.width * (tab === 'trails' ? 0.6 : 0.5), cv.height * 0.74);
     g.scale(2.4, 2.4);
@@ -501,57 +503,15 @@ const UI = {
     lines.forEach((l, i) => g.fillText(l, W / 2, H / 2 + 1 + (i - (lines.length - 1) / 2) * (size + 2)));
   },
 
-  // Death effects and footprints: your character with the effect drawn around it.
-  effectPreview(g, cv, tab, id) {
+  // Footprints: your character with a trail of steps behind it.
+  printPreview(g, cv, id) {
     g.save();
     g.translate(cv.width * 0.5, cv.height * 0.74);
     g.scale(2.2, 2.2);
-    if (tab === 'prints') {
-      g.translate(6, -4);
-      for (let k = 0; k < 3; k++) if (id !== 'none') Prints.drawOne(g, { x: -14 + k * 2, y: -10 - k * 11, kind: id, n: k, t: 1 }, 1.2, 0.95);
-      Draw.shadow(g, 0, 0, 30, 24, 0.9);
-      Draw.player(g, { facing: 'down', squash: 0, z: 0, rot: 0, flap: 0, char: 0 }, 0, Shop.skin(), Shop.hat);
-      g.restore();
-      return;
-    }
-    let sk = Shop.skin();
-    const statue = { stone: ['#a3a7ae', '#7b7f87'], ice: ['#d9f4ff', '#9fd8f0'], golden: ['#ffe066', '#e0a800'] }[id];
-    if (statue) sk = { ...sk, top: statue[0], front: statue[1], wingTop: sk.wingTop && statue[0], wingFront: sk.wingTop && statue[1], feet: statue[1], comb: sk.comb && [statue[0], statue[1]], beak: sk.beak && [statue[0], statue[1]], glow: null, rainbow: false };
-    const look = {
-      confetti: ['pixel', ['#ff5c8a', '#ffd23f', '#34c6ea', '#7ed957', '#a95cff']], hearts: ['heart', ['#ff5c8a', '#ff2d55']],
-      pixels: ['pixel', [sk.top, sk.front, '#1d1d1f']], bubbles: ['drop', ['#bfe8ff']], coins: ['coin', ['#ffd23f']],
-      smoke: ['pixel', ['#9a9aa2', '#b8b8c0']], lightning: ['bolt', ['#fff6b0']], fireworks: ['star', ['#ff5c8a', '#ffd23f', '#34c6ea']],
-      rainbow: ['star', ['#ff5c8a', '#ffb000', '#7ed957', '#34c6ea', '#a95cff']], supernova: ['star', ['#fff6d0', '#ffffff']],
-    }[id];
-    if (id === 'blackhole') {
-      const gr = g.createRadialGradient(0, -4, 0, 0, -4, 22);
-      gr.addColorStop(0, '#000'); gr.addColorStop(0.6, 'rgba(40,10,80,0.9)'); gr.addColorStop(1, 'rgba(120,60,200,0)');
-      g.fillStyle = gr;
-      g.beginPath(); g.ellipse(0, -4, 22, 18, 0, 0, 6.2832); g.fill();
-    } else if (id === 'smoke') {
-      g.fillStyle = 'rgba(160,160,170,0.8)';
-      for (const [x, y, r] of [[-8, -10, 9], [6, -14, 10], [0, -4, 11], [-12, -2, 7], [11, -3, 8]]) { g.beginPath(); g.arc(x, y, r, 0, 6.2832); g.fill(); }
-    } else {
-      if (id !== 'none') Draw.shadow(g, 0, 0, 30, 24, 0.9);
-      if (id === 'ghost') {
-        g.globalAlpha = 0.45;
-        Draw.player(g, { facing: 'down', squash: 0, z: 18, rot: 0.1, flap: 1, char: 0 }, 0, { ...sk, top: '#f4f6ff', front: '#cfd6ea', feet: '#cfd6ea' }, null);
-        g.globalAlpha = 1;
-      } else if (id === 'none') {
-        Draw.shadow(g, 0, 0, 30, 24, 0.9);
-      }
-      Draw.player(g, { facing: 'down', squash: 0, z: 0, rot: id === 'none' ? 0 : 0.5, flap: 0, char: 0 }, 0, sk, statue ? null : Shop.hat);
-    }
-    if (look) {
-      for (let k = 0; k < 12; k++) {
-        const a = k * 0.52 + 0.3, r = 17 + (k % 3) * 5;
-        FX.glyph(g, look[0], Math.cos(a) * r, -12 + Math.sin(a) * r * 0.8, id === 'lightning' ? 9 : 4.5, look[1][k % look[1].length], a);
-        if (id === 'lightning' && k > 1) break;
-      }
-    }
-    if (id === 'none') { // the classic: feathers
-      for (let k = 0; k < 8; k++) FX.glyph(g, 'feather', Math.cos(k * 0.8) * 20, -12 + Math.sin(k * 0.8) * 14, 5, k % 2 ? sk.top : '#ffffff', k);
-    }
+    g.translate(6, -4);
+    for (let k = 0; k < 3; k++) if (id !== 'none') Prints.drawOne(g, { x: -14 + k * 2, y: -10 - k * 11, kind: id, n: k, t: 1 }, 1.2, 0.95);
+    Draw.shadow(g, 0, 0, 30, 24, 0.9);
+    Draw.player(g, { facing: 'down', squash: 0, z: 0, rot: 0, flap: 0, char: 0 }, 0, Shop.skin(), Shop.hat);
     g.restore();
   },
 
@@ -712,54 +672,65 @@ const UI = {
     stats.appendChild(ul);
   },
 
-  // ---- Run upgrades: the checkpoint picker ------------------------------------------
+  // ---- Upgrades ------------------------------------------------------------------------
   upgradeIcon(id, size = 26) {
     const c = UPGRADE_CATS[UPGRADES[id].cat];
     return `<svg viewBox="0 0 24 24" width="${size}" height="${size}" aria-hidden="true" fill="currentColor" style="color:${c.color}">${c.icon}</svg>`;
   },
 
-  showUpgrade(offer, row) {
-    const scr = this.$('screen-upgrade');
-    this.toasts.classList.toggle('dim', !!offer); // toasts would cover the cards
-    if (!offer) { scr.classList.add('hidden'); return; }
-    this.$('upgrade-row').textContent = `CHECKPOINT · ROW ${row}`;
-    const box = this.$('upgrade-cards');
-    box.textContent = '';
-    offer.forEach((id, i) => {
-      const u = UPGRADES[id], cat = UPGRADE_CATS[u.cat], n = Upgrades.n(id);
-      const b = document.createElement('button');
-      b.className = `upg-card tier-${u.tier}`;
-      b.style.setProperty('--c', cat.color);
-      b.innerHTML = `<span class="upg-key">${i + 1}</span><span class="upg-ico">${this.upgradeIcon(id, 34)}</span>`
-        + `<b></b><span class="upg-desc"></span><span class="upg-meta"></span>`;
-      b.querySelector('b').textContent = u.name + (n ? ` ${n + 1}` : '');
-      b.querySelector('.upg-desc').textContent = u.desc;
-      b.querySelector('.upg-meta').textContent = `${u.tier.toUpperCase()} · ${cat.name.toUpperCase()}` + (u.max > 1 ? ` · ${n}/${u.max}` : '');
-      b.addEventListener('click', () => Upgrades.choose(i));
-      b.addEventListener('pointerdown', e => e.stopPropagation());
-      box.appendChild(b);
-    });
-    scr.classList.remove('hidden');
-    this.show('powers', true);
-    setTimeout(() => { const f = box.querySelector('button'); if (f) f.focus({ preventScroll: true }); }, 30);
-  },
-
-  // A list of this run's upgrades (pause screen and the report).
-  renderUpgradeList(el, ids) {
-    el.textContent = '';
-    const counts = {};
-    for (const id of ids) counts[id] = (counts[id] || 0) + 1;
-    for (const id in counts) {
-      const li = document.createElement('li');
-      li.style.setProperty('--c', UPGRADE_CATS[UPGRADES[id].cat].color);
-      li.innerHTML = this.upgradeIcon(id, 16);
-      const t = document.createElement('span');
-      t.textContent = UPGRADES[id].name + (counts[id] > 1 ? ` x${counts[id]}` : '');
-      li.title = UPGRADES[id].desc;
-      li.appendChild(t);
-      el.appendChild(li);
+  // The shop's Upgrades tab: permanent levels bought with coins.
+  renderUpgrades(grid) {
+    const note = document.createElement('p');
+    note.className = 'upg-note';
+    note.textContent = 'Permanent upgrades for every single-player run. Each one has a few levels, and each level costs more.';
+    grid.appendChild(note);
+    for (const cat in UPGRADE_CATS) {
+      const head = document.createElement('p');
+      head.className = 'upg-cat';
+      head.style.setProperty('--c', UPGRADE_CATS[cat].color);
+      head.textContent = UPGRADE_CATS[cat].name;
+      grid.appendChild(head);
+      for (const id in UPGRADES) {
+        const u = UPGRADES[id];
+        if (u.cat !== cat) continue;
+        const lv = Upgrades.level(id), max = Upgrades.max(id), done = lv >= max;
+        const row = document.createElement('div');
+        row.className = 'upg-row' + (done ? ' maxed' : '');
+        row.style.setProperty('--c', UPGRADE_CATS[cat].color);
+        const ico = document.createElement('span');
+        ico.className = 'upg-ico';
+        ico.innerHTML = this.upgradeIcon(id, 24);
+        const txt = document.createElement('div');
+        txt.className = 'upg-txt';
+        const b = document.createElement('b');
+        b.textContent = u.name;
+        const now = document.createElement('span');
+        now.textContent = lv ? u.desc(lv) : 'Not bought yet';
+        const next = document.createElement('em');
+        next.textContent = done ? 'Maxed out' : `Next: ${u.desc(lv + 1)}`;
+        txt.append(b, now, next);
+        const pips = document.createElement('span');
+        pips.className = 'upg-pips';
+        pips.setAttribute('aria-label', `Level ${lv} of ${max}`);
+        for (let k = 0; k < max; k++) { const i = document.createElement('i'); if (k < lv) i.className = 'on'; pips.appendChild(i); }
+        const btn = document.createElement('button');
+        if (done) {
+          btn.className = 'btn-plate small';
+          btn.textContent = 'MAX';
+          btn.disabled = true;
+        } else {
+          const price = Upgrades.price(id);
+          btn.className = 'btn-yellow small';
+          btn.innerHTML = `<span class="coin-ico"></span> ${price}`;
+          btn.disabled = Game.bank < price;
+          btn.setAttribute('aria-label', `Upgrade ${u.name} to level ${lv + 1} for ${price} coins`);
+          btn.addEventListener('click', () => { if (Upgrades.buy(id)) { Sound.powerup(); this.renderShop(); this.refreshMeta(); } });
+        }
+        btn.addEventListener('pointerdown', e => e.stopPropagation());
+        row.append(ico, txt, pips, btn);
+        grid.appendChild(row);
+      }
     }
-    el.classList.toggle('hidden', !ids.length);
   },
 
   // ---- Goals: biome mastery, the Roadex and prestige -------------------------------
@@ -769,7 +740,7 @@ const UI = {
     const body = this.$('goals-body');
     body.textContent = '';
     const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; };
-    const rewardName = r => r ? `${SHOP_TABS[r[0]][r[1]].name} (${{ skins: 'skin', hats: 'hat', trails: 'trail', pets: 'pet', deaths: 'death effect', prints: 'footprints', titles: 'title' }[r[0]]})` : '';
+    const rewardName = r => r ? `${SHOP_TABS[r[0]][r[1]].name} (${{ skins: 'skin', hats: 'hat', trails: 'trail', pets: 'pet', prints: 'footprints', titles: 'title' }[r[0]]})` : '';
     if (tab === 'biomes') {
       this.$('goals-progress').textContent = `★ ${Mastery.total()} / ${Mastery.max}`;
       body.appendChild(el('p', 'goals-note', 'Every biome has three stars. Earn all three to unlock its reward.'));
@@ -925,7 +896,6 @@ const UI = {
     this.show('screen-title', true);
     this.show('screen-over', false);
     this.show('screen-pause', false);
-    this.show('screen-upgrade', false);
     this.show('hud', false);
     this.$('btn-play').focus({ preventScroll: true });
   },
@@ -936,8 +906,6 @@ const UI = {
     this.show('screen-over', false);
     this.show('screen-pause', false);
     this.show('hud', true);
-    this.show('screen-upgrade', false);
-    this.toasts.classList.remove('dim');
     const badge = this.$('mode-badge');
     badge.textContent = mode === 'hardcore' ? 'HARDCORE' : mode === 'time' ? 'TIME ATTACK' : '';
     badge.className = 'plate mode-badge' + (mode === 'hardcore' ? ' hardcore' : mode === 'time' ? ' time' : ' hidden');
@@ -963,7 +931,6 @@ const UI = {
       this.renderMissions(this.$('pause-missions'), true);
       this.show('btn-pause-admin', Admin.unlocked);
       this.show('pause-missions', Game.tracksProgress());
-      this.renderUpgradeList(this.$('pause-upgrades'), Game.players.length > 1 ? [] : Upgrades.order);
       this.$('btn-resume').focus({ preventScroll: true });
     }
   },
@@ -1059,7 +1026,6 @@ const UI = {
       bx.appendChild(li);
     }
     bx.classList.toggle('hidden', !bx.children.length);
-    this.renderUpgradeList(this.$('over-upgrades'), info.upgrades || []);
     if ((info.boxes || []).length) Sound.hatch();
     this.show('over-missions', !vs);
     if (!vs) this.renderMissions(this.$('over-missions'), true);
@@ -1097,18 +1063,11 @@ const UI = {
       }
     }
 
-    const ub = !versus && Upgrades.count > 0;
-    if (ub !== this.ubOn || (ub && Upgrades.count !== this.ubN)) {
-      this.ubOn = ub;
-      this.ubN = Upgrades.count;
-      this.show('upg-badge', ub);
-      if (ub) this.$('upg-badge').innerHTML = `<b>${Upgrades.count}</b><span>UPGRADES</span>`;
-    }
     const comboOn = !versus && Player.combo > 1 && Game.time - Player.comboT < Upgrades.combo() && Game.state === 'playing';
     this.combo.classList.toggle('hidden', !comboOn);
     if (comboOn) this.combo.firstElementChild.textContent = 'x' + Player.combo;
 
-    this.show('powers', !versus && (Game.state === 'playing' || Game.state === 'paused' || Game.state === 'upgrade'));
+    this.show('powers', !versus && (Game.state === 'playing' || Game.state === 'paused'));
     for (const k in this.chips) {
       const ch = this.chips[k];
       const left = Powers.left(k);

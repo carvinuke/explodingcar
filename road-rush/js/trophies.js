@@ -83,7 +83,8 @@ const TROPHIES = [
   { id: 'unboxer', name: 'Unboxer', desc: 'Open 10 mystery boxes', test: (r, s) => (s.boxes || 0) >= 10 },
   { id: 'golden', name: 'Midas Run', desc: 'Get a golden run', test: r => r.golden >= 1 },
   { id: 'spelunker', name: 'Spelunker', desc: 'Find 3 secret rooms', test: (r, s) => (s.rooms || 0) >= 3 },
-  { id: 'buildmaster', name: 'Build Master', desc: 'Pick 6 upgrades in one run', test: r => r.upgrades >= 6 },
+  { id: 'buildmaster', name: 'Build Master', desc: 'Buy 10 upgrade levels', test: () => Upgrades.totals().have >= 10 },
+  { id: 'maxedout', name: 'Maxed Out', desc: 'Buy every level of every upgrade', test: () => { const t = Upgrades.totals(); return t.have >= t.total; } },
   { id: 'biomemaster', name: 'Biome Master', desc: 'Earn all 3 stars in a biome', test: () => Mastery.anyDone() },
   { id: 'cartographer', name: 'Cartographer', desc: 'Earn every biome star', test: () => Mastery.total() >= Mastery.max },
   { id: 'evolution', name: 'Evolution', desc: 'Evolve a pet', test: () => Evolve.list.length >= 1 },
@@ -172,7 +173,7 @@ const Levels = {
   // XP for a finished run.
   forRun(mode, row, coins, run) {
     const base = row + coins * 2 + (run.closeCalls || 0) * 3 + (run.events || 0) * 10 + Trophies.fresh.length * 25;
-    const extra = Upgrades.xp() * Prestige.bonus() * (Evolve.active() ? 1.2 : 1); // run upgrades, prestige, an evolved pet
+    const extra = Upgrades.xp() * Prestige.bonus() * (Evolve.active() ? 1.2 : 1); // upgrades, prestige, an evolved pet
     return Math.round(base * (mode === 'hardcore' ? 1.5 : mode === 'time' ? 1.2 : 1) * (Pets.perk('xp') || 1) * extra);
   },
 

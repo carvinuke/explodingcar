@@ -22,7 +22,6 @@
       <div id="coin-plate" class="plate coinplate"><span class="coin-ico"></span><b id="coins">0</b></div>
       <div id="mode-badge" class="plate mode-badge hidden"></div>
       <div id="combo" class="plate combo hidden"><b>x2</b><span>CLOSE CALLS</span></div>
-      <div id="upg-badge" class="plate upg-badge hidden"></div>
     </div>
     <div class="hud-r">
       <div id="best-plate" class="plate limit"><span class="plate-lbl">BEST</span><b id="best">0</b></div>
@@ -86,7 +85,6 @@
           <button id="btn-pause-admin" class="btn-plate admin-open hidden">Admin</button>
         </div>
         <ul id="pause-missions" class="missions dark"></ul>
-        <ul id="pause-upgrades" class="upg-list dark hidden"></ul>
         <p class="hint">P or Esc to resume &middot; M to mute</p>
       </div>
     </div>
@@ -117,7 +115,6 @@
       </div>
       <ul id="over-trophies" class="trophy-strip hidden"></ul>
       <ul id="over-boxes" class="box-strip hidden"></ul>
-      <ul id="over-upgrades" class="upg-list hidden"></ul>
       <ul id="over-missions" class="missions paper"></ul>
       <div class="actions">
         <button id="btn-again" class="btn-yellow">PLAY AGAIN</button>
@@ -126,15 +123,6 @@
         <button id="btn-over-settings" class="btn-plate">Settings</button>
       </div>
       <p class="hint">or press Space</p>
-    </div>
-  </div>
-
-  <div id="screen-upgrade" class="screen upgrade-screen hidden" role="dialog" aria-modal="true" aria-labelledby="upgrade-title">
-    <div class="upgrade-wrap">
-      <p class="upgrade-kicker" id="upgrade-row">CHECKPOINT</p>
-      <h2 id="upgrade-title">Pick an upgrade</h2>
-      <div id="upgrade-cards" class="upgrade-cards"></div>
-      <p class="hint">Click a card, or press 1, 2 or 3</p>
     </div>
   </div>
 
@@ -232,9 +220,9 @@
           <button class="tab" role="tab" data-tab="hats" aria-selected="false">Hats</button>
           <button class="tab" role="tab" data-tab="trails" aria-selected="false">Trails</button>
           <button class="tab" role="tab" data-tab="pets" aria-selected="false">Pets</button>
-          <button class="tab" role="tab" data-tab="deaths" aria-selected="false">Deaths</button>
           <button class="tab" role="tab" data-tab="prints" aria-selected="false">Footprints</button>
           <button class="tab" role="tab" data-tab="titles" aria-selected="false">Titles</button>
+          <button class="tab tab-upg" role="tab" data-tab="upgrades" aria-selected="false">Upgrades</button>
         </div>
         <div id="shop-grid" class="shop-grid" role="tabpanel"></div>
         <button id="btn-shop-done" class="btn-yellow">DONE</button>
