@@ -80,6 +80,7 @@ const TROPHIES = [
   { id: 'hoarder', name: 'Hoarder', desc: 'Own 90 cosmetics', test: () => Shop.collection().have >= 90 },
   { id: 'completionist', name: 'Completionist', desc: 'Own every single cosmetic', test: () => { const c = Shop.collection(); return c.have >= c.total - 1; } },
   { id: 'legend', name: 'Legend', desc: 'Reach level 50', test: () => Levels.level >= 50 },
+  { id: 'unboxer', name: 'Unboxer', desc: 'Open 10 mystery boxes', test: (r, s) => (s.boxes || 0) >= 10 },
   { id: 'gentle', name: 'Careful Driver', desc: 'Get through a Reverse Day without hitting a single chicken', test: r => r.revClean >= 1 },
 ];
 

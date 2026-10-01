@@ -172,6 +172,8 @@ const Renderer = {
       if (row) this.ground(c, row, time);
     }
     FX.drawDecals(c);
+    Prints.draw(c, time);
+    DeathFX.drawGround(c, time);
     FX.drawPools(c);
     Events.drawGround(c, time);
     Storms.drawGround(c, time);
@@ -218,6 +220,7 @@ const Renderer = {
     Pets.drawables(list);
     Powers.drawables(list);
     Graves.drawables(list);
+    DeathFX.drawables(list);
     for (const p of Game.players) if (!p.gone) { p.key = p.y - 10; list.push(p); }
     list.sort((a, b) => b.key - a.key);
 
@@ -559,12 +562,19 @@ const Renderer = {
         if (o.type === 'coin') Draw.coin(c, o, time);
         else if (o.type === 'egg' || o.type === 'goldegg') Draw.egg(c, o, time);
         else if (o.type === 'stand') Draw.stand(c, o, time);
+        else if (o.type === 'box') Draw.mysteryBox(c, o, time);
         else Draw.powerItem(c, o, time);
         break;
       case 'ghost': Draw.bestGhost(c, o.z, o.alpha); break;
       case 'event': o.draw(c, time); break;
       case 'player': this.player(c, o, time); break;
       case 'grave': c.scale(1.5, 1.5); Draw.grave(c); break;
+      case 'deathghost': { // your spirit floats away
+        c.globalAlpha = Math.max(0, 0.6 * (1 - o.t / 3));
+        Draw.player(c, { facing: 'down', squash: 0, z: o.z, rot: Math.sin(o.t * 2) * 0.15, flap: Math.abs(Math.sin(o.t * 6)), char: 0, blinkSeed: 0 }, o.t, { ...o.sk, top: '#f4f6ff', front: '#cfd6ea', wingTop: o.sk.wingTop ? '#e8ecfa' : null, wingFront: o.sk.wingTop ? '#c4cce0' : null, feet: '#cfd6ea', glow: 'rgba(200,220,255,0.3)' }, null);
+        c.globalAlpha = 1;
+        break;
+      }
       case 'decoy': { // a fake you, blinking faster as it runs out
         const blink = o.t < 2 && ((time * 10) | 0) % 2;
         c.globalAlpha = blink ? 0.45 : 0.85;
@@ -635,7 +645,38 @@ const Renderer = {
     if (tiny < 1) c.scale(tiny, tiny);
     if (p.sink) c.globalAlpha = 1 - p.sink;
     if (p.ride) c.translate(0, P(0, 7));
-    const sk = p.skin();
+    let sk = p.skin();
+    if (p.statue) { // death effect: stone, ice or gold
+      const pal = { stone: ['#a3a7ae', '#7b7f87'], ice: ['#d9f4ff', '#9fd8f0'], golden: ['#ffe066', '#e0a800'] }[p.statue];
+      sk = { ...sk, top: pal[0], front: pal[1], wingTop: sk.wingTop && pal[0], wingFront: sk.wingTop && pal[1], feet: pal[1], face: sk.face && pal[1], comb: sk.comb && [pal[0], pal[1]], beak: sk.beak && [pal[0], pal[1]], glow: null, flames: false, rainbow: false };
+    }
+    if (sk.disco && p.alive && !p.hop) { // a dance floor lights up under you
+      const cols = ['#ff4fa3', '#34c6ea', '#ffd23f', '#7ed957', '#a95cff'];
+      c.save();
+      c.globalCompositeOperation = 'lighter';
+      for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) {
+        c.fillStyle = cols[(Math.floor(time * 4) + dx * 2 + dy * 3 + 9) % cols.length];
+        c.globalAlpha = 0.35;
+        c.fillRect(dx * 13 - 6, P(dy * 13 + 6, 0.5), 12, 12 * GY);
+      }
+      c.restore();
+    }
+    if (sk.glitch && p.alive && ((time * 7) | 0) % 3 === 0) { // flickering copies in other dimensions
+      for (const [dx, a, b] of [[-3, '#ff2bd6', '#c4009e'], [3, '#2bf4ff', '#00a8c4']]) {
+        c.save();
+        c.globalAlpha = 0.45;
+        c.translate(dx + rand(-1, 1), 0);
+        Draw.player(c, p, time, { ...sk, glitch: false, top: a, front: b, wingTop: a, wingFront: b }, p.hat());
+        c.restore();
+      }
+    }
+    if (p.id === 0 && Shop.trail === 'blackhole' && p.alive) { // the vortex under you
+      c.save();
+      c.strokeStyle = 'rgba(150,90,255,0.5)';
+      c.lineWidth = 1.5;
+      for (let k = 0; k < 3; k++) { const a = time * 5 + k * 2.1; c.beginPath(); c.ellipse(0, P(0, 1), 14 + k * 5, (14 + k * 5) * GY, 0, a, a + 1.6); c.stroke(); }
+      c.restore();
+    }
     if (sk.flames && p.alive && !p.gone && Math.random() < 0.45) { // the Phoenix is always a little on fire
       FX.spawn('fire', p.x + rand(-9, 9), p.y + rand(-5, 5), p.z + rand(8, 24), { vz: rand(25, 55), g: -25, drag: 1, life: rand(0.25, 0.5), size: rand(3, 5.5), size2: 1 });
     }

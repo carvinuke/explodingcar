@@ -42,9 +42,14 @@ const Items = {
     }
     if (!free.length) return;
     // a mystery egg, now and then (the roll always happens, so the road stays the same for a seed)
-    if (Pets.has('luckycat') && Math.random() < 0.35) this.add('coin', pick(free), row.i); // far more coins
+    if (Pets.has('luckycat') && Math.random() < Pets.up(0.35, 0.55)) this.add('coin', pick(free), row.i); // far more coins
     if (Gen.chance(0.014 * (Pets.perk('eggLuck') || 1)) && Egg.canSpawn(row.i) && !this.list.some(it => it.type === 'egg')) {
       this.add('egg', Gen.pick(free), row.i);
+      return;
+    }
+    // a mystery box, rarely
+    if (Gen.chance(0.009) && Boxes.canSpawn(row.i)) {
+      this.add('box', Gen.pick(free), row.i);
       return;
     }
     // a roadside stand selling one power-up for this run's coins
@@ -100,6 +105,10 @@ const Items = {
       const dx = p.x - it.x, dy = p.y - it.y;
       const dist = Math.hypot(dx, dy);
       if (it.type === 'stand') { this.shop(it, p, dist); continue; }
+      if (it.type === 'coin' && p.id === 0 && Shop.trail === 'blackhole' && dist < 1.6 * TILE && dist > 1) { // the black hole trail pulls coins in
+        const s = Math.min(dist, 220 * dt);
+        it.x += (dx / dist) * s; it.y += (dy / dist) * s;
+      }
       if (magnet && dist < MAGNET_RANGE && (!it.pulled || it.pulled === p)) {
         const step = Math.min(dist, (it.pulled ? 560 : 280) * dt);
         it.pulled = p;
@@ -111,6 +120,7 @@ const Items = {
         if (it.type === 'coin') Game.addCoin(it, p);
         else if (it.type === 'goldegg') Game.addCoin(it, p, 10);
         else if (it.type === 'egg') Egg.pickup(p, it);
+        else if (it.type === 'box') Boxes.pickup(p, it);
         else Powers.grant(it.type, it, p);
       }
     }

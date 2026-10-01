@@ -286,7 +286,8 @@ const UI = {
     const col = Shop.collection();
     this.$('shop-collection').textContent = `COLLECTION ${col.have} / ${col.total}`;
     this.$('shop-collection-fill').style.width = `${(col.have / col.total) * 100}%`;
-    const labels = { skins: 'Skins', hats: 'Hats', trails: 'Trails', pets: 'Pets' };
+    const labels = { skins: 'Skins', hats: 'Hats', trails: 'Trails', pets: 'Pets', deaths: 'Deaths', prints: 'Footprints', titles: 'Titles' };
+    this.renderOutfits();
     for (const t of document.querySelectorAll('[data-tab]')) {
       t.setAttribute('aria-selected', t.dataset.tab === tab ? 'true' : 'false');
       const n = Shop.tabCount(t.dataset.tab);
@@ -298,7 +299,8 @@ const UI = {
       const item = table[id];
       const owned = Shop.has(tab, id), equipped = Shop.equipped(tab, id);
       const card = document.createElement('div');
-      card.className = 'skin' + (equipped ? ' equipped' : '') + ((item.unlock || item.level || item.egg) && !owned ? ' locked' : '') + (item.egg ? ' egg' : '');
+      const special = item.unlock || item.level || item.egg || item.box;
+      card.className = 'skin' + (equipped ? ' equipped' : '') + (special && !owned ? ' locked' : '') + (item.egg ? ' egg' : '') + (item.box ? ' boxed' : '');
       const cv = document.createElement('canvas');
       cv.width = cv.height = 120;
       this.preview(cv, tab, id);
@@ -308,7 +310,7 @@ const UI = {
       if (item.rare) {
         const tag = document.createElement('span');
         tag.className = 'rarity r-' + item.rare.toLowerCase();
-        tag.textContent = item.rare + ' · EGG ONLY';
+        tag.textContent = item.box ? 'MYSTERY BOX ONLY' : item.rare + ' · EGG ONLY';
         card.appendChild(tag);
       }
       if (item.perk) {
@@ -316,6 +318,14 @@ const UI = {
         perk.className = 'unlock perk';
         perk.textContent = item.perk;
         card.appendChild(perk);
+      }
+      if (tab === 'pets' && id !== 'none') { // pet level
+        const lv = document.createElement('span');
+        lv.className = 'unlock petlv';
+        const info = PetLevels.info(id);
+        const up = PET_MAX[id] ? `Level 5: ${PET_MAX[id]}` : '';
+        lv.textContent = !owned ? up : info.max ? `LEVEL 5 (MAX) · ${PET_MAX[id] || ''}` : `Level ${info.level} · ${info.into}/${info.need} XP` + (up ? ` · ${up}` : '');
+        if (lv.textContent) card.appendChild(lv);
       }
       const btn = document.createElement('button');
       if (equipped) {
@@ -326,11 +336,12 @@ const UI = {
         btn.className = 'btn-plate small';
         btn.textContent = 'Equip';
         btn.addEventListener('click', () => { Shop.equip(tab, id); Sound.click(); this.renderShop(); });
-      } else if (item.unlock || item.level || item.egg) {
+      } else if (special) {
         const t = item.unlock && TROPHIES.find(x => x.id === item.unlock);
         const how = document.createElement('span');
         how.className = 'unlock';
         how.textContent = item.egg ? 'Find an egg on the road and carry it 50 rows to hatch it'
+          : item.box ? 'Only found in mystery boxes on the road'
           : item.level ? `Reach level ${item.level} (you're level ${Levels.level})` : `Trophy: ${t ? t.desc : 'secret'}`;
         card.appendChild(how);
         btn.className = 'btn-plate small';
@@ -355,6 +366,9 @@ const UI = {
   preview(cv, tab, id) {
     const g = cv.getContext('2d');
     g.clearRect(0, 0, cv.width, cv.height);
+    if (tab === 'titles') { this.titlePreview(g, cv, id); return; }
+    if (SHOP_TABS[tab][id].box && !Shop.has(tab, id)) { this.mysteryPreview(g, cv); return; }
+    if (tab === 'deaths' || tab === 'prints') { this.effectPreview(g, cv, tab, id); return; }
     g.save();
     g.translate(cv.width * (tab === 'trails' ? 0.6 : 0.5), cv.height * 0.74);
     g.scale(2.4, 2.4);
@@ -374,7 +388,7 @@ const UI = {
       Draw.player(g, { facing: 'down', squash: 0, z: 0, rot: 0, flap: 0, char: 0 }, 0, skin, hat);
     }
     if (tab === 'pets' && id !== 'none' && !eggPet) {
-      const pet = { type: id, face: -1, z: ['drone', 'pigeon', 'parrot', 'phoenix', 'dragon', 'owl'].includes(id) ? 26 : 0, blink: 0, ph: 0 };
+      const pet = { type: id, face: -1, z: PETS[id].fly ? 26 : 0, blink: 0, ph: 0 };
       g.save();
       g.translate(22, 4);
       Draw.shadow(g, 0, 0, 20, 14, 0.7);
@@ -394,6 +408,131 @@ const UI = {
       g.lineWidth = 3;
       g.beginPath(); g.arc(60, 58, 6, Math.PI, 0); g.stroke();
     }
+  },
+
+  // Mystery-box items stay a mystery until you find one.
+  mysteryPreview(g, cv) {
+    g.save();
+    g.translate(cv.width / 2, cv.height * 0.7);
+    g.scale(2.6, 2.6);
+    Draw.shadow(g, 0, 0, 22, 16, 0.7);
+    Draw.mysteryBox(g, { phase: 0 }, 0.4);
+    g.restore();
+  },
+
+  // Titles: a little sign with the words on it.
+  titlePreview(g, cv, id) {
+    const name = id === 'none' ? '—' : TITLES[id].name.toUpperCase();
+    const W = cv.width, H = cv.height;
+    g.fillStyle = '#1d1b3a';
+    g.fillRect(2, H * 0.26, W - 4, H * 0.48);
+    g.strokeStyle = '#ffd23f';
+    g.lineWidth = 3;
+    g.strokeRect(7, H * 0.26 + 5, W - 14, H * 0.48 - 10);
+    g.fillStyle = '#ffd23f';
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.font = `900 18px ${UI_FONT}`;
+    const words = name.split(' ');
+    let lines = [name];
+    if (g.measureText(name).width > W - 24 && words.length > 1) { // two lines
+      const mid = Math.ceil(words.length / 2);
+      lines = [words.slice(0, mid).join(' '), words.slice(mid).join(' ')];
+    }
+    let size = 18;
+    while (lines.some(l => g.measureText(l).width > W - 24) && size > 10) { size--; g.font = `900 ${size}px ${UI_FONT}`; }
+    lines.forEach((l, i) => g.fillText(l, W / 2, H / 2 + 1 + (i - (lines.length - 1) / 2) * (size + 2)));
+  },
+
+  // Death effects and footprints: your character with the effect drawn around it.
+  effectPreview(g, cv, tab, id) {
+    g.save();
+    g.translate(cv.width * 0.5, cv.height * 0.74);
+    g.scale(2.2, 2.2);
+    if (tab === 'prints') {
+      g.translate(6, -4);
+      for (let k = 0; k < 3; k++) if (id !== 'none') Prints.drawOne(g, { x: -14 + k * 2, y: -10 - k * 11, kind: id, n: k, t: 1 }, 1.2, 0.95);
+      Draw.shadow(g, 0, 0, 30, 24, 0.9);
+      Draw.player(g, { facing: 'down', squash: 0, z: 0, rot: 0, flap: 0, char: 0 }, 0, Shop.skin(), Shop.hat);
+      g.restore();
+      return;
+    }
+    let sk = Shop.skin();
+    const statue = { stone: ['#a3a7ae', '#7b7f87'], ice: ['#d9f4ff', '#9fd8f0'], golden: ['#ffe066', '#e0a800'] }[id];
+    if (statue) sk = { ...sk, top: statue[0], front: statue[1], wingTop: sk.wingTop && statue[0], wingFront: sk.wingTop && statue[1], feet: statue[1], comb: sk.comb && [statue[0], statue[1]], beak: sk.beak && [statue[0], statue[1]], glow: null, rainbow: false };
+    const look = {
+      confetti: ['pixel', ['#ff5c8a', '#ffd23f', '#34c6ea', '#7ed957', '#a95cff']], hearts: ['heart', ['#ff5c8a', '#ff2d55']],
+      pixels: ['pixel', [sk.top, sk.front, '#1d1d1f']], bubbles: ['drop', ['#bfe8ff']], coins: ['coin', ['#ffd23f']],
+      smoke: ['pixel', ['#9a9aa2', '#b8b8c0']], lightning: ['bolt', ['#fff6b0']], fireworks: ['star', ['#ff5c8a', '#ffd23f', '#34c6ea']],
+      rainbow: ['star', ['#ff5c8a', '#ffb000', '#7ed957', '#34c6ea', '#a95cff']], supernova: ['star', ['#fff6d0', '#ffffff']],
+    }[id];
+    if (id === 'blackhole') {
+      const gr = g.createRadialGradient(0, -4, 0, 0, -4, 22);
+      gr.addColorStop(0, '#000'); gr.addColorStop(0.6, 'rgba(40,10,80,0.9)'); gr.addColorStop(1, 'rgba(120,60,200,0)');
+      g.fillStyle = gr;
+      g.beginPath(); g.ellipse(0, -4, 22, 18, 0, 0, 6.2832); g.fill();
+    } else if (id === 'smoke') {
+      g.fillStyle = 'rgba(160,160,170,0.8)';
+      for (const [x, y, r] of [[-8, -10, 9], [6, -14, 10], [0, -4, 11], [-12, -2, 7], [11, -3, 8]]) { g.beginPath(); g.arc(x, y, r, 0, 6.2832); g.fill(); }
+    } else {
+      if (id !== 'none') Draw.shadow(g, 0, 0, 30, 24, 0.9);
+      if (id === 'ghost') {
+        g.globalAlpha = 0.45;
+        Draw.player(g, { facing: 'down', squash: 0, z: 18, rot: 0.1, flap: 1, char: 0 }, 0, { ...sk, top: '#f4f6ff', front: '#cfd6ea', feet: '#cfd6ea' }, null);
+        g.globalAlpha = 1;
+      } else if (id === 'none') {
+        Draw.shadow(g, 0, 0, 30, 24, 0.9);
+      }
+      Draw.player(g, { facing: 'down', squash: 0, z: 0, rot: id === 'none' ? 0 : 0.5, flap: 0, char: 0 }, 0, sk, statue ? null : Shop.hat);
+    }
+    if (look) {
+      for (let k = 0; k < 12; k++) {
+        const a = k * 0.52 + 0.3, r = 17 + (k % 3) * 5;
+        FX.glyph(g, look[0], Math.cos(a) * r, -12 + Math.sin(a) * r * 0.8, id === 'lightning' ? 9 : 4.5, look[1][k % look[1].length], a);
+        if (id === 'lightning' && k > 1) break;
+      }
+    }
+    if (id === 'none') { // the classic: feathers
+      for (let k = 0; k < 8; k++) FX.glyph(g, 'feather', Math.cos(k * 0.8) * 20, -12 + Math.sin(k * 0.8) * 14, 5, k % 2 ? sk.top : '#ffffff', k);
+    }
+    g.restore();
+  },
+
+  // Three saved outfits: one tap to wear, one to save what you've got on now.
+  renderOutfits() {
+    const box = this.$('outfits');
+    if (!box) return;
+    box.textContent = '';
+    Shop.outfits().forEach((o, i) => {
+      const slot = document.createElement('div');
+      slot.className = 'outfit' + (o ? '' : ' empty');
+      const cv = document.createElement('canvas');
+      cv.width = cv.height = 64;
+      const g = cv.getContext('2d');
+      if (o) {
+        g.translate(32, 50);
+        g.scale(1.3, 1.3);
+        Draw.shadow(g, 0, 0, 30, 24, 0.9);
+        Draw.player(g, { facing: 'down', squash: 0, z: 0, rot: 0, flap: 0, char: 0 }, 0, SKINS[o.skins] || SKINS.chick, o.hats && o.hats !== 'none' ? o.hats : null);
+      }
+      const label = document.createElement('b');
+      label.textContent = `Outfit ${i + 1}`;
+      const wear = document.createElement('button');
+      wear.className = 'btn-plate small';
+      wear.textContent = 'Wear';
+      wear.disabled = !o;
+      wear.addEventListener('click', () => { if (Shop.wearOutfit(i)) { Sound.powerup(); this.renderShop(); } });
+      const save = document.createElement('button');
+      save.className = 'btn-yellow small';
+      save.textContent = o ? 'Save over' : 'Save';
+      save.addEventListener('click', () => { Shop.saveOutfit(i); Sound.click(); this.renderShop(); });
+      for (const b of [wear, save]) b.addEventListener('pointerdown', e => e.stopPropagation());
+      const btns = document.createElement('div');
+      btns.className = 'outfit-btns';
+      btns.append(wear, save);
+      slot.append(cv, label, btns);
+      box.appendChild(slot);
+    });
   },
 
   trailPreview(g, id) {
@@ -606,6 +745,9 @@ const UI = {
     badge.textContent = mode === 'hardcore' ? 'HARDCORE' : mode === 'time' ? 'TIME ATTACK' : '';
     badge.className = 'plate mode-badge' + (mode === 'hardcore' ? ' hardcore' : mode === 'time' ? ' time' : ' hidden');
     this.show('timer', mode === 'time');
+    const title = !versus && Shop.title && TITLES[Shop.title];
+    this.$('title-plate').textContent = title ? title.name : '';
+    this.show('title-plate', !!title);
     this.show('p2-plate', versus);
     this.show('best-plate', !versus);
     this.show('coin-plate', !versus);
@@ -696,6 +838,23 @@ const UI = {
       tr.appendChild(li);
     }
     tr.classList.toggle('hidden', !info.trophies.length);
+    // mystery boxes opened, and your pet levelling up
+    const bx = this.$('over-boxes');
+    bx.textContent = '';
+    for (const r of info.boxes || []) {
+      const li = document.createElement('li');
+      if (r.coins) li.textContent = `MYSTERY BOX: ${r.coins} coins`;
+      else { li.textContent = `MYSTERY BOX: ${r.name} (${r.kind})${r.rare ? ' · MYSTERY EXCLUSIVE!' : ''}`; if (r.rare) li.className = 'rare'; }
+      bx.appendChild(li);
+    }
+    if (info.pet) {
+      const li = document.createElement('li');
+      li.className = 'pet';
+      li.textContent = info.pet.max ? `${info.pet.name} reached level 5! Its perk got stronger: ${PET_MAX[info.pet.id] || ''}` : `${info.pet.name} reached level ${info.pet.level}`;
+      bx.appendChild(li);
+    }
+    bx.classList.toggle('hidden', !bx.children.length);
+    if ((info.boxes || []).length) Sound.hatch();
     this.show('over-missions', !vs);
     if (!vs) this.renderMissions(this.$('over-missions'), true);
     this.show('screen-over', true);

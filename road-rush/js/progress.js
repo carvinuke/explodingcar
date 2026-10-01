@@ -237,14 +237,117 @@ const PETS = {
 };
 const EGG_PETS = Object.keys(PETS).filter(k => PETS[k].egg);
 
-const SHOP_TABS = { skins: SKINS, hats: HATS, trails: TRAILS, pets: PETS };
+// How you go when you get hit (on top of the usual crash).
+const DEATHS = {
+  none:      { name: 'Classic', price: 0 },
+  confetti:  { name: 'Party Popper', price: 150 },
+  hearts:    { name: 'Heartbreak', price: 200 },
+  pixels:    { name: 'Game Over', price: 250 },
+  bubbles:   { name: 'Bubble Pop', price: 250 },
+  coins:     { name: 'Jackpot', price: 350 },
+  smoke:     { name: 'Ninja Vanish', price: 450 },
+  ghost:     { name: 'Spirit', price: 500 },
+  stone:     { name: 'Statue', price: 600 },
+  ice:       { name: 'Frozen Solid', price: 700 },
+  lightning: { name: 'Thunderstruck', price: 800 },
+  fireworks: { name: 'Fireworks', price: 900 },
+  rainbow:   { name: 'Rainbow Blast', price: 1000 },
+  blackhole: { name: 'Black Hole', price: 1500 },
+  golden:    { name: 'Golden Statue', price: 0, unlock: 'legend' },
+  supernova: { name: 'Supernova', price: 0, box: true, rare: 'MYSTERY', perk: 'A blinding blast that wrecks every car on screen' },
+};
+
+// Marks you leave on the ground for a few seconds.
+const PRINTS = {
+  none:    { name: 'No footprints', price: 0 },
+  tracks:  { name: 'Chicken Tracks', price: 100 },
+  paws:    { name: 'Paw Prints', price: 150 },
+  hearts:  { name: 'Heart Steps', price: 180 },
+  snow:    { name: 'Snow Boots', price: 200 },
+  stars:   { name: 'Star Steps', price: 220 },
+  slime:   { name: 'Slime', price: 250 },
+  pixel:   { name: 'Pixel Steps', price: 300 },
+  flames:  { name: 'Fire Steps', price: 350 },
+  flowers: { name: 'Flower Steps', price: 350 },
+  ghost:   { name: 'Ghost Steps', price: 380 },
+  neon:    { name: 'Neon', price: 400 },
+  rainbow: { name: 'Rainbow Steps', price: 450 },
+  diamond: { name: 'Diamond Steps', price: 0, level: 26 },
+  midas:   { name: 'Midas Touch', price: 0, box: true, rare: 'MYSTERY', perk: 'Your steps turn gold, and now and then one leaves a coin behind' },
+};
+
+// A title under your score.
+const TITLES = {
+  none:     { name: 'No title', price: 0 },
+  runner:   { name: 'Road Runner', price: 200 },
+  dancer:   { name: 'Lane Dancer', price: 300 },
+  speedy:   { name: 'Speed Demon', price: 400 },
+  coiner:   { name: 'Coin Collector', price: 500 },
+  daredevil: { name: 'Daredevil', price: 800 },
+  royalty:  { name: 'Chicken Royalty', price: 1500 },
+  pro:      { name: 'Pro', price: 0, level: 15 },
+  master:   { name: 'Master', price: 0, level: 30 },
+  grand:    { name: 'Grandmaster', price: 0, level: 45 },
+  hairs:    { name: "Hair's Breadth", price: 0, unlock: 'hair' },
+  owl:      { name: 'Night Owl', price: 0, unlock: 'nightowl' },
+  hunter:   { name: 'Egg Hunter', price: 0, unlock: 'hatch' },
+  rager:    { name: 'Rage Machine', price: 0, unlock: 'rage' },
+  survivor: { name: 'Survivor', price: 0, unlock: 'reborn' },
+  careful:  { name: 'Careful Driver', price: 0, unlock: 'gentle' },
+  marathon: { name: 'Marathon Runner', price: 0, unlock: 'marathon' },
+  tourist:  { name: 'World Traveler', price: 0, unlock: 'tourist' },
+  veteran:  { name: 'Veteran', price: 0, unlock: 'veteran' },
+  collector: { name: 'Collector', price: 0, unlock: 'collector' },
+  legend:   { name: 'Legend', price: 0, unlock: 'legend' },
+  chosen:   { name: 'The Chosen One', price: 0, box: true, rare: 'MYSTERY' },
+  lucky:    { name: 'Lucky Duck', price: 0, box: true, rare: 'MYSTERY' },
+};
+
+// Mystery-box exclusives in the older tabs.
+Object.assign(SKINS, {
+  disco:  bird('Disco Chick', 0, '#e8ecf2', '#b8c0cc', '#d0d6de', '#9aa2ad', { box: true, rare: 'MYSTERY', disco: true, shine: true, perk: 'A dance floor lights up wherever you stand' }),
+  glitch: bird('Glitch Chick', 0, '#7df9ff', '#2bc2d0', '#ff6cf2', '#c42bb9', { box: true, rare: 'MYSTERY', glitch: true, perk: 'Flickers between dimensions' }),
+});
+Object.assign(HATS, {
+  raincloud: { name: 'Storm Cloud', price: 0, box: true, rare: 'MYSTERY', perk: 'Your own little raincloud, with the odd flash of lightning' },
+});
+Object.assign(TRAILS, {
+  blackhole: { name: 'Black Hole', price: 0, box: true, rare: 'MYSTERY', perk: 'A swirling vortex that pulls in coins next to you' },
+});
+Object.assign(PETS, {
+  mimic: { name: 'Mimic', price: 0, box: true, rare: 'MYSTERY', perk: 'A hungry treasure chest that eats the coins you hop past (and gives them to you)' },
+});
+
+// What each pet's perk becomes at level 5 (shown in the shop).
+const PET_MAX = {
+  duck: '+40% XP', dog: 'Fetches from much further away', cat: 'Blocks two hits per run', minij: 'UFOs are too scared to take you either',
+  drone: 'A stronger coin pull', pigeon: 'Drops coins far more often', parrot: 'Warns you from further away', turtle: 'Rests half as long',
+  twister: 'A much wider vacuum', rock: 'Still does nothing (proudly)', hamster: '1 in 3 coins is worth double', slime: 'A coin every 10 rows',
+  crab: '+50 coins per new biome', penguin: 'Still no sliding (it was already perfect)', bat: 'Close calls are worth triple', fox: '+35% XP',
+  snail: 'The danger line is 22% slower', bee: 'Power-ups last 50% longer', bunny: 'Start every run with two shields', panda: 'Missions pay 40% more',
+  ghostie: 'Eggs show up three times as often', goldfish: 'A much stronger coin pull', phoenix: 'Brings you back twice per run',
+  dragon: 'Breathes fire much more often', unicorn: 'Coins are worth triple', goose: 'Lays golden eggs much faster', owl: 'Slows time more often',
+  golem: 'Recharges in 14 seconds', fairy: 'A power-up every 18 seconds', alien: 'Events pay 100 coins', frostfox: 'Freezes traffic every 22 seconds',
+  mole: 'Treasure every 30 rows', robopup: 'Fetches power-ups from across the screen', luckycat: 'Even more coins on the road',
+  mimic: 'Eats coins from further away',
+};
+
+const SHOP_TABS = { skins: SKINS, hats: HATS, trails: TRAILS, pets: PETS, deaths: DEATHS, prints: PRINTS, titles: TITLES };
+// Which Shop field holds each tab's equipped item, and its storage key.
+const SLOTS = {
+  skins: ['current', 'skin', 'chick'], hats: ['hat', 'hat'], trails: ['trail', 'trail'], pets: ['pet', 'pet'],
+  deaths: ['death', 'death'], prints: ['print', 'print'], titles: ['title', 'title'],
+};
 
 const Shop = {
-  owned: { skins: ['chick'], hats: ['none'], trails: ['none'], pets: ['none'] },
+  owned: { skins: ['chick'], hats: ['none'], trails: ['none'], pets: ['none'], deaths: ['none'], prints: ['none'], titles: ['none'] },
   current: 'chick',
   hat: null,
   trail: null,
   pet: null,
+  death: null,
+  print: null,
+  title: null,
 
   load() {
     const list = (key, table, base) => {
@@ -253,14 +356,14 @@ const Shop = {
       if (!out.includes(base)) out.unshift(base);
       return out;
     };
-    this.owned = { skins: list('skins', SKINS, 'chick'), hats: list('hats', HATS, 'none'), trails: list('trails', TRAILS, 'none'), pets: list('pets', PETS, 'none') };
-    const cur = Store.get('skin', 'chick');
-    this.current = SKINS[cur] && this.has('skins', cur) ? cur : 'chick';
-    const hat = Store.get('hat', 'none'), trail = Store.get('trail', 'none');
-    this.hat = HATS[hat] && this.has('hats', hat) && hat !== 'none' ? hat : null;
-    this.trail = TRAILS[trail] && this.has('trails', trail) && trail !== 'none' ? trail : null;
-    const pet = Store.get('pet', 'none');
-    this.pet = PETS[pet] && this.has('pets', pet) && pet !== 'none' ? pet : null;
+    this.owned = {};
+    for (const tab in SHOP_TABS) this.owned[tab] = list(tab, SHOP_TABS[tab], tab === 'skins' ? 'chick' : 'none');
+    for (const tab in SLOTS) {
+      const [field, key, base] = SLOTS[tab];
+      const id = Store.get(key, base || 'none');
+      const ok = SHOP_TABS[tab][id] && this.has(tab, id);
+      this[field] = tab === 'skins' ? (ok ? id : 'chick') : ok && id !== 'none' ? id : null;
+    }
   },
 
   skin() { return SKINS[this.current]; },
@@ -290,16 +393,11 @@ const Shop = {
     return this.owned[tab].includes(id);
   },
 
-  equipped(tab, id) {
-    if (tab === 'skins') return this.current === id;
-    if (tab === 'hats') return (this.hat || 'none') === id;
-    if (tab === 'pets') return (this.pet || 'none') === id;
-    return (this.trail || 'none') === id;
-  },
+  equipped(tab, id) { return (this[SLOTS[tab][0]] || 'none') === id; },
 
   buy(tab, id) {
     const item = SHOP_TABS[tab][id];
-    if (!item || item.unlock || item.level || item.egg || this.has(tab, id) || Game.bank < item.price) return false;
+    if (!item || item.unlock || item.level || item.egg || item.box || this.has(tab, id) || Game.bank < item.price) return false;
     Game.bank -= item.price;
     Store.set('coins', Game.bank);
     this.owned[tab].push(id);
@@ -319,10 +417,28 @@ const Shop = {
 
   equip(tab, id) {
     if (!this.has(tab, id)) return;
-    if (tab === 'skins') { this.current = id; Store.set('skin', id); }
-    else if (tab === 'hats') { this.hat = id === 'none' ? null : id; Store.set('hat', id); }
-    else if (tab === 'pets') { this.pet = id === 'none' ? null : id; Store.set('pet', id); if (Game.state === 'playing' || Game.state === 'paused') Pets.reset(); }
-    else { this.trail = id === 'none' ? null : id; Store.set('trail', id); }
+    const [field, key] = SLOTS[tab];
+    this[field] = tab === 'skins' ? id : id === 'none' ? null : id;
+    Store.set(key, id);
+    if (tab === 'pets' && (Game.state === 'playing' || Game.state === 'paused')) Pets.reset();
+  },
+
+  // ---- Outfits: three saved looks you can switch between in one tap ----
+  outfits() {
+    const v = Store.get('outfits', null);
+    return Array.isArray(v) && v.length === 3 ? v : [null, null, null];
+  },
+  saveOutfit(i) {
+    const o = this.outfits();
+    o[i] = {};
+    for (const tab in SLOTS) o[i][tab] = this[SLOTS[tab][0]] || 'none';
+    Store.set('outfits', o);
+  },
+  wearOutfit(i) {
+    const o = this.outfits()[i];
+    if (!o) return false;
+    for (const tab in SLOTS) if (o[tab] && this.has(tab, o[tab])) this.equip(tab, o[tab]);
+    return true;
   },
 };
 

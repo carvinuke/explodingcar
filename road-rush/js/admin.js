@@ -303,7 +303,7 @@ const Admin = {
       this.god = false;
       Player.pw.invincible = 0;
       Player.grace = 0;
-      if (Pets.pet) Pets.pet.catUsed = true;
+      if (Pets.pet) { Pets.pet.catUsed = 9; Pets.pet.reborn = 9; Pets.pet.golemT = 99; }
       const v = Vehicles.make({ speed: 300, dir: 1 }, 'bus', Player.y);
       Game.kill('vehicle', { p: Player, dir: 1, vehicle: v });
       this.god = god;
@@ -354,6 +354,27 @@ const Admin = {
       }
     });
     this.flash('A roadside stand, just ahead');
+  },
+
+  giveBox() {
+    if (Game.players.length > 1) { this.flash('Mystery boxes are single-player only'); return; }
+    if (!this.ensureRun()) return;
+    this.after(() => {
+      for (let r = Player.row + 1; r <= Player.row + 4; r++) {
+        const R = World.rows.get(r);
+        if (!R || R.type === 'river' || World.isBlocked(Player.col, r)) continue;
+        Items.add('box', Player.col, r);
+        return;
+      }
+    });
+    this.flash('A mystery box, just ahead');
+  },
+
+  maxPet() {
+    if (!Shop.pet) { this.flash('Equip a pet first'); return; }
+    PetLevels.xp[Shop.pet] = PET_LEVELS[PET_LEVELS.length - 1];
+    Store.set('petxp', PetLevels.xp);
+    this.flash(`${PETS[Shop.pet].name} is level 5`);
   },
 
   fever() {
@@ -485,6 +506,8 @@ const Admin = {
     btn(r, 'Max rage (Big J stomp)', () => this.maxRage(), 'danger');
     btn(r, 'Roadside stand', () => this.spawnStand());
     btn(r, 'Combo fever', () => this.fever(), 'gold');
+    btn(r, 'Drop a mystery box', () => this.giveBox(), 'gold');
+    btn(r, 'Max pet level', () => this.maxPet());
 
     r = section('Pets');
     for (const k in PETS) btn(r, PETS[k].name, () => this.givePet(k));

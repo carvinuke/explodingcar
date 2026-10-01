@@ -18,6 +18,7 @@
   <div id="hud" class="hidden">
     <div class="hud-l">
       <div id="score-plate" class="plate guide"><span class="plate-lbl" id="score-lbl">SCORE</span><b id="score">0</b></div>
+      <div id="title-plate" class="title-plate hidden"></div>
       <div id="coin-plate" class="plate coinplate"><span class="coin-ico"></span><b id="coins">0</b></div>
       <div id="mode-badge" class="plate mode-badge hidden"></div>
       <div id="combo" class="plate combo hidden"><b>x2</b><span>CLOSE CALLS</span></div>
@@ -112,6 +113,7 @@
         <ul id="xp-rewards" class="xp-rewards"></ul>
       </div>
       <ul id="over-trophies" class="trophy-strip hidden"></ul>
+      <ul id="over-boxes" class="box-strip hidden"></ul>
       <ul id="over-missions" class="missions paper"></ul>
       <div class="actions">
         <button id="btn-again" class="btn-yellow">PLAY AGAIN</button>
@@ -193,11 +195,15 @@
           <span class="plate coinplate"><span class="coin-ico"></span><b id="shop-coins">0</b></span>
         </div>
         <div class="collection"><span id="shop-collection">COLLECTION</span><span class="collection-bar"><i id="shop-collection-fill"></i></span></div>
+        <div class="outfits" id="outfits" aria-label="Saved outfits"></div>
         <div class="tabs" role="tablist" aria-label="Shop sections">
           <button class="tab" role="tab" data-tab="skins" aria-selected="true">Skins</button>
           <button class="tab" role="tab" data-tab="hats" aria-selected="false">Hats</button>
           <button class="tab" role="tab" data-tab="trails" aria-selected="false">Trails</button>
           <button class="tab" role="tab" data-tab="pets" aria-selected="false">Pets</button>
+          <button class="tab" role="tab" data-tab="deaths" aria-selected="false">Deaths</button>
+          <button class="tab" role="tab" data-tab="prints" aria-selected="false">Footprints</button>
+          <button class="tab" role="tab" data-tab="titles" aria-selected="false">Titles</button>
         </div>
         <div id="shop-grid" class="shop-grid" role="tabpanel"></div>
         <button id="btn-shop-done" class="btn-yellow">DONE</button>
@@ -287,6 +293,7 @@
 <script src="js/storms.js"></script>
 <script src="js/specials.js"></script>
 <script src="js/reverse.js"></script>
+<script src="js/extras.js"></script>
 <script src="js/camera.js"></script>
 <script src="js/lighting.js"></script>
 <script src="js/renderer.js"></script>
