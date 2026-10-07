@@ -1,5 +1,5 @@
 'use strict';
-// Toy Box: letters that won't sit still.
+// Hall of Art: letters that won't sit still.
 
 // Split a word into one span per letter.
 function tbLetters(el, text) {
@@ -14,14 +14,14 @@ function tbLetters(el, text) {
 }
 
 // 19. Letters scatter away from your cursor, then spring back into place.
-Toys.add({
+Exhibits.add({
   id: 'scatter', name: 'Shy Letters', section: 'text', hint: 'Move through the word',
   setup(t) {
     t.el.classList.add('center');
     const w = document.createElement('div');
     w.className = 'word xl';
     t.el.appendChild(w);
-    t.chars = tbLetters(w, 'SCATTER').map(el => ({ el, x: TB.spring(170, 11), y: TB.spring(170, 11), r: TB.spring(120, 9), home: null }));
+    t.chars = tbLetters(w, 'SCATTER').map(el => ({ el, x: HA.spring(170, 11), y: HA.spring(170, 11), r: HA.spring(120, 9), home: null }));
   },
   frame(t, dt) {
     const s = t.el.getBoundingClientRect();
@@ -38,7 +38,7 @@ Toys.add({
 });
 
 // 20. Scrambled text that decodes itself. Hover or click to scramble it again.
-Toys.add({
+Exhibits.add({
   id: 'decode', name: 'Decoder', section: 'text', hint: 'Hover or click to scramble',
   setup(t) {
     t.el.classList.add('center', 'dark');
@@ -63,7 +63,7 @@ Toys.add({
 });
 
 // 21. A word riding a wave. Your cursor makes the sea rougher.
-Toys.add({
+Exhibits.add({
   id: 'wave', name: 'Wave Text', section: 'text', hint: 'Hover for a rough sea',
   setup(t) {
     t.el.classList.add('center', 'sea');
@@ -74,7 +74,7 @@ Toys.add({
     t.amp = 6;
   },
   frame(t, dt, time) {
-    t.amp = TB.lerp(t.amp, t.p.inside ? 22 : 6, dt * 3);
+    t.amp = HA.lerp(t.amp, t.p.inside ? 22 : 6, dt * 3);
     t.chars.forEach((el, i) => {
       const y = Math.sin(time * 3 + i * 0.6) * t.amp, r = Math.cos(time * 3 + i * 0.6) * t.amp * 0.6;
       el.style.transform = `translateY(${y.toFixed(1)}px) rotate(${r.toFixed(1)}deg)`;
@@ -83,7 +83,7 @@ Toys.add({
 });
 
 // 22. Big shiny letters with a sheen that follows your cursor.
-Toys.add({
+Exhibits.add({
   id: 'shimmer', name: 'Chrome', section: 'text', hint: 'Move across it',
   setup(t) {
     t.el.classList.add('center', 'dark');
@@ -97,13 +97,13 @@ Toys.add({
 });
 
 // 23. A typewriter that keeps changing its mind.
-Toys.add({
+Exhibits.add({
   id: 'type', name: 'Typewriter', section: 'text', hint: 'Just watch (or click)',
   setup(t) {
     t.el.classList.add('center', 'paper');
     t.el.innerHTML = '<div class="typer"><span></span><i>|</i></div>';
     t.out = t.el.querySelector('span');
-    t.lines = ['Why did the chicken cross the road?', 'To get to the other side.', 'It did not make it.', 'Traffic is a state of mind.', 'Please keep your hands inside the toy box.'];
+    t.lines = ['Why did the chicken cross the road?', 'To get to the other side.', 'It did not make it.', 'Traffic is a state of mind.', 'Please keep your hands inside the exhibit box.'];
     t.li = 0; t.n = 0; t.dir = 1; t.wait = 0.6;
     t.el.addEventListener('click', () => { t.dir = -1; t.wait = 0; });
   },
@@ -113,8 +113,8 @@ Toys.add({
     const line = t.lines[t.li];
     if (t.dir > 0) {
       t.n++;
-      t.wait = line[t.n - 1] === ' ' ? 0.09 : TB.rand(0.04, 0.11);
-      if (t.n % 2) t.blip(TB.rand(1800, 2400), 0.015, 'square', 0.025);
+      t.wait = line[t.n - 1] === ' ' ? 0.09 : HA.rand(0.04, 0.11);
+      if (t.n % 2) t.blip(HA.rand(1800, 2400), 0.015, 'square', 0.025);
       if (t.n >= line.length) { t.dir = -1; t.wait = 1.6; }
     } else {
       t.n = Math.max(0, t.n - 2);

@@ -1,22 +1,22 @@
 'use strict';
-// Toy Box: 3D and physics.
+// Hall of Art: 3D and physics.
 
 // 24. A holographic card that tilts toward your cursor, with a glare that follows.
-Toys.add({
+Exhibits.add({
   id: 'tilt', name: 'Holo Card', section: 'physics', hint: 'Move over the card',
   setup(t) {
     t.el.classList.add('center', 'deep');
-    t.el.innerHTML = '<div class="holo"><div class="holo-in"><b>RARE</b><span>Car Go Boom</span><em>No. 001</em></div><div class="holo-glare"></div></div>';
+    t.el.innerHTML = '<div class="holo"><div class="holo-in"><b>RARE</b><span>Solarian Arcade</span><em>No. 001</em></div><div class="holo-glare"></div></div>';
     t.card = t.el.querySelector('.holo');
-    t.rx = TB.spring(160, 14); t.ry = TB.spring(160, 14);
+    t.rx = HA.spring(160, 14); t.ry = HA.spring(160, 14);
   },
   frame(t, dt) {
     const r = t.card.getBoundingClientRect(), s = t.el.getBoundingClientRect();
     let tx = 0, ty = 0, gx = 50, gy = 30;
     if (t.p.inside) {
       const x = (t.p.x - (r.left - s.left)) / r.width, y = (t.p.y - (r.top - s.top)) / r.height;
-      ty = (TB.clamp(x, 0, 1) - 0.5) * 30; tx = -(TB.clamp(y, 0, 1) - 0.5) * 24;
-      gx = TB.clamp(x, 0, 1) * 100; gy = TB.clamp(y, 0, 1) * 100;
+      ty = (HA.clamp(x, 0, 1) - 0.5) * 30; tx = -(HA.clamp(y, 0, 1) - 0.5) * 24;
+      gx = HA.clamp(x, 0, 1) * 100; gy = HA.clamp(y, 0, 1) * 100;
     }
     const a = t.rx.step(tx, dt), b = t.ry.step(ty, dt);
     t.card.style.transform = `rotateX(${a.toFixed(2)}deg) rotateY(${b.toFixed(2)}deg)`;
@@ -27,7 +27,7 @@ Toys.add({
 });
 
 // 25. A cube you can spin. Flick it and it keeps going.
-Toys.add({
+Exhibits.add({
   id: 'cube', name: 'Spin the Cube', section: 'physics', hint: 'Drag and flick',
   setup(t) {
     t.el.classList.add('center', 'deep');
@@ -38,14 +38,14 @@ Toys.add({
   },
   move(t) { if (t.p.down) { t.vy = t.p.vx * 30; t.vx = -t.p.vy * 30; } },
   frame(t, dt) {
-    if (!t.p.down) { t.vx *= Math.exp(-0.8 * dt); t.vy = TB.lerp(t.vy, Math.abs(t.vy) < 25 ? 25 * Math.sign(t.vy || 1) : t.vy, dt); t.vy *= Math.exp(-0.5 * dt); if (Math.abs(t.vy) < 25) t.vy = 25 * Math.sign(t.vy || 1); }
+    if (!t.p.down) { t.vx *= Math.exp(-0.8 * dt); t.vy = HA.lerp(t.vy, Math.abs(t.vy) < 25 ? 25 * Math.sign(t.vy || 1) : t.vy, dt); t.vy *= Math.exp(-0.5 * dt); if (Math.abs(t.vy) < 25) t.vy = 25 * Math.sign(t.vy || 1); }
     t.ax += t.vx * dt; t.ay += t.vy * dt;
     t.cube.style.transform = `rotateX(${t.ax.toFixed(2)}deg) rotateY(${t.ay.toFixed(2)}deg)`;
   },
 });
 
 // 26. A rope. Grab it anywhere and swing it about.
-Toys.add({
+Exhibits.add({
   id: 'rope', name: 'Rope', section: 'physics', hint: 'Grab and swing', canvas: true,
   setup(t) { this.make(t); },
   make(t) {
@@ -85,19 +85,19 @@ Toys.add({
     c.beginPath(); c.moveTo(P[0].x, P[0].y); for (const p of P) c.lineTo(p.x, p.y); c.stroke();
     c.strokeStyle = 'rgba(0,0,0,0.25)'; c.lineWidth = 2; c.setLineDash([4, 6]); c.stroke(); c.setLineDash([]);
     const e = P[P.length - 1];
-    c.fillStyle = '#e63946'; c.beginPath(); c.arc(e.x, e.y, 12, 0, TB.TAU); c.fill();
-    c.fillStyle = 'rgba(255,255,255,0.4)'; c.beginPath(); c.arc(e.x - 4, e.y - 4, 4, 0, TB.TAU); c.fill();
+    c.fillStyle = '#e63946'; c.beginPath(); c.arc(e.x, e.y, 12, 0, HA.TAU); c.fill();
+    c.fillStyle = 'rgba(255,255,255,0.4)'; c.beginPath(); c.arc(e.x - 4, e.y - 4, 4, 0, HA.TAU); c.fill();
   },
 });
 
 // 27. Click to drop bouncy balls. Drag them and throw them.
-Toys.add({
+Exhibits.add({
   id: 'balls', name: 'Bouncy Balls', section: 'physics', hint: 'Click to add, drag to throw', canvas: true,
-  setup(t) { t.b = []; for (let i = 0; i < 6; i++) this.add(t, TB.rand(30, t.W - 30), TB.rand(20, t.H / 2)); t.held = null; },
+  setup(t) { t.b = []; for (let i = 0; i < 6; i++) this.add(t, HA.rand(30, t.W - 30), HA.rand(20, t.H / 2)); t.held = null; },
   add(t, x, y) {
     if (t.b.length > 40) t.b.shift();
-    const r = TB.rand(10, 22);
-    t.b.push({ x, y, vx: TB.rand(-80, 80), vy: 0, r, hue: Math.random() * 360 });
+    const r = HA.rand(10, 22);
+    t.b.push({ x, y, vx: HA.rand(-80, 80), vy: 0, r, hue: Math.random() * 360 });
   },
   down(t) {
     t.held = t.b.find(b => Math.hypot(b.x - t.p.x, b.y - t.p.y) < b.r + 4) || null;
@@ -130,8 +130,8 @@ Toys.add({
         const img = b.img = document.createElement('canvas'), s = Math.ceil(b.r * 2 * 2);
         img.width = img.height = s;
         const g = img.getContext('2d'), r = s / 2, gr = g.createRadialGradient(r * 0.65, r * 0.6, r * 0.1, r, r, r);
-        gr.addColorStop(0, '#fff'); gr.addColorStop(0.25, TB.hsl(b.hue, 90, 65)); gr.addColorStop(1, TB.hsl(b.hue, 80, 38));
-        g.fillStyle = gr; g.beginPath(); g.arc(r, r, r, 0, TB.TAU); g.fill();
+        gr.addColorStop(0, '#fff'); gr.addColorStop(0.25, HA.hsl(b.hue, 90, 65)); gr.addColorStop(1, HA.hsl(b.hue, 80, 38));
+        g.fillStyle = gr; g.beginPath(); g.arc(r, r, r, 0, HA.TAU); g.fill();
       }
       c.drawImage(b.img, b.x - b.r, b.y - b.r, b.r * 2, b.r * 2);
     }
@@ -139,7 +139,7 @@ Toys.add({
 });
 
 // 28. Newton's cradle: pull a ball back and let go.
-Toys.add({
+Exhibits.add({
   id: 'cradle', name: "Newton's Cradle", section: 'physics', hint: 'Drag an end ball out', canvas: true,
   setup(t) { t.n = 5; t.a = new Array(5).fill(0); t.v = new Array(5).fill(0); t.a[0] = -0.7; t.grab = -1; },
   geo(t) { const r = Math.min(18, t.W / 14), L = t.H * 0.55, x0 = t.W / 2 - (t.n - 1) * r; return { r, L, x0, top: t.H * 0.14 }; },
@@ -159,7 +159,7 @@ Toys.add({
         if (i === t.grab) {
           const ax = x0 + i * 2 * r;
           let a = Math.atan2(t.p.x - ax, t.p.y - top);
-          a = i === 0 ? TB.clamp(a, -1.2, 0) : TB.clamp(a, 0, 1.2);
+          a = i === 0 ? HA.clamp(a, -1.2, 0) : HA.clamp(a, 0, 1.2);
           t.a[i] = a; t.v[i] = 0;
           continue;
         }
@@ -185,13 +185,13 @@ Toys.add({
       c.beginPath(); c.moveTo(ax, top); c.lineTo(bx, by); c.stroke();
       const g = c.createRadialGradient(bx - r * 0.35, by - r * 0.4, r * 0.1, bx, by, r);
       g.addColorStop(0, '#ffffff'); g.addColorStop(0.3, '#c9ced6'); g.addColorStop(1, '#4b515c');
-      c.fillStyle = g; c.beginPath(); c.arc(bx, by, r, 0, TB.TAU); c.fill();
+      c.fillStyle = g; c.beginPath(); c.arc(bx, by, r, 0, HA.TAU); c.fill();
     }
   },
 });
 
 // 29. A sheet of cloth hanging from a rail. Drag it about; drag fast to tear it.
-Toys.add({
+Exhibits.add({
   id: 'cloth', name: 'Cloth', section: 'physics', hint: 'Drag it, rip it, click to re-hang', canvas: true, wide: true,
   setup(t) { this.make(t); },
   resize(t) { this.make(t); },
