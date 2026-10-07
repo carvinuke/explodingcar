@@ -1,23 +1,30 @@
 'use strict';
-// Toy Box: the runner. Every toy is a tile; toys only animate while their tile
-// is on screen (one shared frame loop), and any toy can open full screen.
+// Hall of Art: the runner. Every exhibit is a tile; exhibits only animate while their tile
+// is on screen (one shared frame loop), and any exhibit can open full screen.
 //
-// A toy: Toys.add({ id, name, section, hint, canvas?, setup(t), frame?(t, dt, time),
+// An exhibit: Exhibits.add({ id, name, section, hint, canvas?, setup(t), frame?(t, dt, time),
 //                   resize?(t), down?(t), up?(t), move?(t), still? })
-// `t` is that toy's own instance: t.el (the stage), t.c / t.W / t.H for canvas
-// toys, t.p (the pointer: x, y, down, inside, vx, vy), t.low, t.big, t.blip().
+// `t` is that exhibit's own instance: t.el (the stage), t.c / t.W / t.H for canvas
+// exhibits, t.p (the pointer: x, y, down, inside, vx, vy), t.low, t.big, t.blip().
 
-const TB_STORE = makeStore('toybox.');
+const HALL_STORE = makeStore('hall.');
+// bring over anything saved back when this page was called the Toy Box
+try {
+  for (const k of ['tried', 'low']) {
+    const old = localStorage.getItem('toybox.' + k);
+    if (old !== null && localStorage.getItem('hall.' + k) === null) localStorage.setItem('hall.' + k, old);
+  }
+} catch (e) { /* storage blocked */ }
 const UI = "Overpass, 'Arial Narrow', Arial, system-ui, sans-serif";
-const TB_SECTIONS = {
-  buttons: { name: 'Buttons', sub: 'Press them. Hold them. Hover over them.' },
-  motion:  { name: 'Motion', sub: 'Things that move on their own, and move more when you poke them.' },
-  text:    { name: 'Text', sub: 'Letters that refuse to sit still.' },
-  physics: { name: '3D & Physics', sub: 'Drag, drop, swing and throw.' },
-  cars:    { name: 'Car Go Boom', sub: 'It is still the explodingcar arcade.' },
+const HALL_WINGS = {
+  buttons: { name: 'Living Buttons', sub: 'Press them. Hold them. Hover over them.' },
+  motion:  { name: 'Moving Pictures', sub: 'Pieces that move on their own, and move more when you touch them.' },
+  text:    { name: 'Lettering', sub: 'Words that refuse to sit still.' },
+  physics: { name: 'Sculpture & Physics', sub: 'Drag, drop, swing and throw.' },
+  cars:    { name: 'Road Works', sub: 'Pieces from the arcade\u2019s own roads.' },
 };
 
-const Toys = {
+const Exhibits = {
   list: [],
   live: [],   // running instances
   low: false,
@@ -57,7 +64,7 @@ const Toys = {
   },
 
   // ---- Instances ----------------------------------------------------------------
-  // Start a toy inside `stage` (a tile, or the full-screen view).
+  // Start an exhibit inside `stage` (a tile, or the full-screen view).
   start(def, stage, big) {
     const t = {
       def, el: stage, big: !!big, low: this.low, visible: !big ? false : true, awakeT: 0,
@@ -67,7 +74,7 @@ const Toys = {
     stage.innerHTML = '';
     if (def.canvas) {
       t.cv = document.createElement('canvas');
-      t.cv.className = 'toy-cv';
+      t.cv.className = 'ex-cv';
       stage.appendChild(t.cv);
       t.c = t.cv.getContext('2d');
     }
@@ -104,7 +111,7 @@ const Toys = {
       p.down = true; p.inside = true;
       t.awakeT = 3;
       try { el.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
-      Toys.tried(t.def.id);
+      Exhibits.tried(t.def.id);
       if (t.def.down) t.def.down(t, e);
     });
     el.addEventListener('pointermove', e => {
@@ -128,7 +135,7 @@ const Toys = {
       const dt = Math.min(0.05, raw / 1000);
       last = now;
       const time = now / 1000;
-      // a slow computer: toys take turns, each updating every other frame
+      // a slow computer: exhibits take turns, each updating every other frame
       avg = avg * 0.95 + Math.min(100, raw) * 0.05;
       const turns = avg > 24;
       frameNo++;
@@ -148,7 +155,7 @@ const Toys = {
         if (turns && !t.big && (n + frameNo) % 2 && t.drawnOnce) continue;
         if (!t.def.frame || t.dead) continue;
         if (!t.visible && t.drawnOnce) continue; // off screen: rest (but draw once, so nothing starts blank)
-        if (this.bigToy && !t.big) continue; // the grid rests while one toy is full screen
+        if (this.bigEx && !t.big) continue; // the grid rests while one exhibit is full screen
         if (this.still && !t.big && t.awakeT <= 0 && t.drawnOnce) continue; // reduced motion: only while you play
         t.awakeT -= dt;
         t.def.frame(t, turns && !t.big ? Math.min(0.05, dt * 2) : dt, time);
@@ -160,13 +167,13 @@ const Toys = {
     requestAnimationFrame(step);
   },
 
-  // ---- Toys you've tried (the arcade picker shows how many) -----------------------
+  // ---- Exhibits you've tried (the arcade picker shows how many) -----------------------
   triedSet: null,
   tried(id) {
-    if (!this.triedSet) this.triedSet = new Set(TB_STORE.get('tried', []) || []);
+    if (!this.triedSet) this.triedSet = new Set(HALL_STORE.get('tried', []) || []);
     if (this.triedSet.has(id)) return;
     this.triedSet.add(id);
-    TB_STORE.set('tried', [...this.triedSet]);
+    HALL_STORE.set('tried', [...this.triedSet]);
     const n = document.getElementById('tried-count');
     if (n) n.textContent = this.triedSet.size;
     const tile = document.querySelector(`.tile[data-id="${id}"]`);
@@ -175,17 +182,17 @@ const Toys = {
 
   // ---- Page ---------------------------------------------------------------------
   build() {
-    this.low = !!TB_STORE.get('low', false);
-    this.triedSet = new Set(TB_STORE.get('tried', []) || []);
-    const main = document.getElementById('toys');
+    this.low = !!HALL_STORE.get('low', false);
+    this.triedSet = new Set(HALL_STORE.get('tried', []) || []);
+    const main = document.getElementById('exhibits');
     const io = new IntersectionObserver(entries => {
-      for (const en of entries) { const t = en.target._toy; if (t) t.visible = en.isIntersecting; }
+      for (const en of entries) { const t = en.target._ex; if (t) t.visible = en.isIntersecting; }
     }, { threshold: 0.15 });
     this.io = io;
-    // lay out every shelf first, then start the toys (they measure their tiles)
+    // lay out every shelf first, then start the exhibits (they measure their tiles)
     const made = [];
-    for (const sid in TB_SECTIONS) {
-      const S = TB_SECTIONS[sid], defs = this.list.filter(d => d.section === sid);
+    for (const sid in HALL_WINGS) {
+      const S = HALL_WINGS[sid], defs = this.list.filter(d => d.section === sid);
       if (!defs.length) continue;
       const sec = document.createElement('section');
       sec.className = 'shelf';
@@ -208,11 +215,11 @@ const Toys = {
     }
     for (const [d, stage] of made) {
       const t = this.start(d, stage, false);
-      stage._toy = t;
+      stage._ex = t;
       io.observe(stage);
     }
     document.getElementById('tried-count').textContent = this.triedSet.size;
-    document.getElementById('toy-count').textContent = this.list.length;
+    document.getElementById('exhibit-count').textContent = this.list.length;
 
     // keep sizes right
     let rt = 0;
@@ -229,7 +236,7 @@ const Toys = {
     const low = document.getElementById('set-low');
     const syncLow = () => low.setAttribute('aria-checked', this.low ? 'true' : 'false');
     syncLow();
-    low.addEventListener('click', () => { this.low = !this.low; TB_STORE.set('low', this.low); syncLow(); this.restartAll(); });
+    low.addEventListener('click', () => { this.low = !this.low; HALL_STORE.set('low', this.low); syncLow(); this.restartAll(); });
     const mute = document.getElementById('btn-mute');
     const syncMute = () => { mute.textContent = this.muted ? 'Sound off' : 'Sound on'; mute.classList.toggle('off', this.muted); };
     syncMute();
@@ -242,7 +249,7 @@ const Toys = {
       if (t.big) continue;
       this.stop(t);
       const nt = this.start(t.def, t.el, false);
-      t.el._toy = nt;
+      t.el._ex = nt;
       nt.visible = t.visible;
     }
   },
@@ -253,8 +260,8 @@ const Toys = {
     document.getElementById('big-hint').textContent = def.hint || '';
     box.classList.remove('hidden');
     document.body.classList.add('modal-open');
-    if (this.bigToy) this.stop(this.bigToy);
-    this.bigToy = this.start(def, stage, true);
+    if (this.bigEx) this.stop(this.bigEx);
+    this.bigEx = this.start(def, stage, true);
     this.tried(def.id);
     document.getElementById('big-close').focus();
   },
@@ -264,13 +271,13 @@ const Toys = {
     if (box.classList.contains('hidden')) return;
     box.classList.add('hidden');
     document.body.classList.remove('modal-open');
-    if (this.bigToy) { this.stop(this.bigToy); this.bigToy = null; }
+    if (this.bigEx) { this.stop(this.bigEx); this.bigEx = null; }
     document.getElementById('big-stage').innerHTML = '';
   },
 };
 
-// Little helpers the toys share.
-const TB = {
+// Little helpers the exhibits share.
+const HA = {
   rand: (a, b) => a + Math.random() * (b - a),
   clamp: (v, a, b) => (v < a ? a : v > b ? b : v),
   lerp: (a, b, t) => a + (b - a) * t,
@@ -285,7 +292,7 @@ const TB = {
     const u = s(xf), v = s(yf);
     return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
   },
-  // a spring for DOM toys: call step(target, dt) each frame
+  // a spring for DOM exhibits: call step(target, dt) each frame
   spring(k = 220, damping = 14) {
     return { x: 0, v: 0, step(target, dt) { const f = -k * (this.x - target) - damping * this.v; this.v += f * dt; this.x += this.v * dt; return this.x; } };
   },

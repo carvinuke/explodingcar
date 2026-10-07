@@ -1,6 +1,6 @@
 'use strict';
-// The arcade picker: fills in the wallet and each game's best, and turns the
-// hovered panel toward the cursor.
+// The Solarian Arcade menu: fills in the wallet and each game's best, and turns
+// the hovered panel toward the cursor.
 
 (() => {
   const read = (key, fallback) => {
@@ -15,20 +15,12 @@
     $('stat-rr').textContent = num(read('roadrush.best', 0)).toLocaleString();
     $('stat-tc').textContent = num(read('traffic.stars', 0)).toLocaleString();
     $('stat-br').textContent = num(read('boomrun.best', 0)).toLocaleString();
-    const tried = read('toybox.tried', []);
-    $('stat-tb').textContent = Array.isArray(tried) ? tried.length : 0;
+    const seen = read('hall.tried', null) || read('toybox.tried', []); // the Hall of Art used to be the Toy Box
+    $('stat-ha').textContent = Array.isArray(seen) ? seen.length : 0;
   }
   refresh();
   Wallet.onChange(refresh);
   addEventListener('pageshow', refresh); // coming back with the browser's Back button
-
-  // A panel's game scene shows only once its picture exists (games without one
-  // yet keep the plain tinted background).
-  for (const el of document.querySelectorAll('.panel-bg[data-bg]')) {
-    const img = new Image();
-    img.onload = () => { el.style.backgroundImage = `url(${el.dataset.bg})`; };
-    img.src = el.dataset.bg;
-  }
 
   // ---- Turn toward the cursor -------------------------------------------------
   const still = matchMedia('(prefers-reduced-motion: reduce)');

@@ -1,14 +1,14 @@
 'use strict';
-// Toy Box: buttons with feelings.
+// Hall of Art: buttons with feelings.
 
 // 1. A button that leans toward your cursor, as if it can't help itself.
-Toys.add({
+Exhibits.add({
   id: 'magnet', name: 'Magnetic Button', section: 'buttons', hint: 'Move near it',
   setup(t) {
     t.el.classList.add('center');
     t.el.innerHTML = '<button class="tb-btn magnet"><span>Come closer</span></button>';
     t.btn = t.el.querySelector('button'); t.txt = t.el.querySelector('span');
-    t.sx = TB.spring(260, 16); t.sy = TB.spring(260, 16);
+    t.sx = HA.spring(260, 16); t.sy = HA.spring(260, 16);
     t.btn.addEventListener('click', () => t.blip(990, 0.1, 'triangle'));
   },
   frame(t, dt) {
@@ -27,13 +27,13 @@ Toys.add({
 });
 
 // 2. Squishy: squashes when pressed, wobbles when let go.
-Toys.add({
+Exhibits.add({
   id: 'jelly', name: 'Jelly Button', section: 'buttons', hint: 'Press and let go',
   setup(t) {
     t.el.classList.add('center');
     t.el.innerHTML = '<button class="tb-btn jelly">Squish</button>';
     t.btn = t.el.querySelector('button');
-    t.s = TB.spring(380, 9); t.s.x = 1; t.target = 1;
+    t.s = HA.spring(380, 9); t.s.x = 1; t.target = 1;
     t.btn.addEventListener('pointerdown', () => { t.target = 0.82; t.blip(220, 0.12, 'sine', 0.14, 0.6); });
     const rel = () => { if (t.target !== 1) { t.target = 1; t.s.v += 6; t.blip(330, 0.18, 'sine', 0.12, 2.2); } };
     t.btn.addEventListener('pointerup', rel);
@@ -46,7 +46,7 @@ Toys.add({
 });
 
 // 3. Confetti cannon.
-Toys.add({
+Exhibits.add({
   id: 'confetti', name: 'Confetti', section: 'buttons', hint: 'Click it (a lot)', canvas: true,
   setup(t) {
     t.bits = [];
@@ -59,8 +59,8 @@ Toys.add({
       const x = r.left - s.left + r.width / 2, y = r.top - s.top + r.height / 2;
       const n = t.low ? 60 : 140;
       for (let i = 0; i < n; i++) {
-        const a = -Math.PI / 2 + TB.rand(-1.1, 1.1), v = TB.rand(180, 520);
-        t.bits.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, r: TB.rand(0, 6), vr: TB.rand(-12, 12), w: TB.rand(4, 9), h: TB.rand(3, 6), c: TB.hsl(TB.rand(0, 360), 90, 60), life: TB.rand(1.6, 2.8) });
+        const a = -Math.PI / 2 + HA.rand(-1.1, 1.1), v = HA.rand(180, 520);
+        t.bits.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, r: HA.rand(0, 6), vr: HA.rand(-12, 12), w: HA.rand(4, 9), h: HA.rand(3, 6), c: HA.hsl(HA.rand(0, 360), 90, 60), life: HA.rand(1.6, 2.8) });
       }
       t.blip(523, 0.08, 'square', 0.06); setTimeout(() => t.blip(784, 0.12, 'square', 0.06), 70);
       t.noise(0.25, 0.25);
@@ -82,14 +82,14 @@ Toys.add({
 });
 
 // 4. A button that fills with liquid while you hover, and sloshes.
-Toys.add({
+Exhibits.add({
   id: 'liquid', name: 'Liquid Fill', section: 'buttons', hint: 'Hover, then click', canvas: true,
   setup(t) { t.level = 0; t.slosh = 0; t.ph = 0; },
   down(t) { t.slosh = 1; t.blip(180, 0.25, 'sine', 0.15, 0.5); },
   frame(t, dt, time) {
     const c = t.c, W = t.W, H = t.H, bw = Math.min(220, W * 0.7), bh = 64, bx = (W - bw) / 2, by = (H - bh) / 2;
     const over = t.p.inside && t.p.x > bx && t.p.x < bx + bw && t.p.y > by && t.p.y < by + bh;
-    t.level = TB.lerp(t.level, over || t.p.down ? 1 : 0, 1 - Math.exp(-3 * dt));
+    t.level = HA.lerp(t.level, over || t.p.down ? 1 : 0, 1 - Math.exp(-3 * dt));
     t.slosh *= Math.exp(-2.2 * dt);
     t.ph += dt * (3 + t.slosh * 8);
     c.clearRect(0, 0, W, H);
@@ -112,7 +112,7 @@ Toys.add({
 });
 
 // 5. Ripples spread from wherever you press.
-Toys.add({
+Exhibits.add({
   id: 'ripple', name: 'Ripple', section: 'buttons', hint: 'Click anywhere on it',
   setup(t) {
     t.el.classList.add('center');
@@ -131,7 +131,7 @@ Toys.add({
 });
 
 // 6. A glitchy button that tears into red, green and blue when you hover.
-Toys.add({
+Exhibits.add({
   id: 'glitch', name: 'Glitch', section: 'buttons', hint: 'Hover over it',
   setup(t) {
     t.el.classList.add('center', 'dark');
@@ -151,7 +151,7 @@ Toys.add({
 });
 
 // 7. A neon sign that buzzes and flickers. Click to switch it off and on.
-Toys.add({
+Exhibits.add({
   id: 'neon', name: 'Neon Sign', section: 'buttons', hint: 'Click to switch',
   setup(t) {
     t.el.classList.add('center', 'brick');
@@ -173,7 +173,7 @@ Toys.add({
 });
 
 // 8. Hold to charge it up. Let go too soon and it fizzles. Hold long enough and...
-Toys.add({
+Exhibits.add({
   id: 'charge', name: 'Hold to Explode', section: 'buttons', hint: 'Press and hold', canvas: true,
   setup(t) { t.k = 0; t.parts = []; t.boomT = 0; t.grow = 1; t.toneT = 0; },
   down(t) { if (t.boomT <= 0) t.holding = true; },
@@ -188,8 +188,8 @@ Toys.add({
         t.holding = false; t.boomT = 1.6; t.k = 0; t.grow = 0;
         const n = t.low ? 70 : 160;
         for (let i = 0; i < n; i++) {
-          const a = Math.random() * TB.TAU, v = TB.rand(80, 520);
-          t.parts.push({ x: cx, y: cy, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: TB.rand(0.6, 1.4), s: TB.rand(2, 7), hue: TB.rand(10, 55) });
+          const a = Math.random() * HA.TAU, v = HA.rand(80, 520);
+          t.parts.push({ x: cx, y: cy, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: HA.rand(0.6, 1.4), s: HA.rand(2, 7), hue: HA.rand(10, 55) });
         }
         t.noise(0.9, 0.5); t.blip(70, 0.6, 'sine', 0.3, 0.4);
       }
@@ -205,13 +205,13 @@ Toys.add({
       const x = cx + (Math.random() - 0.5) * shake, y = cy + (Math.random() - 0.5) * shake;
       const g = c.createRadialGradient(x, y, r * 0.2, x, y, r * 2.2);
       g.addColorStop(0, `rgba(255,${200 - t.k * 160},60,${0.25 + t.k * 0.5})`); g.addColorStop(1, 'rgba(255,80,20,0)');
-      c.fillStyle = g; c.beginPath(); c.arc(x, y, r * 2.2, 0, TB.TAU); c.fill();
+      c.fillStyle = g; c.beginPath(); c.arc(x, y, r * 2.2, 0, HA.TAU); c.fill();
       c.fillStyle = `hsl(${40 - t.k * 40}, 95%, ${55 - t.k * 8}%)`;
-      c.beginPath(); c.arc(x, y, r, 0, TB.TAU); c.fill();
+      c.beginPath(); c.arc(x, y, r, 0, HA.TAU); c.fill();
       c.strokeStyle = '#16181c'; c.lineWidth = 4; c.stroke();
       // charge ring
       c.strokeStyle = '#fff'; c.lineWidth = 5; c.lineCap = 'round';
-      c.beginPath(); c.arc(x, y, r + 10, -Math.PI / 2, -Math.PI / 2 + t.k * TB.TAU); c.stroke();
+      c.beginPath(); c.arc(x, y, r + 10, -Math.PI / 2, -Math.PI / 2 + t.k * HA.TAU); c.stroke();
       c.fillStyle = '#16181c'; c.font = `900 ${Math.round(16 * t.grow)}px ${UI}`; c.textAlign = 'center'; c.textBaseline = 'middle';
       c.fillText(t.k > 0.75 ? '!!!' : t.k > 0 ? 'HOLD...' : 'HOLD', x, y + 1);
     }
@@ -220,7 +220,7 @@ Toys.add({
       p.vx *= 0.96; p.vy = p.vy * 0.96 + 60 * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt;
       c.globalAlpha = Math.max(0, Math.min(1, p.life * 1.5));
       c.fillStyle = `hsl(${p.hue}, 100%, ${50 + p.life * 25}%)`;
-      c.beginPath(); c.arc(p.x, p.y, p.s * (0.5 + p.life), 0, TB.TAU); c.fill();
+      c.beginPath(); c.arc(p.x, p.y, p.s * (0.5 + p.life), 0, HA.TAU); c.fill();
     }
     c.globalAlpha = 1;
     t.parts = t.parts.filter(p => p.life > 0);
@@ -229,7 +229,7 @@ Toys.add({
 });
 
 // 9. Chunky keyboard keys you can press.
-Toys.add({
+Exhibits.add({
   id: 'keys', name: 'Clicky Keys', section: 'buttons', hint: 'Press the keys',
   setup(t) {
     t.el.classList.add('center');
@@ -243,7 +243,7 @@ Toys.add({
 });
 
 // 10. Icons that melt into each other.
-Toys.add({
+Exhibits.add({
   id: 'morph', name: 'Morphing Icons', section: 'buttons', hint: 'Click to change',
   setup(t) {
     t.el.classList.add('center');
@@ -268,7 +268,7 @@ Toys.add({
   frame(t, dt) {
     t.k = Math.min(1, t.k + dt * 3.5);
     const e = 1 - Math.pow(1 - t.k, 3), to = t.shapes[t.i];
-    t.cur = t.from.map((piece, a) => piece.map((pt, b) => [TB.lerp(pt[0], to[a][b][0], e), TB.lerp(pt[1], to[a][b][1], e)]));
+    t.cur = t.from.map((piece, a) => piece.map((pt, b) => [HA.lerp(pt[0], to[a][b][0], e), HA.lerp(pt[1], to[a][b][1], e)]));
     t.path.setAttribute('d', t.cur.map(piece => 'M' + piece.map(p => p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join('L') + 'Z').join(''));
   },
 });

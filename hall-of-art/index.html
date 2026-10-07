@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0e0b14">
-<title>Toy Box</title>
+<title>Hall of Art</title>
 <link rel="stylesheet" href="../shared/fonts.css">
 <link rel="stylesheet" href="../shared/arcade.css">
 <link rel="stylesheet" href="css/style.css">
 </head>
-<body class="toybox">
+<body class="hall">
 <header class="top">
   <a class="arcade-back" href="../index.html">&#9664; Arcade</a>
   <div class="top-tools">
@@ -22,17 +22,17 @@
   <div class="guide-sign purple hero-sign">
     <div class="exit-tab"><span>EXIT 4</span></div>
     <div class="guide-inner">
-      <h1>Toy Box</h1>
-      <p>Things a web page can do, just for fun. Poke everything: nothing here is for anything.</p>
+      <h1>Hall of Art</h1>
+      <p>Moving pictures, living buttons and words with minds of their own. Touch anything: every piece reacts.</p>
     </div>
   </div>
-  <p class="tally"><b id="tried-count">0</b> of <b id="toy-count">0</b> toys tried &middot; <span class="kb">click &#10530; on any toy for full screen</span></p>
+  <p class="tally"><b id="tried-count">0</b> of <b id="exhibit-count">0</b> exhibits explored &middot; <span class="kb">click &#10530; on any exhibit for full screen</span></p>
 </section>
 
-<main id="toys"></main>
+<main id="exhibits"></main>
 <p id="auto-low" class="auto-low hidden" role="status">This computer was struggling, so Low graphics is on. You can switch it back at the top.</p>
 
-<footer class="foot">Part of the Car Go Boom arcade &middot; <a href="../index.html">Back to the games</a></footer>
+<footer class="foot">Part of the Solarian Arcade &middot; <a href="../index.html">Back to the games</a></footer>
 
 <div id="big" class="big hidden" role="dialog" aria-modal="true" aria-labelledby="big-name">
   <div class="big-card">
@@ -43,11 +43,11 @@
 
 <script src="../shared/wallet.js"></script>
 <script src="js/runner.js"></script>
-<script src="js/toys-buttons.js"></script>
-<script src="js/toys-motion.js"></script>
-<script src="js/toys-text.js"></script>
-<script src="js/toys-physics.js"></script>
-<script src="js/toys-cars.js"></script>
-<script>Toys.build();</script>
+<script src="js/exhibits-buttons.js"></script>
+<script src="js/exhibits-motion.js"></script>
+<script src="js/exhibits-text.js"></script>
+<script src="js/exhibits-physics.js"></script>
+<script src="js/exhibits-cars.js"></script>
+<script>Exhibits.build();</script>
 </body>
 </html>

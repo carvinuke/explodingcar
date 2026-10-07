@@ -1,8 +1,8 @@
 'use strict';
-// Toy Box: things that move.
+// Hall of Art: things that move.
 
 // 11. Particles drifting along invisible currents. Your cursor stirs them.
-Toys.add({
+Exhibits.add({
   id: 'flow', name: 'Flow Field', section: 'motion', hint: 'Move through it', canvas: true,
   setup(t) {
     t.n = t.low ? 300 : t.big ? 1400 : 700;
@@ -17,7 +17,7 @@ Toys.add({
     const z = time * 0.08, B = 6, paths = [];
     for (let k = 0; k < B; k++) paths.push(new Path2D()); // colour bands across the width: one stroke each
     for (const p of t.ps) {
-      let a = TB.noise(p.x * 0.006 + z, p.y * 0.006) * TB.TAU * 2;
+      let a = HA.noise(p.x * 0.006 + z, p.y * 0.006) * HA.TAU * 2;
       const dx = p.x - t.p.x, dy = p.y - t.p.y, d2 = dx * dx + dy * dy;
       let vx = Math.cos(a) * 60, vy = Math.sin(a) * 60;
       if (d2 < 9000) { const k = (1 - d2 / 9000) * 260; const d = Math.sqrt(d2) || 1; vx += (-dy / d) * k; vy += (dx / d) * k; } // swirl around the cursor
@@ -27,16 +27,16 @@ Toys.add({
       path.moveTo(x0, y0); path.lineTo(p.x, p.y);
       if (p.x < 0 || p.x > t.W || p.y < 0 || p.y > t.H || p.age > 400) { p.x = Math.random() * t.W; p.y = Math.random() * t.H; p.age = 0; }
     }
-    for (let k = 0; k < B; k++) { c.strokeStyle = TB.hsl((k / B) * 120 + 180 + time * 20, 90, 62, 0.55); c.stroke(paths[k]); }
+    for (let k = 0; k < B; k++) { c.strokeStyle = HA.hsl((k / B) * 120 + 180 + time * 20, 90, 62, 0.55); c.stroke(paths[k]); }
   },
 });
 
 // 12. A flock of little birds. They keep together and keep away from you.
-Toys.add({
+Exhibits.add({
   id: 'boids', name: 'Flock', section: 'motion', hint: 'Chase them', canvas: true,
   setup(t) {
     const n = t.low ? 50 : t.big ? 180 : 90;
-    t.b = Array.from({ length: n }, () => ({ x: Math.random() * t.W, y: Math.random() * t.H, vx: TB.rand(-60, 60), vy: TB.rand(-60, 60) }));
+    t.b = Array.from({ length: n }, () => ({ x: Math.random() * t.W, y: Math.random() * t.H, vx: HA.rand(-60, 60), vy: HA.rand(-60, 60) }));
   },
   frame(t, dt) {
     const c = t.c, B = t.b;
@@ -56,7 +56,7 @@ Toys.add({
       // steer back in from the edges
       if (a.x < 30) a.vx += 300 * dt; if (a.x > t.W - 30) a.vx -= 300 * dt;
       if (a.y < 30) a.vy += 300 * dt; if (a.y > t.H - 30) a.vy -= 300 * dt;
-      const sp = Math.hypot(a.vx, a.vy), want = TB.clamp(sp, 70, 190);
+      const sp = Math.hypot(a.vx, a.vy), want = HA.clamp(sp, 70, 190);
       a.vx *= want / (sp || 1); a.vy *= want / (sp || 1);
     }
     c.fillStyle = '#f7f7f2';
@@ -71,10 +71,10 @@ Toys.add({
 });
 
 // 13. A lava lamp: blobs that stretch, merge and split. Click to add heat.
-Toys.add({
+Exhibits.add({
   id: 'lava', name: 'Lava Lamp', section: 'motion', hint: 'Click to add a blob', canvas: true,
   setup(t) {
-    t.blobs = Array.from({ length: 7 }, () => ({ x: TB.rand(0.2, 0.8), y: TB.rand(0.1, 0.9), r: TB.rand(0.09, 0.15), vy: TB.rand(-0.08, 0.08), ph: Math.random() * 6 }));
+    t.blobs = Array.from({ length: 7 }, () => ({ x: HA.rand(0.2, 0.8), y: HA.rand(0.1, 0.9), r: HA.rand(0.09, 0.15), vy: HA.rand(-0.08, 0.08), ph: Math.random() * 6 }));
     t.grid = document.createElement('canvas');
   },
   down(t) {
@@ -108,16 +108,16 @@ Toys.add({
 });
 
 // 14. Stars rushing past. Hold for warp speed.
-Toys.add({
+Exhibits.add({
   id: 'warp', name: 'Warp Speed', section: 'motion', hint: 'Hold to go faster', canvas: true,
   setup(t) {
-    t.s = Array.from({ length: t.low ? 150 : 400 }, () => ({ x: TB.rand(-1, 1), y: TB.rand(-1, 1), z: Math.random() }));
+    t.s = Array.from({ length: t.low ? 150 : 400 }, () => ({ x: HA.rand(-1, 1), y: HA.rand(-1, 1), z: Math.random() }));
     t.speed = 0.15;
   },
   down(t) { t.blip(120, 0.6, 'sawtooth', 0.04, 4); },
   frame(t, dt) {
     const c = t.c, W = t.W, H = t.H;
-    t.speed = TB.lerp(t.speed, t.p.down ? 1.6 : 0.15, 1 - Math.exp(-2.5 * dt));
+    t.speed = HA.lerp(t.speed, t.p.down ? 1.6 : 0.15, 1 - Math.exp(-2.5 * dt));
     c.fillStyle = `rgba(4,5,14,${t.p.down ? 0.35 : 0.9})`; c.fillRect(0, 0, W, H);
     const cx = W / 2 + (t.p.inside ? (t.p.x - W / 2) * 0.15 : 0), cy = H / 2 + (t.p.inside ? (t.p.y - H / 2) * 0.15 : 0);
     c.lineCap = 'round';
@@ -125,7 +125,7 @@ Toys.add({
     for (const s of t.s) {
       const z0 = s.z;
       s.z -= t.speed * dt;
-      if (s.z <= 0.01) { s.x = TB.rand(-1, 1); s.y = TB.rand(-1, 1); s.z = 1; continue; }
+      if (s.z <= 0.01) { s.x = HA.rand(-1, 1); s.y = HA.rand(-1, 1); s.z = 1; continue; }
       const path = bands[Math.min(3, Math.floor((1 - s.z) * 4))];
       path.moveTo(cx + (s.x / z0) * k, cy + (s.y / z0) * k); path.lineTo(cx + (s.x / s.z) * k, cy + (s.y / s.z) * k);
     }
@@ -134,7 +134,7 @@ Toys.add({
 });
 
 // 15. Pendulums with slightly different lengths: they drift in and out of patterns.
-Toys.add({
+Exhibits.add({
   id: 'pendulum', name: 'Pendulum Wave', section: 'motion', hint: 'Click to restart it', canvas: true,
   setup(t) { t.t0 = 0; },
   down(t) { t.t0 = 0; t.blip(660, 0.2, 'triangle', 0.1); },
@@ -146,22 +146,22 @@ Toys.add({
     for (let i = 0; i < n; i++) {
       const x0 = W * 0.1 + (W * 0.8) * (i / (n - 1));
       const period = 60 / (51 + i); // all line up again every 60 seconds
-      const a = 0.5 * Math.cos(TB.TAU * t.t0 / period);
+      const a = 0.5 * Math.cos(HA.TAU * t.t0 / period);
       const y = 18 + (H - 60) * 0.92 * Math.cos(a) * 0.98, x = x0 + Math.sin(a) * (H - 60) * 0.92 * 0.6;
       c.strokeStyle = 'rgba(255,255,255,0.25)'; c.lineWidth = 1;
       c.beginPath(); c.moveTo(x0, 18); c.lineTo(x, y); c.stroke();
-      c.fillStyle = TB.hsl(i * 24, 85, 60);
-      c.beginPath(); c.arc(x, y, Math.min(9, W / 60), 0, TB.TAU); c.fill();
+      c.fillStyle = HA.hsl(i * 24, 85, 60);
+      c.beginPath(); c.arc(x, y, Math.min(9, W / 60), 0, HA.TAU); c.fill();
     }
   },
 });
 
 // 16. A spirograph that draws itself. Click for a new pattern.
-Toys.add({
+Exhibits.add({
   id: 'spiro', name: 'Spirograph', section: 'motion', hint: 'Click for a new pattern', canvas: true,
   setup(t) { this.reset(t); },
   reset(t) {
-    t.R = TB.rand(0.32, 0.42); t.r = TB.rand(0.08, 0.3) * (Math.random() < 0.5 ? 1 : -1); t.d = TB.rand(0.05, 0.25);
+    t.R = HA.rand(0.32, 0.42); t.r = HA.rand(0.08, 0.3) * (Math.random() < 0.5 ? 1 : -1); t.d = HA.rand(0.05, 0.25);
     t.th = 0; t.hue = Math.random() * 360; t.last = null;
     t.c.fillStyle = '#0f1218'; t.c.fillRect(0, 0, t.W, t.H);
   },
@@ -174,7 +174,7 @@ Toys.add({
       t.th += 0.035;
       const { R, r, d } = t, k = (R - r) / r;
       const x = cx + ((R - r) * Math.cos(t.th) + d * Math.cos(k * t.th)) * S, y = cy + ((R - r) * Math.sin(t.th) - d * Math.sin(k * t.th)) * S;
-      if (t.last) { c.strokeStyle = TB.hsl(t.hue + t.th * 4, 90, 62, 0.8); c.beginPath(); c.moveTo(t.last[0], t.last[1]); c.lineTo(x, y); c.stroke(); }
+      if (t.last) { c.strokeStyle = HA.hsl(t.hue + t.th * 4, 90, 62, 0.8); c.beginPath(); c.moveTo(t.last[0], t.last[1]); c.lineTo(x, y); c.stroke(); }
       t.last = [x, y];
     }
     if (t.th > 400) { c.fillStyle = 'rgba(15,18,24,0.02)'; c.fillRect(0, 0, t.W, t.H); }
@@ -182,18 +182,18 @@ Toys.add({
 });
 
 // 17. A glowing 3D knot that turns. Drag to spin it.
-Toys.add({
+Exhibits.add({
   id: 'knot', name: 'Lissajous Knot', section: 'motion', hint: 'Drag to spin', canvas: true,
   setup(t) { t.rx = 0.4; t.ry = 0; t.vx = 0.25; t.vy = 0.35; },
   move(t) { if (t.p.down) { t.vy = t.p.vx * 0.2; t.vx = t.p.vy * 0.2; } },
   frame(t, dt, time) {
     const c = t.c, W = t.W, H = t.H, S = Math.min(W, H) * 0.36;
     t.ry += t.vy * dt; t.rx += t.vx * dt;
-    if (!t.p.down) { t.vy = TB.lerp(t.vy, 0.35, dt * 0.5); t.vx = TB.lerp(t.vx, 0.25, dt * 0.5); }
+    if (!t.p.down) { t.vy = HA.lerp(t.vy, 0.35, dt * 0.5); t.vx = HA.lerp(t.vx, 0.25, dt * 0.5); }
     c.fillStyle = '#090b12'; c.fillRect(0, 0, W, H);
     const N = 360, pts = [];
     for (let i = 0; i <= N; i++) {
-      const a = (i / N) * TB.TAU;
+      const a = (i / N) * HA.TAU;
       let x = Math.sin(3 * a + 0.5), y = Math.sin(2 * a), z = Math.sin(5 * a + time * 0.3) * 0.6;
       const cy = Math.cos(t.ry), sy = Math.sin(t.ry); [x, z] = [x * cy - z * sy, x * sy + z * cy];
       const cx = Math.cos(t.rx), sx = Math.sin(t.rx); [y, z] = [y * cx - z * sx, y * sx + z * cx];
@@ -206,7 +206,7 @@ Toys.add({
     for (let i = 1; i < pts.length; i++) bands[Math.max(0, Math.min(3, Math.floor((pts[i][2] + 1) * 2)))].push(i);
     for (let b = 3; b >= 0; b--) {
       const z = b / 2 - 1 + 0.25;
-      c.strokeStyle = TB.hsl(280 - b * 10, 90, 55 + (1 - z) * 12, 0.9);
+      c.strokeStyle = HA.hsl(280 - b * 10, 90, 55 + (1 - z) * 12, 0.9);
       c.lineWidth = 2 + (1 - z) * 1.6;
       c.beginPath();
       for (const i of bands[b]) { c.moveTo(pts[i - 1][0], pts[i - 1][1]); c.lineTo(pts[i][0], pts[i][1]); }
@@ -216,12 +216,12 @@ Toys.add({
 });
 
 // 18. Northern lights: soft curtains of colour that sway with your cursor.
-Toys.add({
+Exhibits.add({
   id: 'aurora', name: 'Aurora', section: 'motion', hint: 'Move side to side', canvas: true, wide: true,
   setup(t) { t.sway = 0; t.stars = Array.from({ length: 60 }, () => [Math.random(), Math.random() * 0.6, Math.random()]); },
   frame(t, dt, time) {
     const c = t.c, W = t.W, H = t.H;
-    t.sway = TB.lerp(t.sway, t.p.inside ? (t.p.x / W - 0.5) * 2 : Math.sin(time * 0.2) * 0.4, dt * 1.5);
+    t.sway = HA.lerp(t.sway, t.p.inside ? (t.p.x / W - 0.5) * 2 : Math.sin(time * 0.2) * 0.4, dt * 1.5);
     const sky = c.createLinearGradient(0, 0, 0, H);
     sky.addColorStop(0, '#02030a'); sky.addColorStop(1, '#0b1a2a');
     c.fillStyle = sky; c.fillRect(0, 0, W, H);

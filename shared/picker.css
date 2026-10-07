@@ -1,17 +1,62 @@
-/* The arcade picker: four tall game panels lined up side by side. Hovering one
-   pops it out, lights its sides and turns it toward the cursor. */
+/* The Solarian Arcade: four windows onto floating worlds, in deep space under a
+   rising sun. Hovering a window pops it out, lights its sides and turns it
+   toward the cursor; its island lifts and the layers slide apart for depth.
+   Everything that moves is transform/opacity only, so slow computers cope. */
 .picker {
+  position: relative;
   min-height: 100vh;
   min-height: 100dvh;
-  background:
-    radial-gradient(120% 70% at 50% 0%, #1c1f26 0%, rgba(13, 14, 17, 0) 70%),
-    #0d0e11;
+  background: #05060d;
   display: flex;
   flex-direction: column;
   overflow-x: hidden;
 }
-html:has(.picker) { background: #0d0e11; }
+html:has(.picker) { background: #05060d; }
 
+/* ---- Space -------------------------------------------------------------------- */
+.space { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+.stars {
+  position: absolute;
+  inset: -20% -10%;
+  background-repeat: repeat;
+}
+.stars.far {
+  background-image:
+    radial-gradient(1px 1px at 20px 30px, rgba(255, 255, 255, 0.8), transparent 60%),
+    radial-gradient(1px 1px at 120px 80px, rgba(255, 255, 255, 0.6), transparent 60%),
+    radial-gradient(1px 1px at 70px 150px, rgba(200, 220, 255, 0.7), transparent 60%),
+    radial-gradient(1px 1px at 170px 190px, rgba(255, 255, 255, 0.5), transparent 60%),
+    radial-gradient(1px 1px at 40px 210px, rgba(255, 230, 200, 0.6), transparent 60%);
+  background-size: 220px 240px;
+  opacity: 0.7;
+  animation: drift 160s linear infinite;
+}
+.stars.near {
+  background-image:
+    radial-gradient(1.6px 1.6px at 50px 60px, rgba(255, 255, 255, 0.9), transparent 60%),
+    radial-gradient(1.4px 1.4px at 260px 140px, rgba(255, 240, 210, 0.8), transparent 60%),
+    radial-gradient(1.8px 1.8px at 160px 300px, rgba(210, 230, 255, 0.9), transparent 60%);
+  background-size: 340px 380px;
+  opacity: 0.6;
+  animation: drift 90s linear infinite;
+}
+@keyframes drift { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(-120px, 60px, 0); } }
+/* the sun rising behind the title */
+.sun {
+  position: absolute;
+  left: 50%;
+  top: -62vmax;
+  width: 90vmax;
+  height: 90vmax;
+  margin-left: -45vmax;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 50%, rgba(255, 214, 120, 0.55) 0%, rgba(255, 150, 60, 0.28) 34%, rgba(255, 90, 40, 0.08) 52%, rgba(255, 60, 30, 0) 66%);
+  animation: sun-breathe 9s ease-in-out infinite;
+}
+@keyframes sun-breathe { 0%, 100% { opacity: 0.85; transform: scale(1); } 50% { opacity: 1; transform: scale(1.03); } }
+
+/* ---- Header -------------------------------------------------------------------- */
+.bar, .lineup, .foot { position: relative; z-index: 1; }
 .bar {
   display: flex;
   align-items: center;
@@ -19,11 +64,24 @@ html:has(.picker) { background: #0d0e11; }
   gap: 12px;
   width: min(1480px, 100%);
   margin: 0 auto;
-  padding: max(16px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right)) 10px max(18px, env(safe-area-inset-left));
+  padding: max(14px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right)) 6px max(18px, env(safe-area-inset-left));
 }
-.brand { display: flex; align-items: baseline; gap: 10px; line-height: 1; }
-.brand b { font-size: clamp(20px, 3vw, 28px); font-weight: 900; letter-spacing: 0.04em; }
-.brand span { font-size: 12px; font-weight: 900; letter-spacing: 0.28em; color: var(--muted); }
+.brand { display: flex; align-items: center; gap: 12px; }
+.sun-mark { width: clamp(38px, 4vw, 52px); height: auto; flex: none; filter: drop-shadow(0 0 12px rgba(255, 170, 60, 0.7)); }
+.sun-mark .rays { transform-origin: 32px 32px; animation: spin 40s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.brand-text { display: flex; flex-direction: column; line-height: 0.9; }
+.brand-text b {
+  font-size: clamp(24px, 3.2vw, 36px);
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  background: linear-gradient(180deg, #fff3c4 0%, #ffc24a 55%, #ff8a2a 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 2px 10px rgba(255, 150, 50, 0.35));
+}
+.brand-text span { margin-top: 5px; font-size: 12px; font-weight: 900; letter-spacing: 0.62em; color: #c9bfa8; }
 
 /* ---- The lineup --------------------------------------------------------------- */
 .lineup {
@@ -46,10 +104,10 @@ html:has(.picker) { background: #0d0e11; }
   --py: 0;
   position: relative;
   display: block;
-  height: clamp(380px, 74vh, 680px);
+  height: clamp(400px, 72vh, 680px);
   color: var(--sign-white);
   text-decoration: none;
-  border-radius: 6px;
+  border-radius: 10px;
   outline: none;
   transform: perspective(1100px) translateY(0) scale(1);
   transition: transform 0.35s cubic-bezier(0.2, 0.9, 0.3, 1.2);
@@ -59,52 +117,94 @@ html:has(.picker) { background: #0d0e11; }
   position: absolute;
   inset: 0;
   overflow: hidden;
-  border-radius: 6px;
-  background:
-    radial-gradient(90% 60% at 60% 92%, var(--tint) 0%, rgba(0, 0, 0, 0) 70%),
-    linear-gradient(180deg, #17191e 0%, #111216 100%);
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 10px 30px rgba(0, 0, 0, 0.45);
+  border-radius: 10px;
+  background: #0a0b14;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08), 0 14px 34px rgba(0, 0, 0, 0.55);
   transform: perspective(1100px) rotateX(var(--rx)) rotateY(var(--ry));
   transition: transform 0.18s ease-out, box-shadow 0.3s ease;
   isolation: isolate;
 }
 
-/* the game scene, faded far back */
-.panel-bg {
+/* layers, far to near; each slides a different amount when the panel turns */
+.panel-sky {
   position: absolute;
-  inset: -6%;
-  background-size: cover;
-  background-position: 50% 60%;
-  opacity: 0.2;
-  filter: saturate(0.8) blur(1px);
-  transform: translate(calc(var(--px) * 10px), calc(var(--py) * 10px)) scale(1.02);
-  transition: opacity 0.3s ease, transform 0.18s ease-out, filter 0.3s ease;
-}
-/* the big character, in front, moving more for depth */
-.panel-hero {
-  position: absolute;
-  left: -4%;
-  bottom: -2%;
-  width: 108%;
-  height: 102%;
-  object-fit: cover;
-  object-position: 50% 100%;
-  transform-origin: 50% 100%;
-  transform: translate(calc(var(--px) * -18px), calc(var(--py) * -10px));
+  inset: -4%;
+  background:
+    radial-gradient(1px 1px at 14% 18%, #fff, transparent 70%),
+    radial-gradient(1px 1px at 72% 12%, #fff, transparent 70%),
+    radial-gradient(1.4px 1.4px at 86% 34%, #fff, transparent 70%),
+    radial-gradient(1px 1px at 38% 28%, rgba(255, 255, 255, 0.7), transparent 70%),
+    radial-gradient(1px 1px at 58% 42%, rgba(255, 255, 255, 0.6), transparent 70%),
+    radial-gradient(1.2px 1.2px at 24% 48%, rgba(255, 255, 255, 0.7), transparent 70%),
+    linear-gradient(180deg, var(--sky1) 0%, var(--sky2) 100%);
+  transform: translate(calc(var(--px) * 6px), calc(var(--py) * 6px));
   transition: transform 0.18s ease-out;
-  pointer-events: none;
-  user-select: none;
 }
+.panel-halo {
+  position: absolute;
+  left: -15%;
+  top: 22%;
+  width: 130%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--glow) 0%, transparent 62%);
+  opacity: 0.32;
+  transform: translate(calc(var(--px) * 10px), calc(var(--py) * 8px)) scale(1);
+  transition: transform 0.25s ease-out, opacity 0.3s ease;
+}
+.panel-island {
+  position: absolute;
+  left: 3%;
+  right: 3%;
+  bottom: 9%;
+  top: 27%;
+  transform: translate(calc(var(--px) * -16px), calc(var(--py) * -10px)) scale(1);
+  transition: transform 0.25s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+  pointer-events: none;
+}
+.panel-island img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: 50% 60%;
+  filter: drop-shadow(0 18px 22px rgba(0, 0, 0, 0.45));
+  user-select: none;
+  animation: float 7s ease-in-out infinite;
+}
+.panel:nth-child(2) .panel-island img { animation-delay: -1.7s; }
+.panel:nth-child(3) .panel-island img { animation-delay: -3.4s; }
+.panel:nth-child(4) .panel-island img { animation-delay: -5.1s; }
+@keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-9px); } }
+
+/* little lights drifting up around the island */
+.panel-motes { position: absolute; inset: 0; pointer-events: none; transform: translate(calc(var(--px) * -24px), calc(var(--py) * -14px)); transition: transform 0.2s ease-out; }
+.panel-motes i {
+  position: absolute;
+  bottom: 18%;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--glow);
+  box-shadow: 0 0 8px var(--glow);
+  opacity: 0;
+  animation: mote 6s ease-in infinite;
+}
+.panel-motes i:nth-child(1) { left: 18%; animation-delay: 0s; }
+.panel-motes i:nth-child(2) { left: 36%; animation-delay: -1.2s; animation-duration: 7s; }
+.panel-motes i:nth-child(3) { left: 58%; animation-delay: -2.6s; }
+.panel-motes i:nth-child(4) { left: 74%; animation-delay: -3.9s; animation-duration: 8s; }
+.panel-motes i:nth-child(5) { left: 86%; animation-delay: -5s; animation-duration: 6.5s; }
+@keyframes mote { 0% { opacity: 0; transform: translateY(0) scale(0.6); } 15% { opacity: 0.9; } 100% { opacity: 0; transform: translateY(-260px) scale(1.2); } }
+
 /* dark at the top so the title always reads */
 .panel-shade {
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(180deg, rgba(10, 11, 14, 0.82) 0%, rgba(10, 11, 14, 0.35) 26%, rgba(10, 11, 14, 0) 42%),
-    linear-gradient(0deg, rgba(10, 11, 14, 0.7) 0%, rgba(10, 11, 14, 0) 22%);
+    linear-gradient(180deg, rgba(5, 6, 13, 0.78) 0%, rgba(5, 6, 13, 0.3) 24%, rgba(5, 6, 13, 0) 40%),
+    linear-gradient(0deg, rgba(5, 6, 13, 0.6) 0%, rgba(5, 6, 13, 0) 18%);
   pointer-events: none;
 }
-/* a soft shine that follows the cursor */
 .panel-glare {
   position: absolute;
   inset: 0;
@@ -113,15 +213,25 @@ html:has(.picker) { background: #0d0e11; }
   transition: opacity 0.3s ease;
   pointer-events: none;
 }
-/* the glow along both sides */
+/* the glow along both sides on hover */
 .panel-tilt::after {
   content: '';
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background:
-    linear-gradient(90deg, var(--glow) 0%, rgba(0, 0, 0, 0) 14%, rgba(0, 0, 0, 0) 86%, var(--glow) 100%);
+  background: linear-gradient(90deg, var(--glow) 0%, rgba(0, 0, 0, 0) 14%, rgba(0, 0, 0, 0) 86%, var(--glow) 100%);
   box-shadow: inset 0 0 0 1.5px var(--glow);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+/* the others step back (a dark veil: cheaper than a filter) */
+.panel-tilt::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  background: rgba(5, 6, 13, 0.45);
   opacity: 0;
   transition: opacity 0.3s ease;
   pointer-events: none;
@@ -133,17 +243,28 @@ html:has(.picker) { background: #0d0e11; }
   left: 0;
   right: 0;
   padding: clamp(14px, 1.6vw, 22px) clamp(14px, 1.6vw, 22px) 0;
-  transform: translate(calc(var(--px) * 6px), calc(var(--py) * 4px));
+  transform: translate(calc(var(--px) * -8px), calc(var(--py) * -5px));
   transition: transform 0.18s ease-out;
+}
+.panel-no {
+  display: inline-block;
+  margin-bottom: 8px;
+  padding: 3px 7px 1px;
+  border-radius: 4px;
+  border: 1px solid var(--glow);
+  color: var(--glow);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  background: rgba(5, 6, 13, 0.4);
 }
 .panel-text h2 {
   margin: 0;
   font-size: clamp(24px, 2.6vw, 38px);
   font-weight: 900;
   line-height: 0.98;
-  letter-spacing: 0.005em;
   text-wrap: balance;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
 }
 .panel-text p {
   margin: 10px 0 0;
@@ -152,7 +273,7 @@ html:has(.picker) { background: #0d0e11; }
   font-weight: 700;
   line-height: 1.25;
   color: #d7dbe2;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
 }
 .panel-stat {
   position: absolute;
@@ -161,34 +282,21 @@ html:has(.picker) { background: #0d0e11; }
   display: flex;
   flex-direction: column;
   line-height: 1;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
 }
 .panel-stat span { font-size: 10px; font-weight: 900; letter-spacing: 0.18em; color: #aeb4be; }
-.panel-stat { text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8); }
 .panel-stat b { margin-top: 3px; font-size: clamp(22px, 2vw, 30px); font-weight: 900; font-variant-numeric: tabular-nums; }
 
-/* ---- Hover / focus: pop out, glow, turn toward the cursor ------------------------ */
+/* ---- Hover / focus ------------------------------------------------------------------ */
 .panel:hover, .panel:focus-visible { z-index: 2; transform: perspective(1100px) translateY(-8px) scale(1.045); }
 .panel:hover .panel-tilt, .panel:focus-visible .panel-tilt {
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.1),
-    -18px 0 46px -16px var(--glow),
-    18px 0 46px -16px var(--glow),
-    0 26px 50px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12), -18px 0 46px -16px var(--glow), 18px 0 46px -16px var(--glow), 0 26px 50px rgba(0, 0, 0, 0.6);
 }
 .panel:hover .panel-tilt::after, .panel:focus-visible .panel-tilt::after { opacity: 0.42; }
 .panel:hover .panel-glare { opacity: 1; }
-.panel:hover .panel-bg, .panel:focus-visible .panel-bg { opacity: 0.32; filter: saturate(1) blur(0); }
-/* the others step back (a dark veil: cheaper than a filter on slow computers) */
-.panel-tilt::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: 3;
-  background: rgba(8, 9, 11, 0.42);
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  pointer-events: none;
-}
+.panel:hover .panel-halo, .panel:focus-visible .panel-halo { opacity: 0.55; transform: translate(calc(var(--px) * 10px), calc(var(--py) * 8px)) scale(1.12); }
+/* the island lifts toward you */
+.panel:hover .panel-island, .panel:focus-visible .panel-island { transform: translate(calc(var(--px) * -16px), calc(var(--py) * -10px - 14px)) scale(1.07); }
 .lineup:has(.panel:hover) .panel:not(:hover) { transform: perspective(1100px) scale(0.975); }
 .lineup:has(.panel:hover) .panel:not(:hover) .panel-tilt::before { opacity: 1; }
 .panel:active { transform: perspective(1100px) translateY(-2px) scale(1.02); }
@@ -203,23 +311,26 @@ html:has(.picker) { background: #0d0e11; }
   padding: 4px 18px max(18px, env(safe-area-inset-bottom));
   font-size: 13px;
   font-weight: 700;
-  color: #8a909b;
+  color: #8a8fa0;
   text-align: center;
 }
 
 /* ---- Smaller screens: two by two ------------------------------------------------- */
 @media (max-width: 900px) {
   .lineup { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .panel { height: clamp(260px, 42vh, 460px); }
+  .panel { height: clamp(270px, 43vh, 470px); }
   .panel-text h2 { font-size: clamp(20px, 4.6vw, 32px); }
   .panel-text p { font-size: clamp(12px, 2.6vw, 15px); margin-top: 6px; }
+  .panel-no { margin-bottom: 5px; }
+  .panel-island { top: 33%; left: -4%; right: -4%; bottom: 10%; }
 }
 @media (max-width: 900px) and (max-height: 560px) { /* phone held sideways: back to one row */
   .lineup { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .panel { height: 72vh; }
-  .panel-text p { display: none; }
+  .panel-text p, .panel-no { display: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .panel, .panel-tilt, .panel-hero, .panel-bg, .panel-text { transform: none !important; }
+  .panel, .panel-tilt, .panel-island, .panel-halo, .panel-sky, .panel-text, .panel-motes { transform: none !important; }
+  .panel-island img, .stars, .sun, .sun-mark .rays, .panel-motes i { animation: none !important; }
 }
