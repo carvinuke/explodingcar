@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#1e2126">
+<title>Traffic Control</title>
+<link rel="stylesheet" href="../shared/fonts.css">
+<link rel="stylesheet" href="../shared/arcade.css">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="game">
+  <canvas id="view" aria-label="The crossroads"></canvas>
+
+  <div id="hud" class="hidden">
+    <div class="hud-l">
+      <div class="plate guide"><span class="plate-lbl">CARS</span><b id="hud-cars">0</b></div>
+      <div id="hud-level" class="hud-level"></div>
+    </div>
+    <div class="hud-r">
+      <div class="hud-row">
+        <div id="hud-strikes" class="strikes" aria-label="Crashes"></div>
+        <div class="plate coinplate"><span class="coin-ico"></span><b id="hud-coins">0</b></div>
+      </div>
+      <div class="hud-row">
+        <button id="btn-pause" class="icon-btn" aria-label="Pause">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="4" height="14" fill="currentColor"/><rect x="14" y="5" width="4" height="14" fill="currentColor"/></svg>
+        </button>
+        <button id="btn-mute" class="icon-btn" aria-label="Mute"></button>
+      </div>
+    </div>
+    <div id="toasts" class="toasts" aria-live="polite"></div>
+    <div class="hud-b">
+      <button id="btn-swap" class="swap-btn"><b>&#8644; SWITCH ALL</b><span class="key-hint">Space</span></button>
+      <div class="powers">
+        <button class="power-btn" data-power="freeze"><span class="power-ico">&#10052;</span><b>Freeze</b><em>0</em><span class="key-hint">1</span></button>
+        <button class="power-btn" data-power="tow"><span class="power-ico">&#9881;</span><b>Tow</b><em>0</em><span class="key-hint">2</span></button>
+        <button class="power-btn" data-power="calm"><span class="power-ico">&#9829;</span><b>Calm</b><em>0</em><span class="key-hint">3</span></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Title -->
+  <div id="screen-title" class="screen">
+    <a class="arcade-back" href="../index.html">&#9664; Arcade</a>
+    <div class="title-stack">
+      <div class="guide-sign blue">
+        <div class="exit-tab"><span>EXIT 2</span></div>
+        <div class="guide-inner title-inner">
+          <div>
+            <h1 class="logo">Traffic Control</h1>
+            <p class="tag">Keep it moving. Keep it from going boom.</p>
+          </div>
+          <svg class="signal-ico" viewBox="0 0 30 64" aria-hidden="true"><rect x="3" y="2" width="24" height="60" rx="6" fill="#16181c" stroke="#f7f7f2" stroke-width="2.5"/><circle cx="15" cy="15" r="6.5" fill="#5a1016"/><circle cx="15" cy="32" r="6.5" fill="#5a4410"/><circle cx="15" cy="49" r="6.5" fill="#2ee66b"/></svg>
+        </div>
+      </div>
+      <button id="btn-play" class="btn-yellow btn-big">PLAY</button>
+      <button id="btn-endless" class="mode-btn"><b>Endless Rush Hour</b><em id="best-endless"></em></button>
+      <div class="menu-row">
+        <button id="btn-shop" class="btn-plate small">Shop</button>
+        <button id="btn-trophies" class="btn-plate small">Trophies <span id="trophy-count" class="count"></span></button>
+        <button id="btn-settings" class="btn-plate small">Settings</button>
+      </div>
+      <p class="meta"><span class="star">&#9733;</span> <b id="title-stars">0</b>/45 &middot; <span class="coin-ico"></span> <b id="title-coins">0</b></p>
+      <p class="controls kb">Click a traffic light or press its arrow key to switch it &middot; <kbd>Space</kbd> switches them all</p>
+      <p class="controls touch">Tap a traffic light (or its lane) to switch it</p>
+    </div>
+  </div>
+
+  <!-- Level select -->
+  <div id="screen-levels" class="screen hidden">
+    <div class="card wide">
+      <div class="card-head"><span>PICK A SHIFT</span><span><span class="star">&#9733;</span> <span id="levels-stars">0</span>/45</span></div>
+      <div class="card-body" id="levels-body"></div>
+      <div class="card-foot actions"><button id="btn-levels-back" class="btn-plate small">Back</button></div>
+    </div>
+  </div>
+
+  <!-- Level intro -->
+  <div id="screen-intro" class="screen hidden">
+    <div class="card">
+      <div class="card-head"><span id="intro-map">MAIN STREET</span><span id="intro-no">LEVEL 1</span></div>
+      <div class="card-body">
+        <h2 id="intro-name">First Day</h2>
+        <p id="intro-goal" class="goal"></p>
+        <p id="intro-tip" class="tip"></p>
+        <div class="actions"><button id="btn-intro-go" class="btn-yellow">START</button><button id="btn-intro-back" class="btn-plate small">Back</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pause -->
+  <div id="screen-pause" class="screen hidden">
+    <div class="barricade-card">
+      <div class="barricade" aria-hidden="true"></div>
+      <div class="barricade-body">
+        <h2>PAUSED</h2>
+        <div class="actions">
+          <button id="btn-resume" class="btn-yellow">RESUME</button>
+          <button id="btn-restart" class="btn-plate">Restart</button>
+          <button id="btn-quit" class="btn-plate">Quit to menu</button>
+        </div>
+        <p class="hint">P or Esc to resume</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div id="screen-result" class="screen hidden">
+    <div class="card">
+      <div class="card-head"><span>SHIFT REPORT</span><span id="res-no"></span></div>
+      <div class="card-body">
+        <h2 id="res-title">Level clear!</h2>
+        <div id="res-stars" class="stars-big"></div>
+        <dl class="fields">
+          <div><dt>Cars through</dt><dd id="res-cars">0</dd></div>
+          <div><dt>Crashes</dt><dd id="res-crashes">0</dd></div>
+          <div id="res-best-row"><dt>Best</dt><dd id="res-best">0</dd></div>
+          <div><dt>Coins</dt><dd><span class="coin-ico"></span> +<span id="res-coins">0</span></dd></div>
+        </dl>
+        <ul id="res-trophies" class="res-trophies"></ul>
+        <div class="actions">
+          <button id="btn-next" class="btn-yellow">NEXT</button>
+          <button id="btn-retry" class="btn-plate">Retry</button>
+          <button id="btn-res-menu" class="btn-plate">Menu</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Shop -->
+  <div id="screen-shop" class="screen hidden">
+    <div class="card wide">
+      <div class="card-head"><span>SHOP</span><span><span class="coin-ico"></span> <span id="shop-coins">0</span></span></div>
+      <div class="card-body" id="shop-body"></div>
+      <div class="card-foot actions"><button id="btn-shop-done" class="btn-yellow small">Done</button></div>
+    </div>
+  </div>
+
+  <!-- Trophies -->
+  <div id="screen-trophies" class="screen hidden">
+    <div class="card">
+      <div class="card-head"><span>TROPHIES</span><span id="trophies-count"></span></div>
+      <div class="card-body"><ul id="trophy-list" class="trophy-list"></ul><div id="stats" class="stats"></div></div>
+      <div class="card-foot actions"><button id="btn-trophies-done" class="btn-yellow small">Done</button></div>
+    </div>
+  </div>
+
+  <!-- Settings -->
+  <div id="screen-settings" class="screen hidden">
+    <div class="card">
+      <div class="card-head"><span>SETTINGS</span></div>
+      <div class="card-body">
+        <div class="toggle-row"><span>Sound</span><button id="set-sound" class="toggle" role="switch" aria-checked="true" aria-label="Sound"></button></div>
+        <div class="toggle-row"><span>Screen shake</span><button id="set-shake" class="toggle" role="switch" aria-checked="true" aria-label="Screen shake"></button></div>
+        <div class="toggle-row"><span>Low graphics <em class="sub">for slower computers</em></span><button id="set-low" class="toggle" role="switch" aria-checked="false" aria-label="Low graphics"></button></div>
+        <button id="btn-reset" class="btn-red small">Reset Traffic Control progress</button>
+      </div>
+      <div class="card-foot actions"><button id="btn-settings-done" class="btn-yellow small">Done</button></div>
+    </div>
+  </div>
+</div>
+
+<script src="../road-rush/js/util.js"></script>
+<script src="../shared/rr-bridge.js"></script>
+<script src="../road-rush/js/audio.js"></script>
+<script src="../road-rush/js/effects.js"></script>
+<script src="../road-rush/js/draw.js"></script>
+<script src="../road-rush/js/vehicles.js"></script>
+<script src="../shared/wallet.js"></script>
+<script src="../shared/kit.js"></script>
+<script src="../shared/cars.js"></script>
+<script src="js/data.js"></script>
+<script src="js/sim.js"></script>
+<script src="js/view.js"></script>
+<script src="js/game.js"></script>
+</body>
+</html>
