@@ -3,91 +3,80 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#1b1e23">
+<meta name="theme-color" content="#05060d">
 <title>Solarian Arcade</title>
 <link rel="stylesheet" href="shared/fonts.css">
 <link rel="stylesheet" href="shared/arcade.css">
 <link rel="stylesheet" href="shared/picker.css">
 </head>
 <body class="picker">
-<header class="top">
-  <div class="welcome">
-    <div class="welcome-in">
-      <svg class="sun" viewBox="0 0 48 48" aria-hidden="true">
-        <circle cx="24" cy="24" r="9" fill="none" stroke="currentColor" stroke-width="3.5"/>
-        <g stroke="currentColor" stroke-width="3.5" stroke-linecap="round">
-          <path d="M24 4v6M24 38v6M4 24h6M38 24h6M9.9 9.9l4.2 4.2M33.9 33.9l4.2 4.2M38.1 9.9l-4.2 4.2M14.1 33.9l-4.2 4.2"/>
-        </g>
-      </svg>
-      <div>
-        <h1>Solarian Arcade</h1>
-        <p>4 exits, one wallet</p>
-      </div>
-    </div>
+<div class="space" aria-hidden="true">
+  <div class="stars far"></div>
+  <div class="stars near"></div>
+  <div class="sun"></div>
+</div>
+
+<header class="bar">
+  <div class="brand">
+    <svg class="sun-mark" viewBox="0 0 64 64" aria-hidden="true">
+      <defs>
+        <radialGradient id="core" cx="40%" cy="38%" r="65%"><stop offset="0" stop-color="#fff6c8"/><stop offset="0.45" stop-color="#ffc94a"/><stop offset="1" stop-color="#ff7a1a"/></radialGradient>
+      </defs>
+      <g fill="#ffb02e">
+        <path d="M32 1 36 12H28z"/><path d="M32 63 28 52H36z"/><path d="M1 32 12 28V36z"/><path d="M63 32 52 36V28z"/>
+        <path d="M10 10 20 15 15 20z"/><path d="M54 54 44 49 49 44z"/><path d="M54 10 49 20 44 15z"/><path d="M10 54 15 44 20 49z"/>
+      </g>
+      <circle cx="32" cy="32" r="15" fill="url(#core)"/>
+    </svg>
+    <div class="brand-text"><b>SOLARIAN</b><span>ARCADE</span></div>
   </div>
-  <div class="toll" title="Your coins work in every game">
-    <span>COINS</span>
-    <b id="wallet">0</b>
-  </div>
+  <div class="plate coinplate" title="Your coins work in every game"><span class="coin-ico"></span><b id="wallet">0</b></div>
 </header>
 
-<main class="gantry" aria-label="Pick a game">
-  <div class="beam" aria-hidden="true"></div>
-
-  <a class="exit green" href="road-rush/index.html">
-    <div class="sign">
-      <span class="tab">EXIT 1</span>
-      <div class="face">
-        <h2>Road Rush</h2>
-        <p>Cross. Dodge. Survive.</p>
-        <img src="shared/art/rr-island.webp" alt="" draggable="false">
-        <svg class="arrow" viewBox="0 0 48 64" aria-hidden="true"><path d="M24 3 45 27H31v34H17V27H3z" fill="currentColor"/></svg>
-      </div>
+<main class="lineup" aria-label="Pick a game">
+  <a class="panel" href="road-rush/index.html" style="--glow: #ffd36b; --sky1: #0b1838; --sky2: #1f6a86;">
+    <div class="panel-tilt">
+      <div class="panel-sky"></div>
+      <div class="panel-island"><img src="shared/art/rr-island.webp" alt="" draggable="false"></div>
+      <div class="panel-shade"></div>
+      <div class="panel-glare"></div>
+      <div class="panel-text"><h2>Road Rush</h2><p>Cross the road. Don't get flattened.</p></div>
+      <div class="panel-stat"><span>BEST</span><b id="stat-rr">0</b></div>
     </div>
-    <div class="plate"><span>BEST</span> <b id="stat-rr">0</b></div>
   </a>
-
-  <a class="exit blue" href="traffic-control/index.html">
-    <div class="sign">
-      <span class="tab">EXIT 2</span>
-      <div class="face">
-        <h2>Traffic Control</h2>
-        <p>Keep it moving. Keep it from going boom.</p>
-        <img src="shared/art/tc-island.webp" alt="" draggable="false">
-        <svg class="arrow" viewBox="0 0 48 64" aria-hidden="true"><path d="M24 3 45 27H31v34H17V27H3z" fill="currentColor"/></svg>
-      </div>
+  <a class="panel" href="traffic-control/index.html" style="--glow: #47a6ff; --sky1: #070b20; --sky2: #23306a;">
+    <div class="panel-tilt">
+      <div class="panel-sky"></div>
+      <div class="panel-island"><img src="shared/art/tc-island.webp" alt="" draggable="false"></div>
+      <div class="panel-shade"></div>
+      <div class="panel-glare"></div>
+      <div class="panel-text"><h2>Traffic Control</h2><p>Run the lights. Keep it from going boom.</p></div>
+      <div class="panel-stat"><span>STARS</span><b id="stat-tc">0</b></div>
     </div>
-    <div class="plate"><span>STARS</span> <b id="stat-tc">0</b></div>
   </a>
-
-  <a class="exit orange" href="boom-run/index.html">
-    <div class="sign">
-      <span class="tab">EXIT 3</span>
-      <div class="face">
-        <h2>Boom Run</h2>
-        <p>Floor it. Weave. Don't blink.</p>
-        <img src="shared/art/br-island.webp" alt="" draggable="false">
-        <svg class="arrow" viewBox="0 0 48 64" aria-hidden="true"><path d="M24 3 45 27H31v34H17V27H3z" fill="currentColor"/></svg>
-      </div>
+  <a class="panel" href="boom-run/index.html" style="--glow: #ff7a2e; --sky1: #160b26; --sky2: #7a2c3a;">
+    <div class="panel-tilt">
+      <div class="panel-sky"></div>
+      <div class="panel-island"><img src="shared/art/br-island.webp" alt="" draggable="false"></div>
+      <div class="panel-shade"></div>
+      <div class="panel-glare"></div>
+      <div class="panel-text"><h2>Boom Run</h2><p>Floor it through traffic. Don't blink.</p></div>
+      <div class="panel-stat"><span>BEST</span><b id="stat-br">0</b></div>
     </div>
-    <div class="plate"><span>BEST</span> <b id="stat-br">0</b></div>
   </a>
-
-  <a class="exit purple" href="hall-of-art/index.html">
-    <div class="sign">
-      <span class="tab">EXIT 4</span>
-      <div class="face">
-        <h2>Hall of Art</h2>
-        <p>Moving pictures and living buttons.</p>
-        <img src="shared/art/ha-island.webp" alt="" draggable="false">
-        <svg class="arrow" viewBox="0 0 48 64" aria-hidden="true"><path d="M24 3 45 27H31v34H17V27H3z" fill="currentColor"/></svg>
-      </div>
+  <a class="panel" href="hall-of-art/index.html" style="--glow: #e05cff; --sky1: #120826; --sky2: #4f1e72;">
+    <div class="panel-tilt">
+      <div class="panel-sky"></div>
+      <div class="panel-island"><img src="shared/art/ha-island.webp" alt="" draggable="false"></div>
+      <div class="panel-shade"></div>
+      <div class="panel-glare"></div>
+      <div class="panel-text"><h2>Hall of Art</h2><p>Moving pictures and living buttons to explore.</p></div>
+      <div class="panel-stat"><span>EXPLORED</span><b id="stat-ha">0</b></div>
     </div>
-    <div class="plate"><span>EXPLORED</span> <b id="stat-ha">0</b></div>
   </a>
 </main>
 
-<div class="road" aria-hidden="true"></div>
+<footer class="foot"><span>Coins are shared by every game</span><span>Everything works offline</span></footer>
 
 <script src="shared/wallet.js"></script>
 <script src="shared/picker.js"></script>

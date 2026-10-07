@@ -1,6 +1,6 @@
 'use strict';
-// The Solarian Arcade menu: fills in the wallet and each game's best, and swings
-// the sign under the cursor toward it.
+// The Solarian Arcade menu: fills in the wallet and each game's best, and turns
+// the hovered panel toward the cursor.
 
 (() => {
   const read = (key, fallback) => {
@@ -24,7 +24,7 @@
 
   // ---- Turn toward the cursor -------------------------------------------------
   const still = matchMedia('(prefers-reduced-motion: reduce)');
-  for (const panel of document.querySelectorAll('.exit')) {
+  for (const panel of document.querySelectorAll('.panel')) {
     let frame = 0, ev = null;
     const apply = () => {
       frame = 0;
@@ -33,8 +33,8 @@
       const x = Math.min(1, Math.max(0, (ev.clientX - r.left) / r.width));
       const y = Math.min(1, Math.max(0, (ev.clientY - r.top) / r.height));
       const px = x - 0.5, py = y - 0.5;
-      panel.style.setProperty('--ry', `${(px * 10).toFixed(2)}deg`);
-      panel.style.setProperty('--rx', `${(-py * 7).toFixed(2)}deg`);
+      panel.style.setProperty('--ry', `${(px * 16).toFixed(2)}deg`);
+      panel.style.setProperty('--rx', `${(-py * 11).toFixed(2)}deg`);
       panel.style.setProperty('--px', px.toFixed(3));
       panel.style.setProperty('--py', py.toFixed(3));
       panel.style.setProperty('--mx', `${(x * 100).toFixed(1)}%`);
