@@ -193,7 +193,7 @@ const UI = {
   // Settings: wipe all progress (asks first, then asks again).
   openReset() {
     const col = Shop.collection();
-    this.$('reset-body').textContent = `This permanently deletes your ${Game.bank.toLocaleString()} coins, your level (${Levels.level}), `
+    this.$('reset-body').textContent = `This permanently deletes your ${Game.bank.toLocaleString()} coins (the wallet you share with the other arcade games), your level (${Levels.level}), `
       + `every cosmetic you own (${col.have} of ${col.total}), your trophies, stats, best scores and missions. Your settings and controls are kept. This can't be undone.`;
     const b = this.$('btn-reset-ok');
     delete b.dataset.armed;
@@ -1025,6 +1025,13 @@ const UI = {
       }
       el.appendChild(li);
     }
+  },
+
+  // Another arcade game changed the shared coin wallet: show the new total.
+  bankChanged() {
+    this.refreshMeta();
+    if (!this.$('screen-shop').classList.contains('hidden')) this.renderShop();
+    if (!this.$('screen-claw').classList.contains('hidden')) this.renderClaw();
   },
 
   refreshMeta() {
