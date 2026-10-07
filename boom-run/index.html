@@ -2,280 +2,160 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#1e2126">
 <title>Boom Run</title>
-<style>
-  :root { --bg: #111318; --fg: #f4f4f4; --accent: #ffb020; }
-  * { box-sizing: border-box; }
-  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg);
-    font-family: system-ui, sans-serif; overflow: hidden; touch-action: none; }
-  #wrap { display: flex; align-items: center; justify-content: center; height: 100%; }
-  canvas { background: #2b2f36; border-radius: 8px; max-width: 100vw; max-height: 100vh; }
-</style>
+<link rel="stylesheet" href="../shared/fonts.css">
+<link rel="stylesheet" href="../shared/arcade.css">
+<link rel="stylesheet" href="../shared/game-ui.css">
+<link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-<div id="wrap"><canvas id="c" width="400" height="640"></canvas></div>
-<script>
-// ---- Setup ---------------------------------------------------------------
-const cv = document.getElementById('c');
-const ctx = cv.getContext('2d');
-const W = cv.width, H = cv.height;
-const ROAD_L = 40, ROAD_R = W - 40, LANES = 4;
-const LANE_W = (ROAD_R - ROAD_L) / LANES;
-const CAR_W = 36, CAR_H = 62;
-const TRAFFIC_COLORS = ['#4aa3ff', '#7ee07e', '#c77dff', '#ff7eb6', '#f4f4f4', '#56d6c9'];
+<div id="game">
+  <canvas id="view" aria-label="The highway"></canvas>
 
-function loadBest() { try { return +localStorage.getItem('boomrun.best') || 0; } catch { return 0; } }
-function saveBest(v) { try { localStorage.setItem('boomrun.best', v); } catch {} }
+  <div id="hud" class="hidden">
+    <div class="hud-l">
+      <div class="plate guide"><span class="plate-lbl" id="hud-mode">ENDLESS</span><b id="hud-dist">0 m</b></div>
+      <div class="hud-sub"><span id="hud-speed">0 km/h</span> &middot; Score <b id="hud-score">0</b></div>
+      <div id="hud-combo" class="plate combo hidden"><b>x2</b><span>CLOSE CALLS</span></div>
+      <div id="hud-powers" class="chips"></div>
+    </div>
+    <div class="hud-r">
+      <div class="hud-row">
+        <div class="plate coinplate"><span class="coin-ico"></span><b id="hud-run-coins">0</b></div>
+      </div>
+      <div class="hud-row">
+        <button id="btn-pause" class="icon-btn" aria-label="Pause">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="4" height="14" fill="currentColor"/><rect x="14" y="5" width="4" height="14" fill="currentColor"/></svg>
+        </button>
+        <button id="btn-mute" class="icon-btn" aria-label="Mute"></button>
+      </div>
+      <div id="hud-timer" class="timer hidden"><span>TIME</span><b id="hud-timer-val">35</b></div>
+    </div>
+    <div id="toasts" class="toasts" aria-live="polite"></div>
+    <div class="pedals">
+      <button id="btn-brake" class="pedal" aria-label="Brake">BRAKE</button>
+      <button id="btn-boost" class="pedal go" aria-label="Boost">BOOST</button>
+    </div>
+  </div>
 
-let state, keys = {}, pointerX = null, best = loadBest();
+  <!-- Title -->
+  <div id="screen-title" class="screen">
+    <a class="arcade-back" href="../index.html">&#9664; Arcade</a>
+    <div class="title-stack">
+      <div class="guide-sign orange">
+        <div class="exit-tab"><span>EXIT 3</span></div>
+        <div class="guide-inner title-inner">
+          <div>
+            <h1 class="logo">Boom Run</h1>
+            <p class="tag">Floor it. Weave. Don't blink.</p>
+          </div>
+          <svg class="sign-arrow" viewBox="0 0 48 64" aria-hidden="true"><path d="M24 3 45 27H31v34H17V27H3z" fill="currentColor"/></svg>
+        </div>
+      </div>
+      <button id="btn-play" class="btn-yellow btn-big">DRIVE</button>
+      <div class="modes">
+        <button id="btn-checkpoint" class="mode-btn m-cp"><b>Checkpoint</b><em id="best-checkpoint"></em></button>
+        <button id="btn-wrongway" class="mode-btn m-ww"><b>Wrong Way</b><em id="best-wrongway"></em></button>
+      </div>
+      <div class="menu-row">
+        <button id="btn-garage" class="btn-plate small">Garage</button>
+        <button id="btn-trophies" class="btn-plate small">Trophies <span id="trophy-count" class="count"></span></button>
+        <button id="btn-settings" class="btn-plate small">Settings</button>
+      </div>
+      <p class="meta"><span id="best-endless"></span> &middot; Driving the <b id="title-car">Hatchback</b> &middot; <span class="coin-ico"></span> <b id="title-coins">0</b></p>
+      <p class="controls kb"><kbd>&larr;</kbd><kbd>&rarr;</kbd> steer &middot; <kbd>&uarr;</kbd> boost &middot; <kbd>&darr;</kbd> brake &middot; or drag with the mouse</p>
+      <p class="controls touch">Drag to steer. Brake and boost buttons at the bottom</p>
+    </div>
+  </div>
 
-function reset() {
-  state = {
-    mode: 'title',            // title | play | boom
-    player: { x: W / 2, y: H - 100, vx: 0 },
-    speed: 260,               // px/s the world scrolls
-    dist: 0, bonus: 0,
-    traffic: [], cans: [], particles: [],
-    spawnT: 0, canT: 2, roadOff: 0, shake: 0, boomT: 0,
-  };
-}
-reset();
+  <!-- Pause -->
+  <div id="screen-pause" class="screen hidden">
+    <div class="barricade-card">
+      <div class="barricade" aria-hidden="true"></div>
+      <div class="barricade-body">
+        <h2>PAUSED</h2>
+        <div class="actions">
+          <button id="btn-resume" class="btn-yellow">RESUME</button>
+          <button id="btn-restart" class="btn-plate">Restart</button>
+          <button id="btn-quit" class="btn-plate">Quit to menu</button>
+        </div>
+        <p class="hint">P or Esc to resume &middot; coins you picked up are kept if you quit</p>
+      </div>
+    </div>
+  </div>
 
-// ---- Input ---------------------------------------------------------------
-addEventListener('keydown', e => {
-  keys[e.key] = true;
-  if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); startOrRestart(); }
-});
-addEventListener('keyup', e => { keys[e.key] = false; });
+  <!-- Results -->
+  <div id="screen-result" class="screen hidden">
+    <div class="card">
+      <div class="card-head"><span>RUN REPORT</span><span id="res-mode">ENDLESS</span></div>
+      <div class="card-body">
+        <div class="res-title"><h2 id="res-title">Boom!</h2><span id="res-new" class="stamp hidden">NEW BEST</span></div>
+        <dl class="fields">
+          <div><dt>Score</dt><dd id="res-score">0</dd></div>
+          <div><dt>Distance</dt><dd id="res-dist">0</dd></div>
+          <div><dt>Close calls</dt><dd id="res-near">0</dd></div>
+          <div id="res-cp-row"><dt>Checkpoints</dt><dd id="res-cp">0</dd></div>
+          <div><dt>Best</dt><dd id="res-best">0</dd></div>
+          <div><dt>Coins</dt><dd><span class="coin-ico"></span> +<span id="res-coins">0</span></dd></div>
+        </dl>
+        <ul id="res-trophies" class="res-trophies"></ul>
+        <div class="actions">
+          <button id="btn-again" class="btn-yellow">AGAIN</button>
+          <button id="btn-res-garage" class="btn-plate">Garage</button>
+          <button id="btn-res-menu" class="btn-plate">Menu</button>
+        </div>
+        <p class="hint kb-only">Space to go again</p>
+      </div>
+    </div>
+  </div>
 
-function toCanvasX(e) {
-  const r = cv.getBoundingClientRect();
-  return (e.clientX - r.left) * (W / r.width);
-}
-cv.addEventListener('pointerdown', e => { pointerX = toCanvasX(e); startOrRestart(); });
-cv.addEventListener('pointermove', e => { if (pointerX !== null) pointerX = toCanvasX(e); });
-addEventListener('pointerup', () => { pointerX = null; });
+  <!-- Garage -->
+  <div id="screen-garage" class="screen hidden">
+    <div class="card wide">
+      <div class="card-head"><span>GARAGE</span><span><span class="coin-ico"></span> <span id="garage-coins">0</span></span></div>
+      <div class="card-body" id="garage-body"></div>
+      <div class="card-foot actions"><button id="btn-garage-done" class="btn-yellow small">Done</button></div>
+    </div>
+  </div>
 
-function startOrRestart() {
-  if (state.mode === 'title') state.mode = 'play';
-  else if (state.mode === 'boom' && state.boomT > 0.8) { reset(); state.mode = 'play'; }
-}
+  <!-- Trophies -->
+  <div id="screen-trophies" class="screen hidden">
+    <div class="card">
+      <div class="card-head"><span>TROPHIES</span><span id="trophies-count"></span></div>
+      <div class="card-body"><ul id="trophy-list" class="trophy-list"></ul><div id="stats" class="stats"></div></div>
+      <div class="card-foot actions"><button id="btn-trophies-done" class="btn-yellow small">Done</button></div>
+    </div>
+  </div>
 
-// ---- Spawning ------------------------------------------------------------
-function laneX(i) { return ROAD_L + LANE_W * (i + 0.5); }
+  <!-- Settings -->
+  <div id="screen-settings" class="screen hidden">
+    <div class="card">
+      <div class="card-head"><span>SETTINGS</span></div>
+      <div class="card-body">
+        <div class="toggle-row"><span>Sound</span><button id="set-sound" class="toggle" role="switch" aria-checked="true" aria-label="Sound"></button></div>
+        <div class="toggle-row"><span>Screen shake</span><button id="set-shake" class="toggle" role="switch" aria-checked="true" aria-label="Screen shake"></button></div>
+        <div class="toggle-row"><span>Low graphics <em class="sub">for slower computers</em></span><button id="set-low" class="toggle" role="switch" aria-checked="false" aria-label="Low graphics"></button></div>
+        <button id="btn-reset" class="btn-red small">Reset Boom Run progress</button>
+      </div>
+      <div class="card-foot actions"><button id="btn-settings-done" class="btn-yellow small">Done</button></div>
+    </div>
+  </div>
+</div>
 
-function spawnTraffic() {
-  const lane = Math.floor(Math.random() * LANES);
-  // avoid stacking on a car that just spawned in the same lane
-  if (state.traffic.some(t => t.lane === lane && t.y < CAR_H * 2)) return;
-  state.traffic.push({
-    lane, x: laneX(lane), y: -CAR_H,
-    v: 60 + Math.random() * 100,   // their own forward speed (slower than you)
-    color: TRAFFIC_COLORS[Math.floor(Math.random() * TRAFFIC_COLORS.length)],
-  });
-}
-
-function spawnCan() {
-  const lane = Math.floor(Math.random() * LANES);
-  state.cans.push({ x: laneX(lane), y: -20, t: 0 });
-}
-
-function explode(x, y) {
-  for (let i = 0; i < 140; i++) {
-    const a = Math.random() * Math.PI * 2, s = 60 + Math.random() * 420;
-    state.particles.push({
-      x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s,
-      life: 0.6 + Math.random() * 1.2, age: 0,
-      size: 2 + Math.random() * 6,
-      hue: 10 + Math.random() * 45,
-      smoke: Math.random() < 0.3,
-    });
-  }
-  state.shake = 18;
-}
-
-// ---- Update --------------------------------------------------------------
-function hit(a, b, pad = 6) {
-  return Math.abs(a.x - b.x) < CAR_W - pad && Math.abs(a.y - b.y) < CAR_H - pad;
-}
-
-function update(dt) {
-  const s = state;
-  s.shake = Math.max(0, s.shake - dt * 40);
-
-  for (const p of s.particles) {
-    p.age += dt;
-    p.x += p.vx * dt; p.y += p.vy * dt;
-    p.vx *= 0.96; p.vy *= 0.96;
-    if (p.smoke) p.vy -= 40 * dt;
-  }
-  s.particles = s.particles.filter(p => p.age < p.life);
-
-  if (s.mode === 'boom') { s.boomT += dt; return; }
-  if (s.mode !== 'play') { s.roadOff = (s.roadOff + 120 * dt) % 60; return; }
-
-  // difficulty ramps with distance
-  s.speed = Math.min(720, 260 + s.dist * 0.035);
-  s.dist += s.speed * dt;
-  s.roadOff = (s.roadOff + s.speed * dt) % 60;
-
-  // steering: keyboard or drag
-  const p = s.player;
-  let dir = 0;
-  if (keys.ArrowLeft || keys.a || keys.A) dir -= 1;
-  if (keys.ArrowRight || keys.d || keys.D) dir += 1;
-  if (pointerX !== null) dir = Math.max(-1, Math.min(1, (pointerX - p.x) / 30));
-  p.vx += (dir * 420 - p.vx) * Math.min(1, dt * 10);
-  p.x = Math.max(ROAD_L + CAR_W / 2, Math.min(ROAD_R - CAR_W / 2, p.x + p.vx * dt));
-
-  // spawn
-  s.spawnT -= dt;
-  if (s.spawnT <= 0) { spawnTraffic(); s.spawnT = Math.max(0.28, 0.9 - s.dist / 40000); }
-  s.canT -= dt;
-  if (s.canT <= 0) { spawnCan(); s.canT = 2.5 + Math.random() * 3; }
-
-  // move world
-  for (const t of s.traffic) t.y += (s.speed - t.v) * dt;
-  for (const c of s.cans) { c.y += s.speed * dt; c.t += dt; }
-  s.traffic = s.traffic.filter(t => t.y < H + CAR_H);
-  s.cans = s.cans.filter(c => c.y < H + 30);
-
-  // fuel pickups
-  s.cans = s.cans.filter(c => {
-    if (Math.abs(c.x - p.x) < 30 && Math.abs(c.y - p.y) < 45) { s.bonus += 250; return false; }
-    return true;
-  });
-
-  // crash!
-  const crashed = s.traffic.find(t => hit(t, p));
-  if (crashed) {
-    s.mode = 'boom';
-    explode((p.x + crashed.x) / 2, (p.y + crashed.y) / 2);
-    crashed.wreck = true;
-    const score = currentScore();
-    if (score > best) { best = score; saveBest(best); s.newBest = true; }
-  }
-}
-
-function currentScore() { return Math.floor(state.dist / 10) + state.bonus; }
-
-// ---- Draw ----------------------------------------------------------------
-function drawCar(x, y, color, wreck) {
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.fillStyle = 'rgba(0,0,0,.35)';
-  ctx.fillRect(-CAR_W / 2 + 3, -CAR_H / 2 + 5, CAR_W, CAR_H);
-  ctx.fillStyle = wreck ? '#222' : color;
-  roundRect(-CAR_W / 2, -CAR_H / 2, CAR_W, CAR_H, 8); ctx.fill();
-  ctx.fillStyle = wreck ? '#111' : 'rgba(20,30,50,.85)';
-  roundRect(-CAR_W / 2 + 5, -CAR_H / 2 + 12, CAR_W - 10, 14, 4); ctx.fill();
-  roundRect(-CAR_W / 2 + 5, CAR_H / 2 - 20, CAR_W - 10, 10, 3); ctx.fill();
-  ctx.restore();
-}
-
-function roundRect(x, y, w, h, r) {
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.arcTo(x + w, y, x + w, y + h, r);
-  ctx.arcTo(x + w, y + h, x, y + h, r);
-  ctx.arcTo(x, y + h, x, y, r);
-  ctx.arcTo(x, y, x + w, y, r);
-  ctx.closePath();
-}
-
-function drawCan(c) {
-  const bob = Math.sin(c.t * 6) * 3;
-  ctx.save();
-  ctx.translate(c.x, c.y + bob);
-  ctx.fillStyle = '#e53935';
-  roundRect(-10, -13, 20, 26, 4); ctx.fill();
-  ctx.fillStyle = '#ffd54f';
-  ctx.fillRect(-4, -18, 8, 6);
-  ctx.fillStyle = '#fff';
-  ctx.font = 'bold 13px system-ui';
-  ctx.textAlign = 'center';
-  ctx.fillText('F', 0, 5);
-  ctx.restore();
-}
-
-function centerText(text, y, size, color = '#f4f4f4') {
-  ctx.font = `bold ${size}px system-ui`;
-  ctx.textAlign = 'center';
-  ctx.lineWidth = 5; ctx.strokeStyle = 'rgba(0,0,0,.6)';
-  ctx.strokeText(text, W / 2, y);
-  ctx.fillStyle = color;
-  ctx.fillText(text, W / 2, y);
-}
-
-function draw() {
-  const s = state;
-  ctx.save();
-  if (s.shake > 0) ctx.translate((Math.random() - .5) * s.shake, (Math.random() - .5) * s.shake);
-
-  // grass + road
-  ctx.fillStyle = '#3c6e3a'; ctx.fillRect(-20, -20, W + 40, H + 40);
-  ctx.fillStyle = '#34373d'; ctx.fillRect(ROAD_L, -20, ROAD_R - ROAD_L, H + 40);
-  ctx.fillStyle = '#f4f4f4';
-  ctx.fillRect(ROAD_L - 4, -20, 4, H + 40); ctx.fillRect(ROAD_R, -20, 4, H + 40);
-  ctx.fillStyle = 'rgba(255,255,255,.55)';
-  for (let i = 1; i < LANES; i++) {
-    const x = ROAD_L + LANE_W * i - 2;
-    for (let y = -60 + s.roadOff; y < H; y += 60) ctx.fillRect(x, y, 4, 30);
-  }
-
-  for (const c of s.cans) drawCan(c);
-  for (const t of s.traffic) drawCar(t.x, t.y, t.color, t.wreck);
-  if (s.mode !== 'boom') drawCar(s.player.x, s.player.y, '#ffb020');
-
-  // particles (additive glow for fire)
-  ctx.globalCompositeOperation = 'lighter';
-  for (const p of s.particles) {
-    if (p.smoke) continue;
-    const k = 1 - p.age / p.life;
-    ctx.fillStyle = `hsla(${p.hue}, 100%, ${50 + k * 30}%, ${k})`;
-    ctx.beginPath(); ctx.arc(p.x, p.y, p.size * (0.5 + k), 0, Math.PI * 2); ctx.fill();
-  }
-  ctx.globalCompositeOperation = 'source-over';
-  for (const p of s.particles) {
-    if (!p.smoke) continue;
-    const k = 1 - p.age / p.life;
-    ctx.fillStyle = `rgba(60,60,60,${k * 0.5})`;
-    ctx.beginPath(); ctx.arc(p.x, p.y, p.size * (2.5 - k), 0, Math.PI * 2); ctx.fill();
-  }
-  ctx.restore();
-
-  // HUD
-  ctx.font = 'bold 18px system-ui'; ctx.textAlign = 'left'; ctx.fillStyle = '#fff';
-  ctx.fillText(`Score ${currentScore()}`, 12, 26);
-  ctx.textAlign = 'right';
-  ctx.fillText(`Best ${best}`, W - 12, 26);
-  ctx.textAlign = 'left'; ctx.font = '13px system-ui';
-  ctx.fillText(`${Math.round(s.speed / 4)} km/h`, 12, 46);
-
-  if (s.mode === 'title') {
-    centerText('BOOM RUN', H / 2 - 60, 48, '#ffb020');
-    centerText('← → / A D or drag to steer', H / 2 - 10, 16);
-    centerText('Grab red fuel cans for +250', H / 2 + 16, 16);
-    centerText('Press Space or tap to start', H / 2 + 70, 20);
-  } else if (s.mode === 'boom' && s.boomT > 0.4) {
-    centerText('BOOM!', H / 2 - 50, 64, '#ff5a2a');
-    centerText(`Score ${currentScore()}`, H / 2 + 5, 26);
-    if (s.newBest) centerText('New best!', H / 2 + 38, 20, '#ffd54f');
-    if (s.boomT > 0.8) centerText('Space / tap to go again', H / 2 + 80, 18);
-  }
-}
-
-// ---- Loop ----------------------------------------------------------------
-let last = performance.now();
-function frame(now) {
-  const dt = Math.min(0.05, (now - last) / 1000);
-  last = now;
-  update(dt);
-  draw();
-  requestAnimationFrame(frame);
-}
-requestAnimationFrame(frame);
-</script>
+<script src="../road-rush/js/util.js"></script>
+<script src="../shared/rr-bridge.js"></script>
+<script src="../road-rush/js/audio.js"></script>
+<script src="../road-rush/js/effects.js"></script>
+<script src="../road-rush/js/draw.js"></script>
+<script src="../road-rush/js/vehicles.js"></script>
+<script src="../shared/wallet.js"></script>
+<script src="../shared/kit.js"></script>
+<script src="../shared/cars.js"></script>
+<script src="js/data.js"></script>
+<script src="js/road.js"></script>
+<script src="js/view.js"></script>
+<script src="js/game.js"></script>
 </body>
 </html>

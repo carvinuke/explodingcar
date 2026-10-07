@@ -7,6 +7,18 @@ const Kit = {
   $(id) { return document.getElementById(id); },
   fmt(n) { return Math.floor(n).toLocaleString(); },
 
+  // Seeded random numbers (0..1): the same seed always gives the same sequence.
+  seeded(seed) {
+    let a = seed >>> 0;
+    return () => {
+      a = (a + 0x6d2b79f5) >>> 0;
+      let t = a;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  },
+
   // ---- Canvas -----------------------------------------------------------------
   // Pixel ratio is capped at 1.5 (1 on low graphics) to stay fast on slow computers.
   view(canvas, opts = {}) {
