@@ -1,103 +1,91 @@
-/* The Solarian Arcade menu: an overhead sign gantry. Each game is an exit
-   sign hanging from a steel beam over the road, in the same highway-sign style
-   as the games' own title screens. Flat colours, real sign lettering (Overpass
-   is drawn from the US highway alphabet), no glows for their own sake. */
+/* The Solarian Arcade: four windows onto floating worlds, in deep space under a
+   rising sun. Hovering a window pops it out, lights its sides and turns it
+   toward the cursor; its island lifts and the layers slide apart for depth.
+   The background stays still; the only thing always moving is the islands'
+   gentle float, so slow computers cope. */
 .picker {
+  position: relative;
   min-height: 100vh;
   min-height: 100dvh;
+  background: #05060d;
   display: flex;
   flex-direction: column;
-  background: #1b1e23;
   overflow-x: hidden;
 }
-html:has(.picker) { background: #1b1e23; }
+html:has(.picker) { background: #05060d; }
 
-/* ---- Top: the welcome sign and the coin plate ------------------------------------ */
-.top {
+/* ---- Space -------------------------------------------------------------------- */
+.space { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+.stars {
+  position: absolute;
+  inset: -20% -10%;
+  background-repeat: repeat;
+}
+.stars.far {
+  background-image:
+    radial-gradient(1px 1px at 20px 30px, rgba(255, 255, 255, 0.8), transparent 60%),
+    radial-gradient(1px 1px at 120px 80px, rgba(255, 255, 255, 0.6), transparent 60%),
+    radial-gradient(1px 1px at 70px 150px, rgba(200, 220, 255, 0.7), transparent 60%),
+    radial-gradient(1px 1px at 170px 190px, rgba(255, 255, 255, 0.5), transparent 60%),
+    radial-gradient(1px 1px at 40px 210px, rgba(255, 230, 200, 0.6), transparent 60%);
+  background-size: 220px 240px;
+  opacity: 0.7;
+}
+.stars.near {
+  background-image:
+    radial-gradient(1.6px 1.6px at 50px 60px, rgba(255, 255, 255, 0.9), transparent 60%),
+    radial-gradient(1.4px 1.4px at 260px 140px, rgba(255, 240, 210, 0.8), transparent 60%),
+    radial-gradient(1.8px 1.8px at 160px 300px, rgba(210, 230, 255, 0.9), transparent 60%);
+  background-size: 340px 380px;
+  opacity: 0.6;
+}
+/* the sun rising behind the title */
+.sun {
+  position: absolute;
+  left: 50%;
+  top: -62vmax;
+  width: 90vmax;
+  height: 90vmax;
+  margin-left: -45vmax;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 50%, rgba(255, 214, 120, 0.4) 0%, rgba(255, 150, 60, 0.2) 34%, rgba(255, 90, 40, 0.06) 52%, rgba(255, 60, 30, 0) 66%);
+}
+
+/* ---- Header -------------------------------------------------------------------- */
+.bar, .lineup, .foot { position: relative; z-index: 1; }
+.bar {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: 14px;
-  width: min(1400px, 100%);
+  gap: 12px;
+  width: min(1480px, 100%);
   margin: 0 auto;
-  padding: max(16px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) 0 max(20px, env(safe-area-inset-left));
+  padding: max(14px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right)) 6px max(18px, env(safe-area-inset-left));
 }
-.welcome {
-  padding: 6px;
-  border-radius: 12px;
-  background: var(--sign-green);
-  box-shadow: 0 5px 0 var(--sign-green-deep);
+.brand { display: flex; align-items: center; gap: 12px; }
+.sun-mark { width: clamp(38px, 4vw, 52px); height: auto; flex: none; }
+.brand-text { display: flex; flex-direction: column; line-height: 0.9; }
+.brand-text b {
+  font-size: clamp(24px, 3.2vw, 36px);
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  color: #ffc94a;
 }
-.welcome-in {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 10px 22px 9px 16px;
-  border: 3.5px solid var(--sign-white);
-  border-radius: 8px;
-}
-.welcome .sun { width: clamp(34px, 3.4vw, 44px); height: auto; flex: none; color: var(--sign-white); }
-.welcome h1 { margin: 0; font-size: clamp(26px, 3.4vw, 42px); font-weight: 800; line-height: 1; letter-spacing: 0.005em; }
-.welcome p { margin: 4px 0 0; font-size: clamp(12px, 1.2vw, 15px); font-weight: 700; letter-spacing: 0.04em; opacity: 0.9; }
+.brand-text span { margin-top: 5px; font-size: 12px; font-weight: 900; letter-spacing: 0.62em; color: #c9bfa8; }
 
-/* the coin count on a white regulatory plate, like a toll sign */
-.toll {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  min-width: 96px;
-  padding: 7px 12px 6px;
-  border-radius: 7px;
-  background: var(--sign-white);
-  color: var(--ink);
-  line-height: 1;
-  box-shadow: inset 0 0 0 3px var(--sign-white), inset 0 0 0 5px var(--ink), 0 4px 0 rgba(0, 0, 0, 0.35);
-}
-.toll span { font-size: 11px; font-weight: 900; letter-spacing: 0.14em; }
-.toll b { margin-top: 3px; font-size: 26px; font-weight: 900; font-variant-numeric: tabular-nums; }
-
-/* ---- The gantry ------------------------------------------------------------------- */
-.gantry {
-  position: relative;
+/* ---- The lineup --------------------------------------------------------------- */
+.lineup {
   flex: 1;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: clamp(14px, 2vw, 30px);
+  gap: clamp(10px, 1.4vw, 18px);
   align-content: center;
-  width: min(1400px, 100%);
+  width: min(1480px, 100%);
   margin: 0 auto;
-  padding: 58px max(56px, env(safe-area-inset-right)) 26px max(56px, env(safe-area-inset-left));
+  padding: 18px max(18px, env(safe-area-inset-right)) 18px max(18px, env(safe-area-inset-left));
 }
-/* the steel truss the signs hang from, and its two columns down to the road */
-.beam {
-  position: absolute;
-  left: 14px;
-  right: 14px;
-  top: calc(50% - var(--sign-h) / 2 - 62px);
-  height: 22px;
-  background:
-    repeating-linear-gradient(60deg, transparent 0 10px, #5c636c 10px 13px),
-    repeating-linear-gradient(-60deg, transparent 0 10px, #5c636c 10px 13px),
-    #7d848d;
-  border-top: 3px solid #a3a9b1;
-  border-bottom: 3px solid #4e545c;
-  border-radius: 2px;
-}
-.gantry::before, .gantry::after {
-  content: '';
-  position: absolute;
-  top: calc(50% - var(--sign-h) / 2 - 66px);
-  bottom: 0;
-  width: 16px;
-  background: linear-gradient(90deg, #a3a9b1 0 3px, #7d848d 3px 12px, #4e545c 12px);
-}
-.gantry::before { left: 18px; }
-.gantry::after { right: 18px; }
 
-/* ---- An exit sign -------------------------------------------------------------- */
-.exit {
-  --c: var(--sign-green);
-  --deep: var(--sign-green-deep);
+.panel {
   --rx: 0deg;
   --ry: 0deg;
   --mx: 50%;
@@ -105,185 +93,175 @@ html:has(.picker) { background: #1b1e23; }
   --px: 0;
   --py: 0;
   position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  display: block;
+  height: clamp(400px, 72vh, 680px);
   color: var(--sign-white);
   text-decoration: none;
+  border-radius: 10px;
   outline: none;
-  transform: perspective(1000px) rotateX(var(--rx)) rotateY(var(--ry));
-  transition: transform 0.2s ease-out, opacity 0.25s ease;
+  transform: perspective(1100px) translateY(0) scale(1);
+  transition: transform 0.35s cubic-bezier(0.2, 0.9, 0.3, 1.2);
   -webkit-user-drag: none;
 }
-:root { --sign-h: clamp(380px, 60vh, 560px); }
-.exit.blue { --c: var(--sign-blue); --deep: var(--sign-blue-deep); }
-.exit.orange { --c: #d9541e; --deep: #8f3510; }
-.exit.purple { --c: var(--sign-purple); --deep: var(--sign-purple-deep); }
-
-.sign {
-  position: relative;
-  width: 100%;
-  padding: 6px;
-  border-radius: 12px;
-  background: var(--c);
-  box-shadow: 0 6px 0 var(--deep), 0 16px 26px rgba(0, 0, 0, 0.35);
-  transition: transform 0.3s cubic-bezier(0.2, 0.9, 0.3, 1.2), box-shadow 0.3s ease;
-}
-/* the brackets it hangs by */
-.sign::before, .sign::after {
-  content: '';
+.panel-tilt {
   position: absolute;
-  top: -40px;
-  width: 6px;
-  height: 40px;
-  background: #5c636c;
-  box-shadow: inset 2px 0 0 #8b929b;
-}
-.sign::before { left: 22%; }
-.sign::after { right: 22%; }
-.tab {
-  position: absolute;
-  top: -27px;
-  right: 18px;
-  z-index: 1;
-  padding: 4px 10px 3px;
-  border: 3px solid var(--sign-white);
-  border-bottom: 0;
-  border-radius: 5px 5px 0 0;
-  background: var(--c);
-  box-shadow: 0 0 0 5px var(--c);
-  clip-path: inset(-8px -8px 0 -8px);
-  font-size: 13px;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-}
-.face {
-  position: relative;
-  height: var(--sign-h);
-  padding: 16px 18px 0;
-  border: 4px solid var(--sign-white);
-  border-radius: 8px;
+  inset: 0;
   overflow: hidden;
+  border-radius: 10px;
+  background: #0a0b14;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08), 0 14px 34px rgba(0, 0, 0, 0.55);
+  transform: perspective(1100px) rotateX(var(--rx)) rotateY(var(--ry));
+  transition: transform 0.18s ease-out, box-shadow 0.3s ease;
+  isolation: isolate;
 }
-.face h2 {
-  position: relative;
-  z-index: 1;
-  margin: 0;
-  max-width: 85%;
-  font-size: clamp(26px, 2.6vw, 40px);
-  font-weight: 800;
-  line-height: 1;
-  text-wrap: balance;
-}
-.face p {
-  position: relative;
-  z-index: 1;
-  margin: 8px 0 0;
-  max-width: min(22ch, 80%);
-  font-size: clamp(13px, 1.1vw, 16px);
-  font-weight: 700;
-  line-height: 1.25;
-}
-.face img {
+
+/* layers, far to near; each slides a different amount when the panel turns */
+.panel-sky {
   position: absolute;
-  left: -8%;
-  bottom: 1%;
-  width: 116%;
-  height: 76%;
-  object-fit: contain;
-  object-position: 50% 100%;
-  transform: translate(calc(var(--px) * -10px), calc(var(--py) * -6px));
-  transition: transform 0.3s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+  inset: -4%;
+  background:
+    radial-gradient(1px 1px at 14% 18%, #fff, transparent 70%),
+    radial-gradient(1px 1px at 72% 12%, #fff, transparent 70%),
+    radial-gradient(1.4px 1.4px at 86% 34%, #fff, transparent 70%),
+    radial-gradient(1px 1px at 38% 28%, rgba(255, 255, 255, 0.7), transparent 70%),
+    radial-gradient(1px 1px at 58% 42%, rgba(255, 255, 255, 0.6), transparent 70%),
+    radial-gradient(1.2px 1.2px at 24% 48%, rgba(255, 255, 255, 0.7), transparent 70%),
+    linear-gradient(180deg, var(--sky1) 0%, var(--sky2) 100%);
+  transform: translate(calc(var(--px) * 6px), calc(var(--py) * 6px));
+  transition: transform 0.18s ease-out;
+}
+.panel-island {
+  position: absolute;
+  left: 3%;
+  right: 3%;
+  bottom: 9%;
+  top: 27%;
+  transform: translate(calc(var(--px) * -16px), calc(var(--py) * -10px)) scale(1);
+  transition: transform 0.25s cubic-bezier(0.2, 0.9, 0.3, 1.2);
   pointer-events: none;
+}
+.panel-island img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: 50% 60%;
+  filter: drop-shadow(0 18px 22px rgba(0, 0, 0, 0.45));
   user-select: none;
+  animation: float 7s ease-in-out infinite;
 }
-/* exit arrows point up and off to the right */
-.arrow {
+.panel:nth-child(2) .panel-island img { animation-delay: -1.7s; }
+.panel:nth-child(3) .panel-island img { animation-delay: -3.4s; }
+.panel:nth-child(4) .panel-island img { animation-delay: -5.1s; }
+@keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-9px); } }
+
+/* dark at the top so the title always reads */
+.panel-shade {
   position: absolute;
-  top: 16px;
-  right: 14px;
-  width: clamp(18px, 1.8vw, 26px);
-  height: auto;
-  color: var(--sign-white);
-  transform: rotate(45deg);
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(5, 6, 13, 0.78) 0%, rgba(5, 6, 13, 0.3) 24%, rgba(5, 6, 13, 0) 40%),
+    linear-gradient(0deg, rgba(5, 6, 13, 0.6) 0%, rgba(5, 6, 13, 0) 18%);
+  pointer-events: none;
 }
-/* headlights catching the sign as you look at it */
-.face::after {
+.panel-glare {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(60% 45% at var(--mx) var(--my), rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0) 70%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+/* the others step back (a dark veil: cheaper than a filter) */
+.panel-tilt::before {
   content: '';
   position: absolute;
   inset: 0;
-  background: radial-gradient(55% 40% at var(--mx) var(--my), rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0) 70%);
+  z-index: 3;
+  background: rgba(5, 6, 13, 0.45);
   opacity: 0;
-  transition: opacity 0.25s ease;
+  transition: opacity 0.3s ease;
   pointer-events: none;
 }
 
-/* the yellow plate under each sign */
-.plate {
-  position: relative;
-  margin-top: 12px;
-  padding: 6px 14px 4px;
-  border-radius: 6px;
-  background: var(--sign-yellow);
-  color: var(--ink);
-  font-size: 15px;
+.panel-text {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: clamp(14px, 1.6vw, 22px) clamp(14px, 1.6vw, 22px) 0;
+  transform: translate(calc(var(--px) * -8px), calc(var(--py) * -5px));
+  transition: transform 0.18s ease-out;
+}
+.panel-text h2 {
+  margin: 0;
+  font-size: clamp(24px, 2.6vw, 38px);
   font-weight: 900;
-  letter-spacing: 0.06em;
+  line-height: 0.98;
+  text-wrap: balance;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
+}
+.panel-text p {
+  margin: 10px 0 0;
+  max-width: 24ch;
+  font-size: clamp(14px, 1.15vw, 17px);
+  font-weight: 700;
+  line-height: 1.25;
+  color: #d7dbe2;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
+}
+.panel-stat {
+  position: absolute;
+  left: clamp(14px, 1.6vw, 22px);
+  bottom: clamp(12px, 1.4vw, 18px);
+  display: flex;
+  flex-direction: column;
   line-height: 1;
-  white-space: nowrap;
-  box-shadow: inset 0 0 0 2px var(--sign-yellow), inset 0 0 0 3.5px var(--ink), 0 4px 0 rgba(0, 0, 0, 0.35);
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
 }
-.plate span { font-size: 11px; letter-spacing: 0.14em; }
-.plate b { font-variant-numeric: tabular-nums; }
+.panel-stat span { font-size: 10px; font-weight: 900; letter-spacing: 0.18em; color: #aeb4be; }
+.panel-stat b { margin-top: 3px; font-size: clamp(22px, 2vw, 30px); font-weight: 900; font-variant-numeric: tabular-nums; }
 
-/* ---- Hover / focus: the sign swings toward you and catches the light ------------ */
-.exit:hover .sign, .exit:focus-visible .sign {
-  transform: translateY(-6px) scale(1.035);
-  box-shadow:
-    0 6px 0 var(--deep),
-    -16px 0 30px -16px rgba(255, 228, 170, 0.75),
-    16px 0 30px -16px rgba(255, 228, 170, 0.75),
-    0 26px 36px rgba(0, 0, 0, 0.5);
+/* ---- Hover / focus ------------------------------------------------------------------ */
+.panel:hover, .panel:focus-visible { z-index: 2; transform: perspective(1100px) translateY(-8px) scale(1.045); }
+.panel:hover .panel-tilt, .panel:focus-visible .panel-tilt {
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12), -18px 0 46px -16px var(--glow), 18px 0 46px -16px var(--glow), 0 26px 50px rgba(0, 0, 0, 0.6);
 }
-.exit:hover .face::after { opacity: 1; }
-.exit:hover .face img, .exit:focus-visible .face img { transform: translate(calc(var(--px) * -10px), calc(var(--py) * -6px - 8px)) scale(1.05); }
-.exit:focus-visible .face { outline: 3px solid var(--sign-yellow); outline-offset: 4px; }
-.gantry:has(.exit:hover) .exit:not(:hover) { opacity: 0.6; }
-.exit:active .sign { transform: translateY(-2px) scale(1.02); }
+.panel:hover .panel-glare { opacity: 1; }
+/* the island lifts toward you */
+.panel:hover .panel-island, .panel:focus-visible .panel-island { transform: translate(calc(var(--px) * -16px), calc(var(--py) * -10px - 14px)) scale(1.07); }
+.lineup:has(.panel:hover) .panel:not(:hover) { transform: perspective(1100px) scale(0.975); }
+.lineup:has(.panel:hover) .panel:not(:hover) .panel-tilt::before { opacity: 1; }
+.panel:active { transform: perspective(1100px) translateY(-2px) scale(1.02); }
 
-/* ---- The road under the gantry -------------------------------------------------- */
-.road {
-  height: 56px;
-  margin-top: 6px;
-  background:
-    linear-gradient(#f7f7f2, #f7f7f2) 0 6px / 100% 3px no-repeat,
-    repeating-linear-gradient(90deg, #f2c230 0 46px, transparent 46px 82px) 0 28px / 100% 4px no-repeat,
-    #2b2f36;
-  padding-bottom: env(safe-area-inset-bottom);
+.foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 18px;
+  width: min(1480px, 100%);
+  margin: 0 auto;
+  padding: 4px 18px max(18px, env(safe-area-inset-bottom));
+  font-size: 13px;
+  font-weight: 700;
+  color: #8a8fa0;
+  text-align: center;
 }
 
-/* ---- Smaller screens: two signs to a row, no gantry ------------------------------ */
+/* ---- Smaller screens: two by two ------------------------------------------------- */
 @media (max-width: 900px) {
-  :root { --sign-h: clamp(220px, 31vh, 340px); }
-  .gantry { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 46px 14px; padding: 44px 16px 22px; }
-  .beam, .gantry::before, .gantry::after, .sign::before, .sign::after { display: none; }
-  .face { padding: 12px 12px 0; }
-  .face h2 { font-size: clamp(19px, 4.8vw, 30px); max-width: 80%; }
-  .face p { font-size: clamp(11px, 2.8vw, 14px); margin-top: 5px; }
-  .face img { left: -14%; width: 128%; height: 70%; }
-  .tab { font-size: 11px; right: 12px; }
-  .plate { font-size: 13px; padding: 5px 10px 3px; }
-  .top { align-items: center; }
-  .welcome-in { padding: 8px 14px 7px 10px; gap: 10px; }
-  .toll { min-width: 0; padding: 6px 9px 5px; }
-  .toll b { font-size: 20px; }
+  .lineup { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .panel { height: clamp(270px, 43vh, 470px); }
+  .panel-text h2 { font-size: clamp(20px, 4.6vw, 32px); }
+  .panel-text p { font-size: clamp(12px, 2.6vw, 15px); margin-top: 6px; }
+  .panel-island { top: 33%; left: -4%; right: -4%; bottom: 10%; }
 }
-@media (max-width: 900px) and (max-height: 560px) { /* phone held sideways: one row */
-  :root { --sign-h: 56vh; }
-  .gantry { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .face p { display: none; }
+@media (max-width: 900px) and (max-height: 560px) { /* phone held sideways: back to one row */
+  .lineup { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .panel { height: 72vh; }
+  .panel-text p { display: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .exit, .sign, .face img { transform: none !important; }
+  .panel, .panel-tilt, .panel-island, .panel-sky, .panel-text { transform: none !important; }
+  .panel-island img { animation: none !important; }
 }
