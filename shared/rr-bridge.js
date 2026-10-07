@@ -41,7 +41,7 @@ const Sprites = {
 
   // Draw into a roomy scratch canvas, then crop to what was actually drawn.
   make(fn, s) {
-    const HW = 90, UP = 170, DOWN = 90;
+    const HW = 90, UP = 230, DOWN = 90;
     const W = Math.ceil(HW * 2 * s), H = Math.ceil((UP + DOWN) * s);
     if (!this.scratch) { this.scratch = document.createElement('canvas'); this.sg = this.scratch.getContext('2d', { willReadFrequently: true }); }
     const cv = this.scratch, g = this.sg;
