@@ -68,13 +68,23 @@ const Game = {
     UI.init();
     Admin.init();
     Input.init();
-    document.addEventListener('visibilitychange', () => { if (document.hidden) this.togglePause(true); });
+    document.addEventListener('visibilitychange', () => { if (document.hidden) this.togglePause(true); else this.syncBank(); });
+    // the coin wallet is shared with the other arcade games: pick up what they add or spend
+    addEventListener('storage', e => { if (e.key === 'roadrush.coins' || e.key === null) this.syncBank(); });
     addEventListener('blur', () => this.togglePause(true));
     addEventListener('resize', () => { if (Replay.active) Replay.resize(); });
     this.reset((Math.random() * 4294967296) >>> 0);
     UI.showTitle();
     this.last = performance.now();
     requestAnimationFrame(t => this.loop(t));
+  },
+
+  // Re-read the shared coin wallet (the other arcade games write to it too).
+  syncBank() {
+    const v = Store.get('coins', 0);
+    if (typeof v !== 'number' || !isFinite(v) || v === this.bank) return;
+    this.bank = Math.max(0, Math.floor(v));
+    if (typeof UI !== 'undefined' && UI.bankChanged) UI.bankChanged();
   },
 
   modeDef(mode = this.mode) { return MODES[mode] || MODES.normal; },
@@ -551,6 +561,7 @@ const Game = {
     }
     // prestige and an evolved pet pay a bonus on top
     this.bonusCoins = Math.round(this.coins * (Prestige.bonus() * (Evolve.active() ? 1.1 : 1) + Upgrades.savings() - 1));
+    this.syncBank(); // another arcade game may have changed the wallet during the run
     this.bank += this.coins + this.bonusCoins;
     Store.set('coins', this.bank);
     Stats.add('coins', this.coins);

@@ -1,0 +1,225 @@
+/* The arcade picker: four tall game panels lined up side by side. Hovering one
+   pops it out, lights its sides and turns it toward the cursor. */
+.picker {
+  min-height: 100vh;
+  min-height: 100dvh;
+  background:
+    radial-gradient(120% 70% at 50% 0%, #1c1f26 0%, rgba(13, 14, 17, 0) 70%),
+    #0d0e11;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+}
+html:has(.picker) { background: #0d0e11; }
+
+.bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: min(1480px, 100%);
+  margin: 0 auto;
+  padding: max(16px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right)) 10px max(18px, env(safe-area-inset-left));
+}
+.brand { display: flex; align-items: baseline; gap: 10px; line-height: 1; }
+.brand b { font-size: clamp(20px, 3vw, 28px); font-weight: 900; letter-spacing: 0.04em; }
+.brand span { font-size: 12px; font-weight: 900; letter-spacing: 0.28em; color: var(--muted); }
+
+/* ---- The lineup --------------------------------------------------------------- */
+.lineup {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: clamp(10px, 1.4vw, 18px);
+  align-content: center;
+  width: min(1480px, 100%);
+  margin: 0 auto;
+  padding: 18px max(18px, env(safe-area-inset-right)) 18px max(18px, env(safe-area-inset-left));
+}
+
+.panel {
+  --rx: 0deg;
+  --ry: 0deg;
+  --mx: 50%;
+  --my: 30%;
+  --px: 0;
+  --py: 0;
+  position: relative;
+  display: block;
+  height: clamp(380px, 74vh, 680px);
+  color: var(--sign-white);
+  text-decoration: none;
+  border-radius: 6px;
+  outline: none;
+  transform: perspective(1100px) translateY(0) scale(1);
+  transition: transform 0.35s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+  -webkit-user-drag: none;
+}
+.panel-tilt {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 6px;
+  background:
+    radial-gradient(90% 60% at 60% 92%, var(--tint) 0%, rgba(0, 0, 0, 0) 70%),
+    linear-gradient(180deg, #17191e 0%, #111216 100%);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 10px 30px rgba(0, 0, 0, 0.45);
+  transform: perspective(1100px) rotateX(var(--rx)) rotateY(var(--ry));
+  transition: transform 0.18s ease-out, box-shadow 0.3s ease;
+  isolation: isolate;
+}
+
+/* the game scene, faded far back */
+.panel-bg {
+  position: absolute;
+  inset: -6%;
+  background-size: cover;
+  background-position: 50% 60%;
+  opacity: 0.2;
+  filter: saturate(0.8) blur(1px);
+  transform: translate(calc(var(--px) * 10px), calc(var(--py) * 10px)) scale(1.02);
+  transition: opacity 0.3s ease, transform 0.18s ease-out, filter 0.3s ease;
+}
+/* the big character, in front, moving more for depth */
+.panel-hero {
+  position: absolute;
+  left: -4%;
+  bottom: -2%;
+  width: 108%;
+  height: 102%;
+  object-fit: cover;
+  object-position: 50% 100%;
+  transform-origin: 50% 100%;
+  transform: translate(calc(var(--px) * -18px), calc(var(--py) * -10px));
+  transition: transform 0.18s ease-out;
+  pointer-events: none;
+  user-select: none;
+}
+/* dark at the top so the title always reads */
+.panel-shade {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(10, 11, 14, 0.82) 0%, rgba(10, 11, 14, 0.35) 26%, rgba(10, 11, 14, 0) 42%),
+    linear-gradient(0deg, rgba(10, 11, 14, 0.7) 0%, rgba(10, 11, 14, 0) 22%);
+  pointer-events: none;
+}
+/* a soft shine that follows the cursor */
+.panel-glare {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(60% 45% at var(--mx) var(--my), rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0) 70%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+/* the glow along both sides */
+.panel-tilt::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    linear-gradient(90deg, var(--glow) 0%, rgba(0, 0, 0, 0) 14%, rgba(0, 0, 0, 0) 86%, var(--glow) 100%);
+  box-shadow: inset 0 0 0 1.5px var(--glow);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.panel-text {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: clamp(14px, 1.6vw, 22px) clamp(14px, 1.6vw, 22px) 0;
+  transform: translate(calc(var(--px) * 6px), calc(var(--py) * 4px));
+  transition: transform 0.18s ease-out;
+}
+.panel-text h2 {
+  margin: 0;
+  font-size: clamp(24px, 2.6vw, 38px);
+  font-weight: 900;
+  line-height: 0.98;
+  letter-spacing: 0.005em;
+  text-wrap: balance;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+}
+.panel-text p {
+  margin: 10px 0 0;
+  max-width: 24ch;
+  font-size: clamp(14px, 1.15vw, 17px);
+  font-weight: 700;
+  line-height: 1.25;
+  color: #d7dbe2;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+}
+.panel-stat {
+  position: absolute;
+  left: clamp(14px, 1.6vw, 22px);
+  bottom: clamp(12px, 1.4vw, 18px);
+  display: flex;
+  flex-direction: column;
+  line-height: 1;
+}
+.panel-stat span { font-size: 10px; font-weight: 900; letter-spacing: 0.18em; color: #aeb4be; }
+.panel-stat { text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8); }
+.panel-stat b { margin-top: 3px; font-size: clamp(22px, 2vw, 30px); font-weight: 900; font-variant-numeric: tabular-nums; }
+
+/* ---- Hover / focus: pop out, glow, turn toward the cursor ------------------------ */
+.panel:hover, .panel:focus-visible { z-index: 2; transform: perspective(1100px) translateY(-8px) scale(1.045); }
+.panel:hover .panel-tilt, .panel:focus-visible .panel-tilt {
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.1),
+    -18px 0 46px -16px var(--glow),
+    18px 0 46px -16px var(--glow),
+    0 26px 50px rgba(0, 0, 0, 0.6);
+}
+.panel:hover .panel-tilt::after, .panel:focus-visible .panel-tilt::after { opacity: 0.42; }
+.panel:hover .panel-glare { opacity: 1; }
+.panel:hover .panel-bg, .panel:focus-visible .panel-bg { opacity: 0.32; filter: saturate(1) blur(0); }
+/* the others step back (a dark veil: cheaper than a filter on slow computers) */
+.panel-tilt::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  background: rgba(8, 9, 11, 0.42);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+.lineup:has(.panel:hover) .panel:not(:hover) { transform: perspective(1100px) scale(0.975); }
+.lineup:has(.panel:hover) .panel:not(:hover) .panel-tilt::before { opacity: 1; }
+.panel:active { transform: perspective(1100px) translateY(-2px) scale(1.02); }
+
+.foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 18px;
+  width: min(1480px, 100%);
+  margin: 0 auto;
+  padding: 4px 18px max(18px, env(safe-area-inset-bottom));
+  font-size: 13px;
+  font-weight: 700;
+  color: #8a909b;
+  text-align: center;
+}
+
+/* ---- Smaller screens: two by two ------------------------------------------------- */
+@media (max-width: 900px) {
+  .lineup { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .panel { height: clamp(260px, 42vh, 460px); }
+  .panel-text h2 { font-size: clamp(20px, 4.6vw, 32px); }
+  .panel-text p { font-size: clamp(12px, 2.6vw, 15px); margin-top: 6px; }
+}
+@media (max-width: 900px) and (max-height: 560px) { /* phone held sideways: back to one row */
+  .lineup { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .panel { height: 72vh; }
+  .panel-text p { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel, .panel-tilt, .panel-hero, .panel-bg, .panel-text { transform: none !important; }
+}

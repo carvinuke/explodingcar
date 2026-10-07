@@ -2,16 +2,65 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Road Rush</title>
-<meta http-equiv="refresh" content="0; url=road-rush/">
-<link rel="canonical" href="road-rush/">
-<style>
-  body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #1e2126; color: #f7f7f2; font: 700 18px/1.5 Arial, system-ui, sans-serif; }
-  a { color: #fcc21b; }
-</style>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0d0e11">
+<title>Car Go Boom Arcade</title>
+<link rel="stylesheet" href="shared/fonts.css">
+<link rel="stylesheet" href="shared/arcade.css">
+<link rel="stylesheet" href="shared/picker.css">
 </head>
-<body>
-<p>Loading <a href="road-rush/">Road Rush</a>&hellip; (or try the <a href="boom-run/">Boom Run</a> prototype)</p>
+<body class="picker">
+<header class="bar">
+  <div class="brand"><b>CAR GO BOOM</b><span>ARCADE</span></div>
+  <div class="plate coinplate" title="Your coins work in every game"><span class="coin-ico"></span><b id="wallet">0</b></div>
+</header>
+
+<main class="lineup" aria-label="Pick a game">
+  <a class="panel" href="road-rush/index.html" data-game="rr" style="--glow: #3ee08a; --tint: #0f3a26;">
+    <div class="panel-tilt">
+      <div class="panel-bg" style="background-image: url(shared/art/rr-bg.webp);"></div>
+      <img class="panel-hero" src="shared/art/rr-hero.webp" alt="" draggable="false">
+      <div class="panel-shade"></div>
+      <div class="panel-glare"></div>
+      <div class="panel-text"><h2>Road Rush</h2><p>Cross the road. Don't get flattened.</p></div>
+      <div class="panel-stat"><span>BEST</span><b id="stat-rr">0</b></div>
+    </div>
+  </a>
+  <a class="panel" href="traffic-control/index.html" data-game="tc" style="--glow: #47a6ff; --tint: #0f2746;">
+    <div class="panel-tilt">
+      <div class="panel-bg" data-bg="shared/art/tc-bg.webp"></div>
+      <img class="panel-hero" src="shared/art/tc-hero.webp" alt="" draggable="false">
+      <div class="panel-shade"></div>
+      <div class="panel-glare"></div>
+      <div class="panel-text"><h2>Traffic Control</h2><p>Run the lights. Keep it from going boom.</p></div>
+      <div class="panel-stat"><span>STARS</span><b id="stat-tc">0</b></div>
+    </div>
+  </a>
+  <a class="panel" href="boom-run/index.html" data-game="br" style="--glow: #ff7a2e; --tint: #47190a;">
+    <div class="panel-tilt">
+      <div class="panel-bg" data-bg="shared/art/br-bg.webp"></div>
+      <img class="panel-hero" src="shared/art/br-hero.webp" alt="" draggable="false">
+      <div class="panel-shade"></div>
+      <div class="panel-glare"></div>
+      <div class="panel-text"><h2>Boom Run</h2><p>Floor it through traffic. Don't blink.</p></div>
+      <div class="panel-stat"><span>BEST</span><b id="stat-br">0</b></div>
+    </div>
+  </a>
+  <a class="panel" href="toy-box/index.html" data-game="tb" style="--glow: #e05cff; --tint: #34103f;">
+    <div class="panel-tilt">
+      <div class="panel-bg" data-bg="shared/art/tb-bg.webp"></div>
+      <img class="panel-hero" src="shared/art/tb-hero.webp" alt="" draggable="false">
+      <div class="panel-shade"></div>
+      <div class="panel-glare"></div>
+      <div class="panel-text"><h2>Toy Box</h2><p>Buttons, swirls and other shiny things to poke.</p></div>
+      <div class="panel-stat"><span>TOYS TRIED</span><b id="stat-tb">0</b></div>
+    </div>
+  </a>
+</main>
+
+<footer class="foot"><span>Coins are shared by every game</span><span>Everything works offline</span></footer>
+
+<script src="shared/wallet.js"></script>
+<script src="shared/picker.js"></script>
 </body>
 </html>

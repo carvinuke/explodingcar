@@ -13,8 +13,10 @@ secret events.
 ## Run it locally
 
 Open `index.html` in any modern browser. There's no build step and no
-dependencies, and it works straight from `file://`. The only network request
-is an optional Google Font; without it the game falls back to a system font.
+dependencies, and it works straight from `file://` with no internet: the
+Overpass font is embedded in `../shared/fonts.css`. The "◀ Arcade" button on the
+title screen goes back to the arcade picker, and coins are shared with the
+arcade's other games.
 
 ## Controls
 
