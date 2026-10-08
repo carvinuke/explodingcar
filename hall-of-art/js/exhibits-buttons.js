@@ -62,7 +62,7 @@ Exhibits.add({
         const a = -Math.PI / 2 + HA.rand(-1.1, 1.1), v = HA.rand(180, 520);
         t.bits.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, r: HA.rand(0, 6), vr: HA.rand(-12, 12), w: HA.rand(4, 9), h: HA.rand(3, 6), c: HA.hsl(HA.rand(0, 360), 90, 60), life: HA.rand(1.6, 2.8) });
       }
-      t.blip(523, 0.08, 'square', 0.06); setTimeout(() => t.blip(784, 0.12, 'square', 0.06), 70);
+      t.blip(523, 0.08, 'square', 0.06); t.later(() => t.blip(784, 0.12, 'square', 0.06), 70);
       t.noise(0.25, 0.25);
     });
   },
@@ -124,7 +124,7 @@ Exhibits.add({
       s.className = 'wave';
       s.style.cssText = `left:${e.clientX - r.left - d / 2}px;top:${e.clientY - r.top - d / 2}px;width:${d}px;height:${d}px`;
       b.appendChild(s);
-      setTimeout(() => s.remove(), 750);
+      t.later(() => s.remove(), 750);
       t.blip(1200, 0.06, 'sine', 0.06, 0.7);
     });
   },

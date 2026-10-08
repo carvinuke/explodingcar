@@ -77,6 +77,12 @@ const Input = {
       if (e.code === 'Escape') { e.preventDefault(); Admin.toggle('freeCam'); return; }
       if (Admin.camKey(e.code)) { e.preventDefault(); return; }
     }
+    // W or ↑ (or your own Up key) right after a crash: straight into the next run
+    if (!e.repeat && (e.code === 'KeyW' || e.code === 'ArrowUp' || e.code === Settings.keys.up) && Game.canQuickRestart()) {
+      e.preventDefault();
+      Game.quickRestart();
+      return;
+    }
     if (Game.state === 'replay') {
       if (!e.repeat && !e.metaKey && !e.ctrlKey) { e.preventDefault(); Game.skipReplay(); }
       return;
@@ -126,7 +132,8 @@ const Input = {
       else if (pressed(14) || ax < -0.6) dir = 'left';
       else if (pressed(15) || ax > 0.6) dir = 'right';
       if (!UI.modal) {
-        if (Game.state === 'replay' && (edge(0) || edge(1) || edge(9))) Game.skipReplay();
+        if (dir === 'up' && prev.dir !== 'up' && Game.canQuickRestart()) Game.quickRestart(); // up on the stick or d-pad: next run
+        else if (Game.state === 'replay' && (edge(0) || edge(1) || edge(9))) Game.skipReplay();
         else if (edge(9)) Game.togglePause();
         else if (edge(0)) {
           if (Game.state === 'playing') this.move(pid, DIRS.up);

@@ -47,8 +47,8 @@ Exhibits.add({
     t.words = ['ACCESS GRANTED', 'CAR GO BOOM', 'HELLO, HUMAN', 'TRAFFIC CONTROL', 'TOP SECRET', 'NICE TRY'];
     t.i = 0; t.k = 0; t.target = t.words[0];
     t.go = () => { t.i = (t.i + 1) % t.words.length; t.target = t.words[t.i]; t.k = 0; };
-    t.el.addEventListener('pointerenter', () => t.go());
-    t.el.addEventListener('click', () => { t.go(); t.blip(1400, 0.05, 'square', 0.03); });
+    t.on(t.el, 'pointerenter', () => t.go());
+    t.on(t.el, 'click', () => { t.go(); t.blip(1400, 0.05, 'square', 0.03); });
   },
   frame(t, dt) {
     t.k = Math.min(t.target.length + 1, t.k + dt * 9);
@@ -105,7 +105,7 @@ Exhibits.add({
     t.out = t.el.querySelector('span');
     t.lines = ['Why did the chicken cross the road?', 'To get to the other side.', 'It did not make it.', 'Traffic is a state of mind.', 'Please keep your hands inside the exhibit box.'];
     t.li = 0; t.n = 0; t.dir = 1; t.wait = 0.6;
-    t.el.addEventListener('click', () => { t.dir = -1; t.wait = 0; });
+    t.on(t.el, 'click', () => { t.dir = -1; t.wait = 0; });
   },
   frame(t, dt) {
     t.wait -= dt;

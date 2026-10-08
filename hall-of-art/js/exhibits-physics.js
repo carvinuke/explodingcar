@@ -197,7 +197,8 @@ Exhibits.add({
   resize(t) { this.make(t); },
   make(t) {
     const cols = t.low ? 18 : 26, rows = t.low ? 10 : 14;
-    const w = Math.min(t.W * 0.86, 520), sp = w / cols, x0 = (t.W - w) / 2, y0 = 18;
+    const y0 = 18, sp = Math.min(Math.min(t.W * 0.86, 520) / cols, (t.H - y0 - 24) / (rows * 0.8)); // fits the stage both ways
+    const w = sp * cols, x0 = (t.W - w) / 2;
     t.sp = sp;
     t.pts = [];
     for (let j = 0; j <= rows; j++) for (let i = 0; i <= cols; i++) {

@@ -598,6 +598,24 @@ const Game = {
     this.overT = 0.2;
   },
 
+  // Up (W or ↑) straight after a crash starts the next run at once: no waiting
+  // for the replay or the report. The run's coins, XP and trophies were already
+  // banked the moment it ended (endRun), so nothing is lost.
+  canQuickRestart() {
+    if (this.state === 'dying') return this.deathT >= 0.3; // not the key you were already pressing
+    if (this.state === 'replay') return true;
+    if (this.state === 'gameover') return this.overT > 0.25;
+    return false;
+  },
+
+  quickRestart() {
+    const versus = this.players.length > 1;
+    const banked = versus ? 0 : this.coins + (this.bonusCoins || 0);
+    Replay.stop();
+    this.start(this.mode);
+    if (banked > 0) UI.toast('t-weather', `+${banked} COINS BANKED`, 'from your last run', 1800);
+  },
+
   // The creeping danger line: dawdle too long and it catches you.
   updateDanger(dt) {
     if (!this.danger.active || Admin.noDanger) return;

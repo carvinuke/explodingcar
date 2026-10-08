@@ -64,7 +64,7 @@ const Draw = (() => {
   function vehiclePalette(base) {
     return {
       top: shade(base, 0.16), front: shade(base, -0.14), lower: shade(base, -0.34), dark: shade(base, -0.52),
-      roof: shade(base, 0.3), roofFront: shade(base, -0.06),
+      roof: shade(base, 0.1), roofFront: shade(base, -0.06), // roofs close to the body colour: a pale roof reads as a slab
       glass: '#223149', glassTop: '#4f73a0', glassHi: 'rgba(210,235,255,0.35)',
       trim: '#cfd4db', trimFront: '#9aa1ab', lit: true,
     };
@@ -132,7 +132,6 @@ const Draw = (() => {
     // crisp dark outline around the silhouette
     c.fillStyle = 'rgba(14,16,20,0.5)';
     c.fillRect(bx - 1.5, P(hy, zt) - 1.5, L + 3, P(-hy, 0) - P(hy, zt) + 2);
-    if (cab) c.fillRect(x0 - 1.5, P(hy - 3, zt + ch) - 1.5, x1 - x0 + 3, P(-hy + 3, zt) - P(hy - 3, zt + ch) + 2);
 
     // body: upper paint, darker rocker panel, bumpers
     box(c, bx, fx, -hy, hy, z0, zt, pal.top, pal.front);
@@ -281,28 +280,29 @@ const Draw = (() => {
           c.fillRect(bx, P(-1, zt), L, 2.2 * GY);
         }
       }
-      // cabin with side windows, B-pillar, windscreen and roof
-      box(c, x0, x1, -hy + 3, hy - 3, zt, zt + ch, pal.roof, pal.roofFront);
-      const pil = (x0 + x1) / 2 - 1.5;
-      pane(c, pal, x0 + 3, pil, -hy + 3, zt + ch - 2, zt + 2);
-      pane(c, pal, pil + 3, x1 - 4, -hy + 3, zt + ch - 2, zt + 2);
-      c.fillStyle = pal.glassTop;
-      c.fillRect(x1 - 7, P(hy - 3, zt + ch), 6, (LANE_D - 6) * GY);
-      c.fillRect(x0 + 1, P(hy - 3, zt + ch), 3, (LANE_D - 6) * GY);
-      c.fillStyle = pal.glassHi;
-      c.fillRect(x1 - 7, P(hy - 3, zt + ch), 1.5, (LANE_D - 6) * GY);
-      box(c, x1 - 3, x1, -hy - 1.5, -hy + 1, zt + 1, zt + 4, pal.front, pal.dark); // side mirror
+      // the glasshouse: raked windscreen and rear window, roof in the body colour,
+      // big side windows set into the pillars
+      const cu = CarShape.cabinU(t), R = cu.R;
+      const xr1 = bx + cu.ur * L, xf1 = bx + cu.uf * L;
+      const pil = (xr1 + xf1) / 2 - 1.5;
+      CarShape.cabinSide(c, pal, {
+        xr0: x0, xr1, xf1, xf0: x1, zb: zt, zr: zt + ch, hy, inset: 2.5, tumble: t === 'tractor' || t === 'forklift' || t === 'logtruck' ? 1.5 : 4.5,
+        pillarA: R.pa, pillarC: R.pc, bPillar: R.b ? pil + 1.5 : null,
+        glassRoof: t === 'forklift', paintBack: t === 'tractor' || t === 'logtruck',
+      });
+      box(c, x1 - 2, x1 + 1, -hy - 1.5, -hy + 1, zt + 0.5, zt + 3.5, pal.front, pal.dark); // side mirror
       if (t === 'sports') { // rear wing on two struts
         c.fillStyle = pal.dark;
         c.fillRect(bx + 2, P(-hy + 4, zt + 5), 1.5, 5 * GZ);
         box(c, bx, bx + 4, -hy + 2, hy - 2, zt + 5, zt + 7, pal.top, pal.front);
       }
       if (t === 'taxi') { // roof sign and checker stripe
-        box(c, -7, 7, -5, 5, zt + ch, zt + ch + 5, '#fff7d1', '#e8d890');
+        const mx = (xr1 + xf1) / 2;
+        box(c, mx - 6, mx + 6, -5, 5, zt + ch, zt + ch + 5, '#fff7d1', '#e8d890');
         c.fillStyle = '#16181c';
         c.font = `900 4px ${UI_FONT}`;
         c.textAlign = 'center';
-        c.fillText('TAXI', 0, P(-5, zt + ch + 2.2));
+        c.fillText('TAXI', mx, P(-5, zt + ch + 2.2));
         for (let x = bx + 3, k = 0; x < fx - 3; x += 4, k++) {
           c.fillStyle = k % 2 ? '#16181c' : '#f7f7f2';
           c.fillRect(x, P(-hy, z0 + 11), 4, 2 * GZ);
@@ -344,14 +344,15 @@ const Draw = (() => {
       }
       if (!v.wreck || v.wreckT < 5) {
         const on = Math.sin(time * 18) > 0;
-        box(c, -8, 8, -5, 5, zt + ch, zt + ch + 3, '#333', '#222');
+        const cu = cab ? CarShape.cabinU(t) : null, mx = cu ? bx + (cu.ur + cu.uf) / 2 * L : 0; // on the middle of the roof
+        box(c, mx - 7, mx + 7, -5, 5, zt + ch, zt + ch + 3, '#333', '#222');
         c.fillStyle = on ? '#ff2e3a' : '#5a1016';
-        c.fillRect(-8, P(5, zt + ch + 3), 8, 10 * GY);
+        c.fillRect(mx - 7, P(5, zt + ch + 3), 7, 10 * GY);
         c.fillStyle = on ? '#1e3a8a' : '#3b82f6';
-        c.fillRect(0, P(5, zt + ch + 3), 8, 10 * GY);
+        c.fillRect(mx, P(5, zt + ch + 3), 7, 10 * GY);
         c.globalCompositeOperation = 'lighter';
         c.fillStyle = on ? 'rgba(255,40,50,0.35)' : 'rgba(60,120,255,0.35)';
-        c.beginPath(); c.arc(on ? -4 : 4, P(0, zt + ch + 4), 16, 0, 6.2832); c.fill();
+        c.beginPath(); c.arc(mx + (on ? -4 : 4), P(0, zt + ch + 4), 16, 0, 6.2832); c.fill();
         c.globalCompositeOperation = 'source-over';
       }
     }
