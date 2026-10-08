@@ -5,7 +5,7 @@ const BRGame = {
   state: 'title', // title | playing | paused | dying | over
   mode: 'endless',
   settings: { low: false, shake: true },
-  input: { dir: 0, targetX: null, boost: false, brake: false, boom: false },
+  input: { dir: 0, targetX: null, boost: false, boom: false },
 
   init() {
     this.load();
@@ -28,6 +28,8 @@ const BRGame = {
     this.settings.shake = S.get('shake', true) !== false;
     this.bests = {};
     for (const m in BR_MODES) { const v = S.get(BR_MODES[m].best, 0); this.bests[m] = typeof v === 'number' ? v : 0; }
+    const top = S.get('topkmh', 0);
+    this.topKmh = typeof top === 'number' ? top : 0; // the fastest you've ever gone (Hyperdrive, mostly)
     this.owned = S.get('cars', ['hatch']);
     if (!Array.isArray(this.owned) || !this.owned.includes('hatch')) this.owned = ['hatch'];
     this.car = S.get('car', 'hatch');
@@ -53,6 +55,7 @@ const BRGame = {
   // Behind the menus, a car drives itself down the highway.
   demo() {
     BRRoad.reset('endless', this.car, this.paintColor(), this.up);
+    BRView.resetZoom();
     BRView.chunks = new Map(); // a new road: new scenery
     BRRoad.player.y = 600;
     BRRoad.player.v = 300;
@@ -65,8 +68,9 @@ const BRGame = {
     this.auto = false;
     FX.reset();
     BRRoad.reset(mode, this.car, this.paintColor(), this.up);
+    BRView.resetZoom();
     BRView.chunks = new Map();
-    BRRoad.player.v = 120;
+    BRRoad.player.v = mode === 'hyper' ? 300 : 120;
     this.input.boom = false;
     this.runTrophies = [];
     this.banked = 0;
@@ -119,6 +123,9 @@ const BRGame = {
     const R = BRRoad, score = R.score;
     const best = this.bests[this.mode] || 0, newBest = score > best;
     if (newBest) { this.bests[this.mode] = score; BR_STORE.set(BR_MODES[this.mode].best, score); }
+    const top = Math.round(R.topV * 0.036) * 10;
+    if (top > this.topKmh) { this.topKmh = top; BR_STORE.set('topkmh', top); }
+    Kit.$('res-top').textContent = `${top} km/h`;
     this.banked = 0;
     const coins = this.bank();
     this.checkTrophies();
@@ -154,6 +161,8 @@ const BRGame = {
     if (R.bestBoom >= 10) T.earn('boom10');
     if (R.cones >= 50) T.earn('cones50');
     if (R.razor >= 10) T.earn('razor10');
+    if (this.mode === 'hyper' && R.topV * 0.036 * 10 >= 500) T.earn('hyper500');
+    if (this.mode === 'hyper' && R.topV * 0.036 * 10 >= 1000) T.earn('hyper1000');
   },
 
   // ---- Road events ---------------------------------------------------------------
@@ -259,7 +268,7 @@ const BRGame = {
         if (p.rumble && p.z === 0) { if (Math.random() < dt * 10) FX.dust(p.x, p.y - 10, 2); BRView.shake = Math.max(BRView.shake, 1.2); }
         if (p.spinT > 0 && Math.random() < dt * 20) FX.puff(p.x, p.y - 10, 4, '#cfcfcf');
       }
-      Sound.engine(p.dead || this.state !== 'playing' ? 0 : clamp(p.v / 900, 0.05, 1), p.burning || p.boomT > 0);
+      Sound.engine(p.dead || this.state !== 'playing' ? 0 : clamp(p.v / 900, 0.05, R.hyper ? 2.4 : 1), p.burning || p.boomT > 0);
     } else if (this.state !== 'paused') {
       Sound.engine(0);
       R.update(dt, this.autopilot());
@@ -292,7 +301,7 @@ const BRGame = {
       if (gap > bestGap) { bestGap = gap; best = x; }
     });
     const tooClose = bestGap < look;
-    return { dir: 0, targetX: best, boost: false, brake: tooClose };
+    return { dir: 0, targetX: best, boost: false, brake: tooClose, auto: true }; // (only the demo car brakes)
   },
 
   // ---- HUD -----------------------------------------------------------------------
@@ -308,7 +317,7 @@ const BRGame = {
     const R = BRRoad, p = R.player;
     this.setText('hud-dist', R.meters >= 1000 ? `${(R.meters / 1000).toFixed(2)} km` : `${R.meters} m`);
     this.setText('hud-score', Kit.fmt(R.score));
-    this.setText('hud-speed', `${Math.round(p.v * 0.036) * 10} km/h`);
+    this.setText('hud-speed', `${R.kmh} km/h`);
     this.setText('hud-run-coins', String(R.coins));
     const combo = Kit.$('hud-combo');
     if (this.hudCombo !== R.combo) {
@@ -357,9 +366,10 @@ const BRGame = {
   showTitle() {
     this.state = 'title';
     Kit.show('screen-title');
-    Kit.$('best-endless').textContent = this.bests.endless ? `Best ${Kit.fmt(this.bests.endless)}` : '';
+    Kit.$('best-endless').textContent = this.bests.endless ? `Best ${Kit.fmt(this.bests.endless)} · ` : '';
     Kit.$('best-checkpoint').textContent = this.bests.checkpoint ? `Best ${Kit.fmt(this.bests.checkpoint)}` : '';
     Kit.$('best-wrongway').textContent = this.bests.wrongway ? `Best ${Kit.fmt(this.bests.wrongway)}` : '';
+    Kit.$('best-hyper').textContent = this.topKmh ? `Top ${Kit.fmt(this.topKmh)} km/h` : 'No speed limit';
     Kit.$('trophy-count').textContent = `${this.trophies.count}/${this.trophies.total}`;
     Kit.$('title-car').textContent = BR_CARS[this.car].name;
     this.refreshCoins();
@@ -484,6 +494,7 @@ const BRGame = {
     on('btn-play', () => this.start('endless'));
     on('btn-checkpoint', () => this.start('checkpoint'));
     on('btn-wrongway', () => this.start('wrongway'));
+    on('btn-hyper', () => this.start('hyper'));
     on('btn-garage', () => { Sound.click(); this.showGarage(); });
     on('btn-trophies', () => { Sound.click(); this.showTrophies(); });
     on('btn-settings', () => { Sound.click(); this.showSettings(); });
@@ -518,7 +529,6 @@ const BRGame = {
     const read = () => {
       this.input.dir = (keys.has('ArrowRight') || keys.has('KeyD') ? 1 : 0) - (keys.has('ArrowLeft') || keys.has('KeyA') ? 1 : 0);
       this.input.boost = keys.has('ArrowUp') || keys.has('KeyW') || keys.has('ShiftLeft') || keys.has('ShiftRight') || this.touchBoost;
-      this.input.brake = keys.has('ArrowDown') || keys.has('KeyS') || this.touchBrake;
       if (this.input.dir) this.input.targetX = null;
     };
     addEventListener('keydown', e => {
@@ -553,8 +563,8 @@ const BRGame = {
     // the BOOM button (touch) shows up when the bar is full
     Kit.$('btn-boom').addEventListener('pointerdown', e => { e.preventDefault(); if (this.state === 'playing') this.input.boom = true; });
     addEventListener('touchstart', () => { this.touchUI = true; }, { once: true, passive: true });
-    // touch boost / brake buttons
-    for (const [id, prop] of [['btn-boost', 'touchBoost'], ['btn-brake', 'touchBrake']]) {
+    // the touch boost button
+    for (const [id, prop] of [['btn-boost', 'touchBoost']]) {
       const b = Kit.$(id);
       b.addEventListener('pointerdown', e => { e.preventDefault(); this[prop] = true; read(); });
       for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) b.addEventListener(ev, () => { this[prop] = false; read(); });

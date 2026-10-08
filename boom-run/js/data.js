@@ -7,6 +7,7 @@ const BR_MODES = {
   endless:    { name: 'Endless', best: 'best', desc: 'How far can you go?' },
   checkpoint: { name: 'Checkpoint', best: 'bestcp', desc: 'Beat the clock to each checkpoint' },
   wrongway:   { name: 'Wrong Way', best: 'bestww', desc: 'Oncoming traffic. Double coins' },
+  hyper:      { name: 'Hyperdrive', best: 'besthyper', desc: 'No speed limit: boosts make you faster for good' },
 };
 
 // The garage. speed: top speed and pick-up. grip: how fast it steers.
@@ -87,4 +88,6 @@ const BR_TROPHIES = {
   cones50: { name: 'Cone Crusher', desc: 'Smash 50 cones and barrels in one run', coins: 75 },
   razor10: { name: "Razor's Edge", desc: '10 razor-close calls in one run', coins: 100 },
   supercar: { name: 'Supercar Owner', desc: 'Buy a luxury car', coins: 100 },
+  hyper500:  { name: 'Hyperspace', desc: 'Hit 500 km/h in Hyperdrive', coins: 150 },
+  hyper1000: { name: 'Light Speed', desc: 'Break 1,000 km/h in Hyperdrive', coins: 400 },
 };
