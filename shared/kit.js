@@ -88,7 +88,8 @@ const Kit = {
   // ---- Trophies -----------------------------------------------------------------
   // defs: { id: { name, desc, coins } }. Earned ids are kept in store under 'trophies'.
   trophies(defs, store, onEarn) {
-    const got = new Set((store.get('trophies', []) || []).filter(id => defs[id]));
+    const saved = store.get('trophies', []);
+    const got = new Set((Array.isArray(saved) ? saved : []).filter(id => typeof id === 'string' && Object.prototype.hasOwnProperty.call(defs, id)));
     return {
       defs,
       has(id) { return got.has(id); },

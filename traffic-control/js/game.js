@@ -23,25 +23,34 @@ const TCGame = {
   },
 
   // Everything saved: settings, stars, upgrades, cosmetics, trophies.
+  // (anything odd in storage falls back to the defaults: a damaged save never stops the game)
   load() {
-    const S = TC_STORE;
+    const S = TC_STORE, n = v => (typeof v === 'number' && isFinite(v) && v > 0 ? Math.floor(v) : 0);
+    const own = (table, id) => typeof id === 'string' && Object.prototype.hasOwnProperty.call(table, id);
     this.settings.low = !!S.get('low', false);
     this.settings.shake = S.get('shake', true) !== false;
-    this.stars = S.get('levels', {}) || {};
-    this.best = S.get('best', 0) || 0;
-    this.stats = Object.assign({ cars: 0, crashes: 0, medic: 0, runs: 0 }, S.get('stats', {}) || {});
-    this.up = Object.assign({ patience: 0, strike: 0, start: 0, amber: 0, towing: 0, fares: 0 }, S.get('up', {}) || {});
+    const lv = S.obj('levels');
+    this.stars = {};
+    for (const L of TC_LEVELS) if (n(lv[L.n])) this.stars[L.n] = Math.min(3, n(lv[L.n]));
+    this.best = Math.floor(S.num('best', 0));
+    const st = S.obj('stats');
+    this.stats = { cars: 0, crashes: 0, medic: 0, runs: 0 };
+    for (const k in this.stats) this.stats[k] = n(st[k]);
+    const up = S.obj('up');
+    this.up = {};
+    for (const k in TC_UPGRADES) this.up[k] = Math.min(TC_UPGRADES[k].cost.length, n(up[k]));
     // custom shift settings (saves from before the crossing editor are converted)
     const cur = S.get('custom2', null), old = S.get('custom', null);
     this.custom = cur && typeof cur === 'object' ? tcCustomClean(cur) : old && typeof old === 'object' ? tcCustomMigrate(old) : tcCustomClean({});
     const slots = S.get('slots', []);
     this.slots = [0, 1, 2].map(i => (Array.isArray(slots) && slots[i] && typeof slots[i] === 'object' ? tcCustomClean(slots[i]) : null));
-    this.owned = Object.assign({ lights: ['classic'], themes: ['auto'] }, S.get('owned', {}) || {});
+    const owned = S.obj('owned'), mine = (list, table, base) => [...new Set([base, ...(Array.isArray(list) ? list : []).filter(id => own(table, id))])];
+    this.owned = { lights: mine(owned.lights, TC_LIGHTS, 'classic'), themes: mine(owned.themes, TC_THEMES, 'auto') };
     this.lightStyle = S.get('light', 'classic');
-    if (!TC_LIGHTS[this.lightStyle]) this.lightStyle = 'classic';
+    if (!this.owned.lights.includes(this.lightStyle)) this.lightStyle = 'classic';
     this.theme = S.get('theme', 'auto');
-    if (!TC_THEMES[this.theme]) this.theme = 'auto';
-    this.usedPowers = new Set(S.get('used', []) || []);
+    if (!this.owned.themes.includes(this.theme)) this.theme = 'auto';
+    this.usedPowers = new Set(S.list('used').filter(k => own(TC_POWERS, k)));
     this.trophies = Kit.trophies(TC_TROPHIES, S, d => {
       Kit.toast(`🏆 ${d.name}`, 'trophy', 3000);
       Sound.trophy();

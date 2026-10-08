@@ -11,7 +11,7 @@ const PB_LEN = 46;
 Exhibits.add({
   id: 'pinball', name: 'Pinball', section: 'physics', hint: 'Tap left or right for the flippers (or Z and M)', canvas: true,
   setup(t) {
-    t.best = Number(HALL_STORE.get('pinball', 0)) || 0;
+    t.best = Math.floor(HALL_STORE.num('pinball', 0));
     t.fa = { L: 0, R: 0 }; t.touches = new Map(); t.keys = { L: false, R: false, P: false };
     t.idle = 99; t.plunge = 0; t.flash = {}; t.botT = { L: 0, R: 0 }; t.overT = 0;
     this.build(t);
@@ -477,6 +477,14 @@ Exhibits.add({
         if (t.osc) t.osc.type = t.wave;
       }],
     ], 'tl');
+    // switching tabs (or windows) mid-note: frames stop, and the release may never
+    // arrive, so go quiet now and stay quiet until the next press
+    t.on(document, 'visibilitychange', () => { if (document.hidden) this.hush(t); });
+    t.on(window, 'blur', () => this.hush(t));
+  },
+  hush(t) {
+    t.hushed = true;
+    if (t.gain) t.gain.gain.setTargetAtTime(0, Exhibits.audio.currentTime, 0.03);
   },
   // the sound, made the first time you play
   voice(t) {
@@ -493,7 +501,7 @@ Exhibits.add({
       Object.assign(t, { osc: o, gain: g, lfo, lfoGain: lg });
     } catch (e) { /* no sound here */ }
   },
-  down(t, e) { if (e && e.target.closest && e.target.closest('button')) return; this.voice(t); },
+  down(t, e) { if (e && e.target.closest && e.target.closest('button')) return; t.hushed = false; this.voice(t); },
   // let go: quiet at once (even if the piece has scrolled away and stopped drawing)
   up(t) { if (t.gain) t.gain.gain.setTargetAtTime(0, Exhibits.audio.currentTime, 0.06); },
   pitch(t, x) {
@@ -507,7 +515,7 @@ Exhibits.add({
     return f;
   },
   frame(t, dt, time) {
-    const c = t.c, playing = t.p.down && t.p.inside && !Exhibits.muted;
+    const c = t.c, playing = t.p.down && t.p.inside && !Exhibits.muted && !t.hushed;
     if (playing) {
       t.freq = this.pitch(t, t.p.x);
       t.vol = Math.pow(HA.clamp(1 - t.p.y / t.H, 0, 1), 1.4) * 0.22;
