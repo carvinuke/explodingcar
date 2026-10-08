@@ -220,7 +220,7 @@ const Exhibits = {
   // ---- Exhibits you've tried (the arcade picker shows how many) -----------------------
   triedSet: null,
   tried(id) {
-    if (!this.triedSet) this.triedSet = new Set(HALL_STORE.get('tried', []) || []);
+    if (!this.triedSet) this.triedSet = new Set(HALL_STORE.list('tried').filter(id => typeof id === 'string'));
     if (this.triedSet.has(id)) return;
     this.triedSet.add(id);
     HALL_STORE.set('tried', [...this.triedSet]);
@@ -233,7 +233,7 @@ const Exhibits = {
   // ---- Page ---------------------------------------------------------------------
   build() {
     this.low = !!HALL_STORE.get('low', false);
-    this.triedSet = new Set(HALL_STORE.get('tried', []) || []);
+    this.triedSet = new Set(HALL_STORE.list('tried').filter(id => typeof id === 'string')); // (a damaged save starts afresh)
     const main = document.getElementById('exhibits');
     const io = new IntersectionObserver(entries => {
       for (const en of entries) { const t = en.target._ex; if (t) t.visible = en.isIntersecting; }

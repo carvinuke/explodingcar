@@ -160,7 +160,7 @@ const BRRoad = {
       p.vz -= 560 * dt;
       p.z = Math.max(0, p.z + p.vz * dt);
       if (p.z > 0) this.fill(dt * 0.22);
-      if (p.z === 0 && p.vz < 0) { p.vz = 0; if (this.hooks.land) this.hooks.land(); }
+      if (p.z === 0 && p.vz < 0) { p.vz = 0; p.ramp = null; if (this.hooks.land) this.hooks.land(); }
     }
 
     // timers
@@ -241,7 +241,7 @@ const BRRoad = {
         this.carrierAt = 0;
         const car = Cars.make('tanker', '#d62828', 'N');
         car.len = 2.9 * TILE;
-        this.traffic.push({ car, carrier: true, x: BR_LANES[lane], y, lane, targetX: BR_LANES[lane], v: rand(110, 140), changeT: 99, blinkT: 0, ahead: true, near: false });
+        this.traffic.push({ car, carrier: true, x: BR_LANES[lane], y, lane, targetX: BR_LANES[lane], v: rand(110, 140), changeT: 99, blinkT: 0, ahead: true, near: false, rel: y - p.y });
         continue;
       }
       const type = weighted(this.dist > 4000
@@ -252,7 +252,7 @@ const BRRoad = {
       this.traffic.push({
         car, x: BR_LANES[lane], y, lane, targetX: BR_LANES[lane],
         v: (this.wrong ? -rand(100, 170) : rand(120, 210)) * slow,
-        changeT: rand(2, 6), blinkT: 0, ahead: true, near: false,
+        changeT: rand(2, 6), blinkT: 0, ahead: true, near: false, rel: y - p.y,
       });
     }
   },
@@ -387,9 +387,12 @@ const BRRoad = {
       if (t.flung || t.dead) continue;
       const [thx, thy] = Cars.halfSize(t.car);
       const dx = Math.abs(t.x - p.x), dy = Math.abs(t.y - p.y);
+      // where it was a frame ago: at speed you can go from behind it to past it in one step
+      const rel = t.y - p.y, was = t.rel === undefined ? rel : t.rel;
+      t.rel = rel;
       // close calls: the moment a car drops behind you, how close were you?
-      const ahead = t.y > p.y;
-      if (t.ahead && !ahead) {
+      const ahead = t.y > p.y, passed = t.ahead && !ahead;
+      if (passed) {
         const gap = dx - phx - thx;
         if (gap < 16 && gap > -2 && p.z < 4 && !t.near && p.boomT <= 0) {
           t.near = true;
@@ -406,11 +409,12 @@ const BRRoad = {
       t.ahead = ahead;
       // a car carrier: its ramp at the back launches you over it
       if (t.carrier && p.z < 4 && dx < thx + phx - 4) {
-        const rear = t.y - thy;
-        if (p.y + phy > rear && p.y + phy < rear + 26) { this.launch(380, t); continue; }
+        const nose = phy + thy - rel, nose0 = phy + thy - was; // how far your nose is up its ramp (now, and a frame ago)
+        if ((nose > 0 && nose < 26) || (nose0 <= 0 && nose >= 26)) { this.launch(380, t); continue; }
       }
-      if (p.z > 8) continue; // flying over it
-      if (dx < phx + thx - 3 && dy < phy + thy - 3) {
+      if (p.z > 8 || (t === p.ramp && p.z > 0)) continue; // flying over it (or off the back of it)
+      // overlapping it, or gone right through it since the last frame (fast, on a slow computer)
+      if (dx < phx + thx - 3 && (dy < phy + thy - 3 || passed)) {
         if (p.boomT > 0 || p.nitroT > 0 || p.safeT > 0) { this.fling(t, true, null); }
         else if (p.shield) {
           p.shield = false;
@@ -454,6 +458,7 @@ const BRRoad = {
     if (p.z > 0.2) return;
     p.vz = vz;
     p.z = 0.1;
+    p.ramp = t; // (what you went up: you can't hit it on the way off)
     this.ramps++;
     this.bonus += 50;
     if (this.hooks.ramp) this.hooks.ramp(t);

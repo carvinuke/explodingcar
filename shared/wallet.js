@@ -53,6 +53,14 @@ function makeStore(prefix) {
     set(key, value) {
       try { localStorage.setItem(prefix + key, JSON.stringify(value)); } catch (e) { /* ignore */ }
     },
+    // Typed reads: a damaged or hand-edited save gives the fallback instead of
+    // stopping a game from starting (or turning its numbers into nonsense).
+    num(key, fallback = 0, min = 0, max = 1e12) {
+      const v = this.get(key, fallback);
+      return typeof v === 'number' && isFinite(v) ? Math.min(max, Math.max(min, v)) : fallback;
+    },
+    list(key) { const v = this.get(key, []); return Array.isArray(v) ? v : []; },
+    obj(key) { const v = this.get(key, {}); return v && typeof v === 'object' && !Array.isArray(v) ? v : {}; },
     wipe() {
       try {
         const doomed = [];

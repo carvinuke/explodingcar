@@ -26,20 +26,21 @@ const BRGame = {
     const S = BR_STORE;
     this.settings.low = !!S.get('low', false);
     this.settings.shake = S.get('shake', true) !== false;
+    // (anything odd in storage falls back to the defaults: a damaged save never stops the game)
+    const own = (table, id) => typeof id === 'string' && Object.prototype.hasOwnProperty.call(table, id);
     this.bests = {};
-    for (const m in BR_MODES) { const v = S.get(BR_MODES[m].best, 0); this.bests[m] = typeof v === 'number' ? v : 0; }
-    const top = S.get('topkmh', 0);
-    this.topKmh = typeof top === 'number' ? top : 0; // the fastest you've ever gone (Hyperdrive, mostly)
-    this.owned = S.get('cars', ['hatch']);
-    if (!Array.isArray(this.owned) || !this.owned.includes('hatch')) this.owned = ['hatch'];
+    for (const m in BR_MODES) this.bests[m] = Math.floor(S.num(BR_MODES[m].best, 0));
+    this.topKmh = Math.floor(S.num('topkmh', 0)); // the fastest you've ever gone (Hyperdrive, mostly)
+    this.owned = [...new Set(['hatch', ...S.list('cars').filter(id => own(BR_CARS, id))])];
     this.car = S.get('car', 'hatch');
     if (!this.owned.includes(this.car)) this.car = 'hatch';
-    this.paints = S.get('paints', ['stock']);
-    if (!Array.isArray(this.paints)) this.paints = ['stock'];
+    this.paints = [...new Set(['stock', ...S.list('paints').filter(id => own(BR_PAINTS, id))])];
     this.paint = S.get('paint', 'stock');
-    if (!BR_PAINTS[this.paint]) this.paint = 'stock';
-    this.stats = Object.assign({ km: 0, runs: 0, near: 0, smash: 0, coins: 0, booms: 0 }, S.get('stats', {}) || {});
-    const up = S.get('up', {}) || {};
+    if (!this.paints.includes(this.paint)) this.paint = 'stock';
+    const st = S.obj('stats');
+    this.stats = { km: 0, runs: 0, near: 0, smash: 0, coins: 0, booms: 0 };
+    for (const k in this.stats) { const v = st[k]; this.stats[k] = typeof v === 'number' && isFinite(v) && v > 0 ? v : 0; }
+    const up = S.obj('up');
     this.up = {};
     for (const k in BR_UPGRADES) this.up[k] = clamp(Math.floor(Number(up[k]) || 0), 0, BR_UPGRADES[k].cost.length);
     this.trophies = Kit.trophies(BR_TROPHIES, S, d => {

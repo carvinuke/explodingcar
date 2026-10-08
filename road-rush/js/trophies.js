@@ -157,7 +157,8 @@ const Levels = {
 
   load() {
     const v = Store.get('xp', 0);
-    this.xp = typeof v === 'number' && v >= 0 ? v : 0;
+    // (a damaged save with an enormous number would leave info() counting levels forever)
+    this.xp = typeof v === 'number' && isFinite(v) && v >= 0 ? Math.min(v, 5e8) : 0;
   },
 
   // XP needed to go from level l to l + 1
