@@ -33,11 +33,13 @@
     </div>
     <div id="toasts" class="toasts" aria-live="polite"></div>
     <div class="hud-b">
-      <button id="btn-swap" class="swap-btn"><b>&#8644; SWITCH ALL</b><span class="key-hint">Space</span></button>
+      <button id="btn-swap" class="swap-btn"><b>&#8644; <span id="swap-txt">SWITCH ALL</span></b><span class="key-hint">Space</span></button>
+      <button id="btn-nextx" class="swap-btn alt hidden"><b>NEXT &#9656;</b><span class="key-hint">Tab</span></button>
       <div class="powers">
         <button class="power-btn" data-power="freeze"><span class="power-ico">&#10052;</span><b>Freeze</b><em>0</em><span class="key-hint">1</span></button>
         <button class="power-btn" data-power="tow"><span class="power-ico">&#9881;</span><b>Tow</b><em>0</em><span class="key-hint">2</span></button>
         <button class="power-btn" data-power="calm"><span class="power-ico">&#9829;</span><b>Calm</b><em>0</em><span class="key-hint">3</span></button>
+        <button class="power-btn" data-power="wave"><span class="power-ico wave-ico">&#10227;</span><b>Wave</b><em>0</em><span class="key-hint">4</span></button>
       </div>
     </div>
   </div>
@@ -58,13 +60,14 @@
       </div>
       <button id="btn-play" class="btn-yellow btn-big">PLAY</button>
       <button id="btn-endless" class="mode-btn"><b>Endless Rush Hour</b><em id="best-endless"></em></button>
+      <button id="btn-custom" class="mode-btn custom"><b>Custom Shift</b><em id="custom-sub"></em></button>
       <div class="menu-row">
         <button id="btn-shop" class="btn-plate small">Shop</button>
         <button id="btn-trophies" class="btn-plate small">Trophies <span id="trophy-count" class="count"></span></button>
         <button id="btn-settings" class="btn-plate small">Settings</button>
       </div>
       <p class="meta"><span class="star">&#9733;</span> <b id="title-stars">0</b>/45 &middot; <span class="coin-ico"></span> <b id="title-coins">0</b></p>
-      <p class="controls kb">Click a traffic light or press its arrow key to switch it &middot; <kbd>Space</kbd> switches them all</p>
+      <p class="controls kb">Click a traffic light or press its arrow key to switch it &middot; <kbd>Space</kbd> switches them all &middot; <kbd>Tab</kbd> picks the next crossing</p>
       <p class="controls touch">Tap a traffic light (or its lane) to switch it</p>
     </div>
   </div>
@@ -75,6 +78,15 @@
       <div class="card-head"><span>PICK A SHIFT</span><span><span class="star">&#9733;</span> <span id="levels-stars">0</span>/45</span></div>
       <div class="card-body" id="levels-body"></div>
       <div class="card-foot actions"><button id="btn-levels-back" class="btn-plate small">Back</button></div>
+    </div>
+  </div>
+
+  <!-- Custom shift -->
+  <div id="screen-custom" class="screen hidden">
+    <div class="card wide">
+      <div class="card-head"><span>CUSTOM SHIFT</span><span id="custom-pay"></span></div>
+      <div class="card-body" id="custom-body"></div>
+      <div class="card-foot actions"><button id="btn-custom-go" class="btn-yellow">START</button><button id="btn-custom-back" class="btn-plate small">Back</button></div>
     </div>
   </div>
 
@@ -100,6 +112,7 @@
         <div class="actions">
           <button id="btn-resume" class="btn-yellow">RESUME</button>
           <button id="btn-restart" class="btn-plate">Restart</button>
+          <button id="btn-endshift" class="btn-plate hidden">End shift and collect coins</button>
           <button id="btn-quit" class="btn-plate">Quit to menu</button>
         </div>
         <p class="hint">P or Esc to resume</p>

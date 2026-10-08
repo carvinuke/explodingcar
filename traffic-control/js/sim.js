@@ -1,7 +1,8 @@
 'use strict';
-// Traffic Control: the crossroads, its four lights, the cars and the trains.
+// Traffic Control: the crossings, their lights, the cars and the trains.
 // World units match Road Rush: x runs right, y runs up the screen (north),
-// z is height. The crossing is centred on (0, 0).
+// z is height. The levels have one crossing, centred on (0, 0); a custom level
+// can have up to four, on east-west avenues (rows) and north-south streets (cols).
 
 const RW = 40;           // road half-width: two lanes, 40 each
 const LANE = 20;         // lane centre, from the road's middle
@@ -9,7 +10,7 @@ const STOP = RW + 18;    // stop line: front bumpers wait this far from the cent
 const RAIL_X = 205;      // the railway (Rail Crossing only), running north-south
 const RAIL_BAND = 24;    // half-width of the tracks
 const GATE = 40;         // crossing gates, this far either side of the tracks
-const FAR = 1400;        // paths start this far out
+const FAR = 2400;        // paths start this far out
 const YELLOW = 1.1;      // seconds of amber
 const CLEAR = 0.7;       // all-red pause when Space switches the lights
 
@@ -46,6 +47,29 @@ for (const h in ROTATE) {
   }
 }
 
+// A path through the network, made from the single-crossing path shapes: built
+// at the crossing where the car turns (or any crossing on its line), so it starts
+// and ends far off screen and runs straight through every other crossing.
+function pathAt(kind, h, cx, cy) {
+  const p = buildPath(BASE_PATHS[kind].map(([x, y]) => { const [a, b] = ROTATE[h](x, y); return [a + cx, b + cy]; }));
+  p.kind = kind;
+  return p;
+}
+// How far along a path a point lies (the point sits on the path).
+function sOnPath(path, x, y) {
+  const { pts, cum } = path;
+  let best = 0, bd = Infinity;
+  for (let i = 1; i < pts.length; i++) {
+    const a = pts[i - 1], b = pts[i], dx = b[0] - a[0], dy = b[1] - a[1], L2 = dx * dx + dy * dy || 1;
+    const t = clamp(((x - a[0]) * dx + (y - a[1]) * dy) / L2, 0, 1);
+    const d = Math.hypot(a[0] + dx * t - x, a[1] + dy * t - y);
+    if (d < bd) { bd = d; best = cum[i - 1] + Math.sqrt(L2) * t; }
+  }
+  return best;
+}
+const TURN_TO = { left: { E: 'N', N: 'W', W: 'S', S: 'E' }, right: { E: 'S', S: 'W', W: 'N', N: 'E' } };
+const SIDE_BACK = { E: 'W', W: 'E', N: 'S', S: 'N' }; // a car heading E comes in from the west side
+
 function posAt(path, s) {
   const { pts, cum } = path;
   let i = 1;
@@ -58,7 +82,10 @@ function posAt(path, s) {
 // ---- The simulation ----------------------------------------------------------------
 const TCSim = {
   cars: [],
-  lights: {},
+  nodes: [],     // the crossings: { x, y, sides: {N,E,S,W}, ways, lights: {E,W,N,S}, auto }
+  entries: [],   // where traffic comes in: { id, h, n (the crossing its path is built at) }
+  sel: 0,        // the crossing your keys work on
+  lights: {},    // the first crossing's lights (one-crossing levels)
   ways: ['E', 'W', 'N', 'S'],
   level: null,
   hooks: {},
@@ -67,15 +94,14 @@ const TCSim = {
   reset(level, opts = {}) {
     this.level = level;
     this.map = TC_MAPS[level.map];
+    this.rail = level.rail !== undefined ? !!level.rail : !!this.map.rail;
     this.cars = [];
-    this.ways = level.ways || ['E', 'W', 'N', 'S'];
-    this.lights = {};
-    for (const h of ['E', 'W', 'N', 'S']) {
-      const on = this.ways.includes(h);
-      this.lights[h] = { state: on && (h === 'E' || h === 'W') ? 'green' : 'red', t: 0, pending: 0, change: 0, on };
-    }
+    this.yellow = opts.yellow || YELLOW;
+    this.towTime = opts.towTime || 5;
+    this.waveT = 0;
+    this.buildNetwork(level);
     this.spawnT = {};
-    for (const h of this.ways) this.spawnT[h] = rand(0.3, 2.2);
+    for (const e of this.entries) this.spawnT[e.id] = rand(0.3, 2.2);
     this.time = 0;
     this.through = 0;
     this.crashes = 0;
@@ -90,6 +116,146 @@ const TCSim = {
     this.train = { state: 'idle', next: level.train ? level.train * 0.6 : Infinity, t: 0, gate: 0, cars: [], head: 0, dir: 1, bell: 0 };
   },
 
+  // The crossings and where traffic enters. A level's own `ways` (one crossing)
+  // or a custom level's layout, shapes and automatic lights.
+  buildNetwork(level) {
+    const L = TC_LAYOUTS[level.layout || 1];
+    this.nodes = [];
+    L.rows.forEach((y, r) => L.cols.forEach((x, k) => {
+      const sides = { N: true, E: true, S: true, W: true };
+      const shape = level.shapes ? level.shapes[this.nodes.length] : '4';
+      if (shape === 'TN') sides.N = false; // a T: the street stops here (only ever on the outside of the grid)
+      if (shape === 'TS') sides.S = false;
+      const ways = this.nodes.length === 0 && level.ways ? level.ways : ['E', 'W', 'N', 'S'].filter(h => sides[SIDE_BACK[h]]);
+      const lights = {};
+      for (const h of ['E', 'W', 'N', 'S']) {
+        const on = ways.includes(h);
+        lights[h] = { state: on && (h === 'E' || h === 'W') ? 'green' : 'red', t: 0, pending: 0, change: 0, on };
+      }
+      const auto = !!(level.auto && level.auto[this.nodes.length]);
+      if (auto) for (const h of ways) lights[h].state = h === ways[0] ? 'green' : 'red'; // one road at a time
+      this.nodes.push({ i: this.nodes.length, x, y, r, k, sides, ways, lights, auto, phase: auto ? ways[0] : null, greenT: 0, lastGo: {}, autoT: 3 + this.nodes.length * 1.3 });
+    }));
+    this.cols = L.cols;
+    this.rows = L.rows;
+    this.lights = this.nodes[0].lights;
+    this.ways = this.nodes[0].ways;
+    this.sel = Math.max(0, this.nodes.findIndex(n => !n.auto));
+    // traffic comes in at both ends of every avenue, and at every street end that reaches the edge
+    this.entries = [];
+    const add = (h, n) => this.entries.push({ id: h + n, h, n });
+    if (this.nodes.length === 1) for (const h of this.ways) add(h, 0);
+    else {
+      L.rows.forEach((y, r) => {
+        const row = this.nodes.filter(n => n.r === r);
+        add('E', row[0].i);
+        add('W', row[row.length - 1].i);
+      });
+      L.cols.forEach((x, k) => {
+        const col = this.nodes.filter(n => n.k === k);
+        if (col[0].sides.S) add('N', col[0].i);
+        if (col[col.length - 1].sides.N) add('S', col[col.length - 1].i);
+      });
+    }
+  },
+
+  // The crossings a car heading h meets after crossing n (not counting n), in order.
+  ahead(n, h) {
+    const N = this.nodes[n], out = [];
+    for (const o of this.nodes) {
+      if (o === N) continue;
+      if ((h === 'E' || h === 'W') && o.r !== N.r) continue;
+      if ((h === 'N' || h === 'S') && o.k !== N.k) continue;
+      const d = (o.x - N.x) * HEAD[h][0] + (o.y - N.y) * HEAD[h][1];
+      if (d > 0) out.push([d, o]);
+    }
+    return out.sort((a, b) => a[0] - b[0]).map(p => p[1]);
+  },
+  // The crossings a car heading h passes before reaching n.
+  behind(n, h) { return this.ahead(n, SIDE_BACK[h]).reverse(); },
+  // Can a car heading h leave crossing n and drive straight off the map?
+  clearTo(n, h) {
+    if (!this.nodes[n].sides[h]) return false;
+    for (const o of this.ahead(n, h)) if (!o.sides[SIDE_BACK[h]] || !o.sides[h]) return false;
+    return true;
+  },
+
+  // A route for a car coming in on entry e: straight through, or one turn at one crossing.
+  route(e, turnWanted, longVehicle) {
+    const line = [...this.behind(e.n, e.h), this.nodes[e.n], ...this.ahead(e.n, e.h)];
+    // where it turns: a crossing on its line it can turn out of
+    let turnAt = null, kind = 'straight';
+    const options = [];
+    for (const n of line) for (const k of ['left', 'right']) {
+      const h2 = TURN_TO[k][e.h];
+      if (n.ways.includes(e.h) && this.clearTo(n.i, h2)) options.push([n, k]);
+      if (!n.sides[e.h]) break; // the road ends here
+    }
+    // a street that ends at a T: it has to turn there
+    const end = line.find(n => !n.sides[e.h]);
+    if (end) {
+      const opts = options.filter(([n]) => n === end);
+      if (opts.length) [turnAt, kind] = pick(opts);
+    } else if (turnWanted && options.length) {
+      const fair = options.filter(([, k]) => !longVehicle || k === 'right' || Math.random() < 0.6);
+      [turnAt, kind] = pick(fair.length ? fair : options);
+    }
+    const at = turnAt || this.nodes[e.n];
+    const path = pathAt(kind, e.h, at.x, at.y);
+    // the lights it meets, in order
+    const idx = line.indexOf(at), visits = line.slice(0, idx + 1).map(n => [n, e.h]);
+    if (kind === 'straight') for (const n of line.slice(idx + 1)) visits.push([n, e.h]);
+    else for (const n of this.ahead(at.i, TURN_TO[kind][e.h])) visits.push([n, TURN_TO[kind][e.h]]);
+    const stops = this.makeStops(path, visits);
+    const turnStop = turnAt && stops.find(st => st.n === turnAt.i);
+    // (only cars before their first light count as queued on the road they come in on)
+    return { path, stops, first: stops[0].s, turnS: turnStop ? turnStop.s : -1, turnNode: turnAt ? turnAt.i : -1, turn: kind === 'straight' ? 0 : kind === 'left' ? -1 : 1 };
+  },
+
+  // Stop lines along a path, and for each, the lane it leads into and how many cars fit there.
+  makeStops(path, visits) {
+    const stops = [];
+    for (const [n, h] of visits) {
+      if (!n.ways.includes(h)) continue;
+      const [sx, sy] = ROTATE[h](-STOP, -LANE);
+      stops.push({ s: sOnPath(path, n.x + sx, n.y + sy), n: n.i, h });
+    }
+    stops.sort((a, b) => a.s - b.s);
+    stops.forEach((st, i) => {
+      const N = this.nodes[st.n];
+      let out = st.s + 8; // where it comes out past the far crosswalk
+      while (out < path.len) { const q = posAt(path, out); if (Math.max(Math.abs(q.x - N.x), Math.abs(q.y - N.y)) > RW + 14) break; out += 4; }
+      const q = posAt(path, out + 1);
+      st.link = st.n + snapHeading(q.hx, q.hy);
+      st.cap = i + 1 < stops.length ? stops[i + 1].s - out : Infinity;
+    });
+    return stops;
+  },
+  // Room in the lane past this light? Counts the cars already in it, and the ones
+  // queued ahead at the same light (they'll get there first). An empty lane always has room.
+  roomAfter(car, st) {
+    let used = 0;
+    const me = st.s - (car.s + car.half);
+    for (const o of this.cars) {
+      if (o === car || o.gone) continue;
+      const os = o.stops && o.stops[o.si];
+      if (o.link === st.link || (os && !o.wreck && os.n === st.n && os.h === st.h && os.link === st.link && os.s - (o.s + o.half) < me)) used += o.len + 6;
+    }
+    return used === 0 || used + car.len + 6 <= st.cap;
+  },
+  // A turning driver stuck waiting for room gives up and goes straight on, if that's possible.
+  reroute(car) {
+    const N = this.nodes[car.turnNode];
+    car.fullT = 0;
+    if (!this.clearTo(N.i, car.h0)) return;
+    const path = pathAt('straight', car.h0, N.x, N.y);
+    const stops = this.makeStops(path, [N, ...this.ahead(N.i, car.h0)].map(n => [n, car.h0]));
+    if (!stops.length || !this.roomAfter(car, stops[0])) return;
+    Object.assign(car, { path, stops, si: 0, first: stops[0].s, turn: 0, blink: 0, turnNode: -1, turnS: -1 });
+    car.s = sOnPath(path, car.x, car.y);
+    this.place(car);
+  },
+
   // Swap in the next Endless difficulty without disturbing anything on the road.
   setLevel(level) {
     const trainWas = this.level && this.level.train;
@@ -101,8 +267,10 @@ const TCSim = {
   },
 
   // ---- Lights ----------------------------------------------------------------------
-  toggle(h) {
-    const L = this.lights[h];
+  toggle(h, n = this.sel) {
+    const N = this.nodes[n];
+    if (!N || N.auto) return false;
+    const L = N.lights[h];
     if (!L || !L.on) return false;
     L.pending = 0;
     if (L.state === 'green') { L.state = 'yellow'; L.t = 0; L.change++; }
@@ -112,47 +280,139 @@ const TCSim = {
   },
 
   // Space: every green turns amber then red; every red waits for the crossing to clear, then goes green.
-  swap() {
-    const anyGo = this.ways.some(h => this.lights[h].state !== 'red');
-    for (const h of this.ways) {
-      const L = this.lights[h];
+  swap(n = this.sel) {
+    const N = this.nodes[n];
+    if (!N || N.auto) return false;
+    const anyGo = N.ways.some(h => N.lights[h].state !== 'red');
+    for (const h of N.ways) {
+      const L = N.lights[h];
       if (L.state === 'green') { L.state = 'yellow'; L.t = 0; L.change++; L.pending = 0; }
-      else if (L.state === 'red') { L.pending = anyGo ? YELLOW + CLEAR : 0.01; L.t = 0; }
+      else if (L.state === 'red') { L.pending = anyGo ? this.yellow + CLEAR : 0.01; L.t = 0; }
+    }
+    return true;
+  },
+
+  // ---- Lights that run themselves (automatic crossings, and every crossing in a Green Wave):
+  // one road at a time, so nothing can cross anything; the road that's waited
+  // longest with cars on it goes next, and a green stays on while cars keep coming.
+
+  // Cars coming up to a light (none, if the one at the front is waiting for room past the crossing).
+  queueAt(N, h, near = 240, moving = 0) {
+    let n = 0, head = null, headD = Infinity;
+    for (const c of this.cars) {
+      const st = c.stops && c.stops[c.si];
+      if (!st || c.wreck || st.n !== N.i || st.h !== h) continue;
+      const d = st.s - (c.s + c.half);
+      if (d < headD) { headD = d; head = c; }
+      if (d < near && (c.v > moving || d < 40)) n++;
+    }
+    return head && head.held ? 0 : n;
+  },
+  setPhase(N, h) {
+    const othersGo = N.ways.some(k => k !== h && N.lights[k].state !== 'red');
+    for (const k of N.ways) {
+      const L = N.lights[k];
+      if (k === h) {
+        if (L.state === 'yellow') { L.state = 'green'; L.t = 0; }
+        else if (L.state === 'red' && !L.pending) { L.pending = othersGo ? this.yellow + CLEAR : 0.01; L.t = 0; }
+      } else {
+        L.pending = 0;
+        if (L.state === 'green') { L.state = 'yellow'; L.t = 0; L.change++; }
+      }
+    }
+    if (N.phase !== h) { N.phase = h; N.greenT = 0; }
+  },
+  autoStep(N, dt) {
+    N.greenT = (N.greenT || 0) + dt;
+    if (N.phase) N.lastGo[N.phase] = this.time;
+    N.autoT -= dt;
+    if (N.autoT > 0) return;
+    N.autoT = 0.4;
+    const cur = N.phase;
+    // keep the green while cars are still coming (up to a limit)
+    if (cur && N.greenT < 10 && this.queueAt(N, cur, 120, 15) > 0) return;
+    let best = null, score = 0;
+    for (const h of N.ways) {
+      if (h === cur) continue;
+      const q = this.queueAt(N, h);
+      const sc = q && q + (this.time - (N.lastGo[h] || 0)) / 4;
+      if (sc > score) { score = sc; best = h; }
+    }
+    if (best) { this.setPhase(N, best); N.autoT = 3.6; }
+    else if (cur) this.setPhase(N, cur); // nobody else waiting: stay green
+  },
+  // The Green Wave power: every crossing runs itself for a while.
+  wave(sec = 10) {
+    this.waveT = sec;
+    for (const N of this.nodes) {
+      if (N.auto) continue;
+      let best = N.ways[0], most = -1;
+      for (const h of N.ways) { const q = this.queueAt(N, h) + (N.lights[h].state === 'green' ? 0.5 : 0); if (q > most) { most = q; best = h; } }
+      N.phase = null;
+      this.setPhase(N, best);
+      N.autoT = 2.5;
     }
   },
 
   updateLights(dt) {
-    for (const h of this.ways) {
-      const L = this.lights[h];
-      L.t += dt;
-      if (L.state === 'yellow' && L.t >= YELLOW) { L.state = 'red'; L.t = 0; }
-      if (L.pending && L.state === 'red') {
-        L.pending -= dt;
-        if (L.pending <= 0) { L.pending = 0; L.state = 'green'; L.t = 0; }
+    if (this.waveT > 0) this.waveT -= dt;
+    for (const N of this.nodes) {
+      const self = N.auto || this.waveT > 0;
+      if (self) this.autoStep(N, dt);
+      for (const h of N.ways) {
+        const L = N.lights[h];
+        L.t += dt;
+        if (L.state === 'yellow' && L.t >= this.yellow) { L.state = 'red'; L.t = 0; }
+        if (L.pending && L.state === 'red') {
+          L.pending -= dt;
+          // a light that runs itself also waits for the crossing to be empty
+          if (L.pending <= 0 && self && this.boxBusy(N, h)) L.pending = 0.05;
+          if (L.pending <= 0) { L.pending = 0; L.state = 'green'; L.t = 0; }
+        }
       }
     }
   },
+  // Is anything in the crossing, or about to be (too fast to stop for its red)?
+  boxBusy(N, h) {
+    const dec = this.decel() * 1.9;
+    for (const c of this.cars) {
+      if (c.wreck || c.gone) continue;
+      const [hx, hy] = Cars.halfSize(c);
+      if (Math.abs(c.x - N.x) < RW + hx - 2 && Math.abs(c.y - N.y) < RW + hy - 2) return true;
+      const st = c.stops && c.stops[c.si];
+      if (st && st.n === N.i && st.h !== h && c.v > 10 && st.s - (c.s + c.half) < (c.v * c.v) / (2 * dec) + 6) return true;
+    }
+    return false;
+  },
 
   // ---- Cars ------------------------------------------------------------------------
-  spawn(h) {
-    const lv = this.level;
+  spawn(e) {
+    const lv = this.level, h = e.h;
     let type = weighted(lv.mix), medic = false;
     if (lv.ambulance && chance(lv.ambulance)) { type = chance(0.3) ? 'firetruck' : 'ambulance'; medic = true; }
     const long = type === 'bus' || type === 'tanker' || type === 'firetruck';
-    let turn = 0;
-    if (lv.turn && chance(lv.turn)) turn = chance(long ? 0.3 : 0.5) ? -1 : 1;
-    const path = PATHS[h][turn === 0 ? 'straight' : turn < 0 ? 'left' : 'right'];
+    let R;
+    if (!lv.custom) { // the classic crossing: exactly as it always was
+      let turn = 0;
+      if (lv.turn && chance(lv.turn)) turn = chance(long ? 0.3 : 0.5) ? -1 : 1;
+      const path = PATHS[h][turn === 0 ? 'straight' : turn < 0 ? 'left' : 'right'];
+      R = { path, stops: [{ s: path.stopS, n: 0, h }], first: path.stopS, turnS: path.stopS, turn, turnNode: turn ? 0 : -1 };
+    } else R = this.route(e, !!(lv.turn && chance(lv.turn)), long);
+    const path = R.path;
     const car = Cars.make(type, null, h);
-    const dist = (h === 'E' || h === 'W' ? this.viewX : this.viewY) + car.len / 2 + 30;
-    car.s = FAR - dist;
+    // start just off the screen edge it comes in from
+    const N = this.nodes[R.turnNode >= 0 ? R.turnNode : e.n], u = HEAD[h];
+    const edge = (h === 'E' || h === 'W' ? this.viewX : this.viewY) + car.len / 2 + 30;
+    car.s = FAR - edge - (N.x * u[0] + N.y * u[1]);
     // room behind the last car on this road?
     for (const o of this.cars) {
-      if (o.approach !== h || o.committed) continue;
+      if (o.stream !== e.id || o.s + o.half > o.first + 0.5) continue;
       if (o.s - o.half - (car.s + car.len / 2) < 14) return false;
     }
     const T = VEHICLE_TYPES[type];
     Object.assign(car, {
-      id: this.nextId++, path, approach: h, half: car.len / 2, turn, blink: turn,
+      id: this.nextId++, path, stops: R.stops, first: R.first, si: 0, stream: e.id, approach: h, h0: h, turnNode: R.turnNode, turnS: R.turnS,
+      half: car.len / 2, turn: R.turn, blink: R.turn,
       vmax: 100 * (lv.speed || 1) * clamp(T.speed, 0.8, 1.2) * rand(0.93, 1.07) * (medic ? 1.15 : 1),
       wait: 0, honked: 0, rage: false, medic, committed: false, alpha: 1,
       reckless: !medic && !!lv.reckless && chance(lv.reckless),
@@ -175,14 +435,20 @@ const TCSim = {
   // How far this car can go before it must be stopped (Infinity: the road is clear).
   gapAhead(car) {
     let gap = Infinity;
-    // the light
-    if (!car.committed) {
+    // the next light on its way
+    let st = car.stops[car.si], lineD = Infinity, mayGo = false;
+    car.held = false;
+    if (st) {
       const front = car.s + car.half;
-      if (front > car.path.stopS + 0.5) {
-        car.committed = true;
-        if (this.hooks.commit) this.hooks.commit(car);
+      if (front > st.s + 0.5) {
+        car.link = st.link;
+        car.si++;
+        car.committed = car.si >= car.stops.length;
+        if (car.si === 1 && this.hooks.commit) this.hooks.commit(car);
+        if (car.si < car.stops.length) { car.wait = 0; car.honked = 0; car.rage = false; } // a fresh light, a fresh temper
+        st = null;
       } else if (!car.rage && !car.reckless) {
-        const L = this.lights[car.approach], d = car.path.stopS - front;
+        const L = this.nodes[st.n].lights[st.h], d = st.s - front;
         let stop = L.state === 'red';
         if (L.state === 'yellow' && car.yellowGo !== L.change) {
           const need = (car.v * car.v) / (2 * this.decel());
@@ -190,10 +456,11 @@ const TCSim = {
           else car.yellowGo = L.change; // too close to stop: keep going
         }
         if (stop) gap = Math.min(gap, d);
+        else if (car.v * car.v <= 2 * this.decel() * 1.9 * Math.max(0, d) + 30) { lineD = Math.max(0, d); mayGo = true; } // (still able to stop at the line)
       }
     }
     // the crossing gates
-    if (this.map.rail && this.train.gate > 0.15) {
+    if (this.rail && this.train.gate > 0.15) {
       if (car.heading === 'W') {
         const front = car.x - car.half, line = RAIL_X + GATE;
         if (front >= line - 1) gap = Math.min(gap, front - line);
@@ -203,18 +470,27 @@ const TCSim = {
       }
     }
     // the car in front (and any wreck in the lane)
+    let leadGap = Infinity;
     for (const o of this.cars) {
       if (o === car || o.gone) continue;
       const rx = o.x - car.x, ry = o.y - car.y;
       const along = rx * car.ax + ry * car.ay;
       if (along <= 0 || along > 300) continue;
       const same = o.ax === car.ax && o.ay === car.ay;
-      if (!(o.wreck || same || o.approach === car.approach)) continue; // cross traffic: drivers trust their green light
+      if (!(o.wreck || same || o.stream === car.stream)) continue; // cross traffic: drivers trust their green light
       const [ohx, ohy] = Cars.halfSize(o);
       const oAlong = car.ax !== 0 ? ohx : ohy, oAcross = car.ax !== 0 ? ohy : ohx;
       const lat = Math.abs(rx * car.ay - ry * car.ax);
       if (lat > Cars.HW + oAcross - 5) continue;
-      gap = Math.min(gap, along - car.half - oAlong - 8);
+      const g = along - car.half - oAlong - 8;
+      if (g < leadGap) leadGap = g;
+    }
+    gap = Math.min(gap, leadGap);
+    // custom shifts: green, but don't drive into a crossing without room on the far side
+    // (checked even while following another car through)
+    if (mayGo && st.cap < Infinity && lineD < 160 && !this.roomAfter(car, st)) {
+      if (lineD <= gap) car.held = true;
+      gap = Math.min(gap, lineD);
     }
     return gap;
   },
@@ -231,17 +507,22 @@ const TCSim = {
     else car.v = Math.max(want, car.v - dec * 1.9 * dt);
     car.brake = want < car.vmax - 5 && car.v > 2 ? true : car.v < 3 && !car.committed;
     car.s += car.v * dt;
-    if (car.blink && car.committed && car.heading !== car.approach && (Math.abs(car.x) > RW || Math.abs(car.y) > RW)) car.blink = 0; // finished turning
+    car.fullT = car.held && car.v < 6 ? (car.fullT || 0) + dt : 0;
+    if (car.fullT > 8 && car.turn && car.stops[car.si] && car.stops[car.si].n === car.turnNode) this.reroute(car);
+    if (car.blink && car.heading !== car.h0) { // finished turning?
+      const T = this.nodes[Math.max(0, car.turnNode)];
+      if (Math.abs(car.x - T.x) > RW || Math.abs(car.y - T.y) > RW) car.blink = 0;
+    }
     const wasOnTrack = car.onTrack;
     this.place(car);
-    car.onTrack = this.map.rail && Math.abs(car.x - RAIL_X) < RAIL_BAND + car.half && Math.abs(car.y) < RW;
+    car.onTrack = this.rail && Math.abs(car.x - RAIL_X) < RAIL_BAND + car.half && Math.abs(car.y) < RW;
     if (wasOnTrack && !car.onTrack && this.train.state === 'pass') {
       const T = this.train, toRoad = -T.dir * T.head; // how far the train's nose is from the road
       if (toRoad > 0 && toRoad < 420 && this.hooks.closeCall) this.hooks.closeCall(car);
     }
 
-    // patience: waiting drivers get cross, then run the light
-    if (!car.committed && car.v < 6) {
+    // patience: waiting drivers get cross, then run the light (not at a crossing that runs itself)
+    if (car.si < car.stops.length && car.v < 6 && !this.nodes[car.stops[car.si].n].auto) {
       car.wait += dt;
       if (car.wait >= car.patience) {
         if (!car.honked || car.wait - car.honked > 1.5) {
@@ -264,7 +545,7 @@ const TCSim = {
       for (let j = i + 1; j < cars.length; j++) {
         const b = cars[j];
         if (b.gone || (a.wreck && b.wreck)) continue;
-        if (!a.wreck && !b.wreck && a.approach === b.approach) continue;
+        if (!a.wreck && !b.wreck && a.stream === b.stream) continue;
         const [bhx, bhy] = Cars.halfSize(b);
         if (Math.abs(a.x - b.x) < ahx + bhx - 4 && Math.abs(a.y - b.y) < ahy + bhy - 4) this.crash([a, b]);
       }
@@ -287,7 +568,7 @@ const TCSim = {
   // ---- Trains ------------------------------------------------------------------------
   updateTrain(dt) {
     const T = this.train;
-    if (!this.map.rail) return;
+    if (!this.rail) return;
     if (T.state === 'idle') {
       T.gate = Math.max(0, T.gate - dt / 1.2);
       if (!this.level.train) return;
@@ -367,11 +648,11 @@ const TCSim = {
 
     // new cars
     const rate = this.level.rate * (R.on > 0 ? 1.8 : 1);
-    for (const h of this.ways) {
-      this.spawnT[h] -= dt;
-      if (this.spawnT[h] <= 0) {
-        const mean = this.ways.length / rate;
-        this.spawnT[h] = this.spawn(h) ? Math.max(1.0, mean * (0.45 + Math.random() * 1.1)) : 0.35;
+    for (const e of this.entries) {
+      this.spawnT[e.id] -= dt;
+      if (this.spawnT[e.id] <= 0) {
+        const mean = this.entries.length / rate;
+        this.spawnT[e.id] = this.spawn(e) ? Math.max(1.0, mean * (0.45 + Math.random() * 1.1)) : 0.35;
       }
     }
 
@@ -383,7 +664,7 @@ const TCSim = {
     // cars that have left the screen
     for (const c of this.cars) {
       if (c.gone || c.wreck) continue;
-      if (c.committed && (Math.abs(c.x) > this.viewX + c.half + 40 || Math.abs(c.y) > this.viewY + c.half + 60)) {
+      if (c.si >= c.stops.length && (Math.abs(c.x) > this.viewX + c.half + 40 || Math.abs(c.y) > this.viewY + c.half + 60)) {
         c.gone = true;
         this.through++;
         if (this.hooks.through) this.hooks.through(c);
@@ -397,7 +678,7 @@ const TCSim = {
       if (!c.wreck) continue;
       c.wreckT += dt;
       if (c.towing) c.alpha -= dt * 2.5;
-      else if (c.wreckT > 5) c.alpha -= dt * 1.2; // towed away
+      else if (c.wreckT > this.towTime) c.alpha -= dt * 1.2; // towed away
       if (c.alpha <= 0) c.gone = true;
     }
   },
