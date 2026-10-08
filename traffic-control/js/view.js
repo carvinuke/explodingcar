@@ -40,7 +40,7 @@ const TCView = {
     const spanX = (Math.max(...cols) - Math.min(...cols)) / 2, spanY = (Math.max(...rows) - Math.min(...rows)) / 2;
     const needX = (rail ? 272 : 180) + spanX, needY = 170 + spanY;
     const top = 70, bottom = 96;
-    const s = clamp(Math.min(W / (2 * needX), (H - top - bottom) / (2 * needY * GY + 90)), spanX || spanY ? 0.3 : 0.42, 1.7);
+    const s = clamp(Math.min(W / (2 * needX), (H - top - bottom) / (2 * needY * GY + 90)), spanX > 400 || spanY > 200 ? 0.24 : spanX || spanY ? 0.3 : 0.42, 1.7);
     this.scale = s;
     this.cx = rail ? 56 : 0; // shift right a little so the railway fits
     this.ox = W / 2 - this.cx * s;
@@ -230,12 +230,17 @@ const TCView = {
     FX.drawBlasts(c);
     FX.drawTexts(c);
 
-    // night: darkness with headlights and lamps
+    // night: darkness with headlights and lamps (dusk: a touch of it)
     if (TCSim.night) this.nightLayer(c, time, x0, x1, yBot, yTop);
+    else if (TCSim.dusk) this.nightLayer(c, time, x0, x1, yBot, yTop, 0.45);
 
     c.setTransform(dpr, 0, 0, dpr, 0, 0);
+    if (TCSim.dusk) this.duskLight(c, W, H);
     if (TCSim.rain && !this.v.low) FX.drawWeather(c, W, H, 'rain', 0.85, dt);
     else if (TCSim.rain) { c.fillStyle = 'rgba(40,60,90,0.16)'; c.fillRect(0, 0, W, H); }
+    if (TCSim.snow && !this.v.low) FX.drawWeather(c, W, H, 'snow', 0.8, dt);
+    else if (TCSim.snow) { c.fillStyle = 'rgba(220,235,255,0.12)'; c.fillRect(0, 0, W, H); }
+    if (TCSim.fog) this.fogLayer(c, W, H, dt);
     if (TCSim.freezeT > 0) {
       c.fillStyle = `rgba(170,225,255,${0.16 + 0.06 * Math.sin(time * 6)})`;
       c.fillRect(0, 0, W, H);
@@ -557,8 +562,9 @@ const TCView = {
   },
 
   // ---- Night ------------------------------------------------------------------------
-  nightLayer(c, time, x0, x1, y0, y1) {
-    c.fillStyle = 'rgba(8,12,32,0.62)';
+  // k: how dark (1 night, less for dusk)
+  nightLayer(c, time, x0, x1, y0, y1, k = 1) {
+    c.fillStyle = k < 1 ? 'rgba(52,22,74,0.28)' : 'rgba(8,12,32,0.62)';
     c.fillRect(x0, P(y1, 0), x1 - x0, (y1 - y0) * GY);
     c.globalCompositeOperation = 'lighter';
     if (!this.cone) this.cone = this.makeCone();
@@ -570,18 +576,63 @@ const TCView = {
       c.translate(fx, P(fy, 0));
       c.scale(1, GY);
       c.rotate(Math.atan2(-hy, hx));
-      c.globalAlpha = 0.55;
+      c.globalAlpha = 0.55 * k;
       c.drawImage(this.cone, 0, -30, 110, 60);
       c.restore();
     }
     c.globalAlpha = 1;
-    for (const o of this.scenery) if (o.kind === 'lamp') this.glow(c, o.x + o.dir * 13, o.y, 46, '255,214,140', 0.5);
+    for (const o of this.scenery) if (o.kind === 'lamp') this.glow(c, o.x + o.dir * 13, o.y, 46, '255,214,140', 0.5 * k);
     for (const N of TCSim.nodes) for (const h of N.ways) {
       const L = N.lights[h], [x, y] = LIGHT_POS[h];
       const col = L.state === 'green' ? '60,240,120' : L.state === 'yellow' ? '255,200,40' : '255,60,60';
-      this.glow(c, N.x + x, N.y + y - 4, 20, col, 0.55);
+      this.glow(c, N.x + x, N.y + y - 4, 20, col, 0.55 * k);
     }
     c.globalCompositeOperation = 'source-over';
+  },
+
+  // Dusk: warm low sun at the top of the screen, cooler towards the bottom.
+  duskLight(c, W, H) {
+    const g = c.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, 'rgba(255,128,64,0.26)');
+    g.addColorStop(0.5, 'rgba(255,150,90,0.08)');
+    g.addColorStop(1, 'rgba(110,60,150,0.16)');
+    c.fillStyle = g;
+    c.fillRect(0, 0, W, H);
+  },
+
+  // Fog: thick at the edges, so cars only show up once they're close, with banks
+  // drifting across. Each edge's fog stops short of the crossings and their lights.
+  fogLayer(c, W, H, dt) {
+    const rgb = TCSim.night ? '64,70,88' : TCSim.dusk ? '214,190,200' : '226,231,234';
+    const s = this.scale, cols = TCSim.cols, rows = TCSim.rows, cap = Math.min(W, H) * 0.24;
+    const xl = this.ox + (Math.min(...cols) - 120) * s, xr = this.ox + Math.max(Math.max(...cols) + 120, TCSim.rail ? RAIL_X + 70 : 0) * s;
+    const yt = this.oy + P(Math.max(...rows) + 70, 90) * s, yb = this.oy + P(Math.min(...rows) - 80, 0) * s;
+    const band = m => clamp(m, 40, cap);
+    const edge = (gx0, gy0, gx1, gy1, x, y, w, h) => {
+      const g = c.createLinearGradient(gx0, gy0, gx1, gy1);
+      g.addColorStop(0, `rgba(${rgb},0.94)`);
+      g.addColorStop(0.55, `rgba(${rgb},0.55)`);
+      g.addColorStop(1, `rgba(${rgb},0)`);
+      c.fillStyle = g;
+      c.fillRect(x, y, w, h);
+    };
+    const eL = band(xl), eR = band(W - xr), eT = band(yt), eB = band(H - yb);
+    edge(0, 0, eL, 0, 0, 0, eL, H);
+    edge(W, 0, W - eR, 0, W - eR, 0, eR, H);
+    edge(0, 0, 0, eT, 0, 0, W, eT);
+    edge(0, H, 0, H - eB, 0, H - eB, W, eB);
+    c.fillStyle = `rgba(${rgb},0.3)`;
+    c.fillRect(0, 0, W, H);
+    if (this.v.low) return;
+    if (!this.banks) this.banks = Array.from({ length: 8 }, () => ({ x: rand(-0.3, 1.1), y: rand(0, 1), r: rand(0.16, 0.32), v: rand(0.012, 0.03) }));
+    c.fillStyle = `rgba(${rgb},0.16)`;
+    for (const b of this.banks) {
+      b.x += b.v * dt;
+      if (b.x - b.r > 1.05) { b.x = -b.r; b.y = rand(0, 1); }
+      c.beginPath();
+      c.ellipse(b.x * W, b.y * H, b.r * W, b.r * W * 0.3, 0, 0, 6.2832);
+      c.fill();
+    }
   },
 
   // A soft pool of light on the ground (a cached gradient per colour).

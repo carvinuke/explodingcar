@@ -11,15 +11,20 @@ The front page is the **Solarian Arcade**. Pick one of four:
   power-ups, reckless drivers and exploding car crashes that knock you back.
 - **[Traffic Control](traffic-control/)**: run a busy crossroads by switching
   the traffic lights. Let two streams of traffic meet and they go boom. Clear
-  5 levels to unlock Custom Shift: build your own shift with up to four
-  crossings (4-way, T-junction or mixed), let some of them run on automatic
-  lights, and set the traffic, speed, turning, reckless drivers, patience,
-  vehicles, trains, weather, goal and crashes allowed. Harder settings pay more.
+  5 levels to unlock Custom Shift: lay out anything from one crossing to a 3×3
+  grid, tap each crossing to pick its shape and whether it runs on smart or
+  timer lights, then tune the traffic, speed, turning, reckless drivers and
+  patience, the mix of nine kinds of vehicle, rain, snow or fog by day, dusk or
+  night, trains, the goal, a time limit, crashes allowed, the amber light and
+  power-ups. Save your favourite shifts, try a ready-made idea, or roll a random
+  one. Harder settings pay more.
 - **[Boom Run](boom-run/)**: floor it down an endless highway. Scrape past
   traffic to fill your boost bar, burn it to go faster, and when it's full set
   off BOOM: a few seconds where every car you touch goes up, and the wrecks you
-  send flying set off the cars they land on. Roadworks, oil slicks, car
-  carriers to launch off, tunnels, and a garage with the luxury lot.
+  send flying set off the cars they land on. There are no brakes: once you're
+  fast you stay fast. Roadworks, oil slicks, car carriers to launch off,
+  tunnels, and a garage with the luxury lot. Hyperdrive mode has no speed limit
+  at all: every boost adds speed for good and the camera pulls back to keep up.
 - **[Hall of Art](hall-of-art/)**: a gallery of 46 interactive exhibits:
   living buttons (bubble wrap, a switchboard puzzle), moving pictures
   (fireworks, a koi pond, a kaleidoscope), lettering that won't sit still
