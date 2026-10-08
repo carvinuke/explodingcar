@@ -140,12 +140,15 @@ const Lux = (() => {
       c.strokeStyle = 'rgba(255,255,255,0.16)'; c.lineWidth = 1;
       c.beginPath(); S.forEach(([u, z], i) => { const p = near(u, z - 2.2); i ? c.lineTo(p[0], p[1]) : c.moveTo(p[0], p[1]); }); c.stroke();
     }
-    // wheel arches
-    for (const w of D.wheels) {
-      const cx = X(w), r = D.wr + 1.7;
-      c.fillStyle = '#0d0e11';
-      c.beginPath(); c.ellipse(cx, P(-HW, D.wr), r, r * GZ, 0, Math.PI, 0); c.lineTo(cx + r, P(-HW, 0)); c.lineTo(cx - r, P(-HW, 0)); c.closePath(); c.fill();
-    }
+    // wheel arches: round cuts in the body side, stopping at its lower edge, so
+    // the tyre below the sills stays round (a dark box down to the road made
+    // every tyre look flat)
+    c.save();
+    path(c, [...S.map(([u, z]) => near(u, z - RS)), ...D.lo.slice().reverse().map(([u, z]) => near(u, z))]);
+    c.clip();
+    c.fillStyle = '#0d0e11';
+    for (const w of D.wheels) { const r = D.wr + 1.7; c.beginPath(); c.ellipse(X(w), P(-HW, D.wr), r, r * GZ, 0, 0, 6.2832); c.fill(); }
+    c.restore();
     if (D.sideDetail) D.sideDetail(ctx, 'body');
 
     // the glasshouse: top surfaces...
