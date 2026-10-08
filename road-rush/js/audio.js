@@ -6,6 +6,7 @@ const Sound = (() => {
   let muted = Store.get('muted', false);
   let lastWhoosh = 0;
   let rainGain = null, windGain = null;
+  let engineNode = null; // Boom Run's engine, made on first use
 
   // Must be called from a user gesture (browsers block audio until then).
   function init() {
@@ -105,6 +106,30 @@ const Sound = (() => {
       muted = m;
       Store.set('muted', m);
       if (master) master.gain.value = m ? 0 : 0.75;
+    },
+
+    // A running engine (Boom Run): level 0..1 sets pitch and loudness, 0 is off.
+    engine(level, boost) {
+      if (!ctx || !master) return;
+      try {
+        if (!engineNode) {
+          const o1 = ctx.createOscillator(), o2 = ctx.createOscillator(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+          o1.type = 'sawtooth'; o2.type = 'square';
+          f.type = 'lowpass'; f.Q.value = 2;
+          g.gain.value = 0;
+          o1.connect(f); o2.connect(f); f.connect(g); g.connect(master);
+          o1.start(); o2.start();
+          engineNode = { o1, o2, f, g };
+        }
+        const E = engineNode, now = ctx.currentTime, on = level > 0;
+        E.g.gain.setTargetAtTime(on ? 0.022 + 0.018 * level + (boost ? 0.012 : 0) : 0, now, on ? 0.08 : 0.15);
+        if (on) {
+          const hz = 46 + level * 92 + (boost ? 22 : 0);
+          E.o1.frequency.setTargetAtTime(hz, now, 0.12);
+          E.o2.frequency.setTargetAtTime(hz * 1.505, now, 0.12);
+          E.f.frequency.setTargetAtTime(260 + level * 820 + (boost ? 300 : 0), now, 0.12);
+        }
+      } catch (e) { /* no engine noise, then */ }
     },
 
     hop(fast) { if (ok()) tone('sine', fast ? 520 : 420, fast ? 820 : 660, 0.07, 0.07); },

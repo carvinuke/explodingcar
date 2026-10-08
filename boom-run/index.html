@@ -18,6 +18,7 @@
     <div class="hud-l">
       <div class="plate guide"><span class="plate-lbl" id="hud-mode">ENDLESS</span><b id="hud-dist">0 m</b></div>
       <div class="hud-sub"><span id="hud-speed">0 km/h</span> &middot; Score <b id="hud-score">0</b></div>
+      <div id="hud-boost" class="boostbar"><i></i><span>BOOST</span></div>
       <div id="hud-combo" class="plate combo hidden"><b>x2</b><span>CLOSE CALLS</span></div>
       <div id="hud-powers" class="chips"></div>
     </div>
@@ -36,6 +37,7 @@
     <div id="toasts" class="toasts" aria-live="polite"></div>
     <div class="pedals">
       <button id="btn-brake" class="pedal" aria-label="Brake">BRAKE</button>
+      <button id="btn-boom" class="pedal boom hidden" aria-label="Boom">BOOM!</button>
       <button id="btn-boost" class="pedal go" aria-label="Boost">BOOST</button>
     </div>
   </div>
@@ -65,8 +67,9 @@
         <button id="btn-settings" class="btn-plate small">Settings</button>
       </div>
       <p class="meta"><span id="best-endless"></span> &middot; Driving the <b id="title-car">Hatchback</b> &middot; <span class="coin-ico"></span> <b id="title-coins">0</b></p>
-      <p class="controls kb"><kbd>&larr;</kbd><kbd>&rarr;</kbd> steer &middot; <kbd>&uarr;</kbd> boost &middot; <kbd>&darr;</kbd> brake &middot; or drag with the mouse</p>
-      <p class="controls touch">Drag to steer. Brake and boost buttons at the bottom</p>
+      <p class="controls kb"><kbd>&larr;</kbd><kbd>&rarr;</kbd> steer &middot; <kbd>&uarr;</kbd> boost &middot; <kbd>&darr;</kbd> brake &middot; <kbd>Space</kbd> BOOM when the bar is full</p>
+      <p class="controls tip">Scrape past cars to fill the boost bar. Fill it all the way, then set off BOOM and wreck everything you touch.</p>
+      <p class="controls touch">Drag to steer. Brake and boost buttons at the bottom, BOOM when it lights up</p>
     </div>
   </div>
 
