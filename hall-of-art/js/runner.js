@@ -3,9 +3,12 @@
 // is on screen (one shared frame loop), and any exhibit can open full screen.
 //
 // An exhibit: Exhibits.add({ id, name, section, hint, canvas?, setup(t), frame?(t, dt, time),
-//                   resize?(t), down?(t), up?(t), move?(t), still? })
+//                   resize?(t), down?(t), up?(t), move?(t), destroy?(t), still? })
 // `t` is that exhibit's own instance: t.el (the stage), t.c / t.W / t.H for canvas
 // exhibits, t.p (the pointer: x, y, down, inside, vx, vy), t.low, t.big, t.blip().
+// Listeners on anything outside the stage go through t.on(target, type, fn), and
+// timers through t.later(fn, ms): both are cleaned up when the exhibit stops, so
+// restarting exhibits or opening them full screen never piles up old copies.
 
 const HALL_STORE = makeStore('hall.');
 // bring over anything saved back when this page was called the Toy Box
@@ -66,12 +69,24 @@ const Exhibits = {
   // ---- Instances ----------------------------------------------------------------
   // Start an exhibit inside `stage` (a tile, or the full-screen view).
   start(def, stage, big) {
+    const ac = new AbortController(), timers = new Set();
     const t = {
       def, el: stage, big: !!big, low: this.low, visible: !big ? false : true, awakeT: 0,
       p: { x: -1e4, y: -1e4, down: false, inside: false, vx: 0, vy: 0, lx: 0, ly: 0 },
       blip: (...a) => this.blip(...a), noise: (...a) => this.noise(...a),
+      ac, timers,
+      on: (target, type, fn, opts) => target.addEventListener(type, fn, Object.assign({}, opts, { signal: ac.signal })),
+      later: (fn, ms) => {
+        const id = setTimeout(() => { timers.delete(id); if (!t.dead) fn(); }, ms);
+        timers.add(id);
+        return id;
+      },
     };
     stage.innerHTML = '';
+    // back to the plain stage: the full-screen view is shared by every exhibit,
+    // and each one adds its own backdrop classes (brick, paper, dark...)
+    if (stage.dataset.base === undefined) stage.dataset.base = stage.className;
+    stage.className = stage.dataset.base;
     if (def.canvas) {
       t.cv = document.createElement('canvas');
       t.cv.className = 'ex-cv';
@@ -79,16 +94,41 @@ const Exhibits = {
       t.c = t.cv.getContext('2d');
     }
     this.size(t);
-    def.setup(t);
     this.pointer(t);
     this.live.push(t);
+    try { def.setup(t); } catch (err) { this.broke(t, err); }
     return t;
   },
 
   stop(t) {
     this.live = this.live.filter(x => x !== t);
-    if (t.def.destroy) t.def.destroy(t);
     t.dead = true;
+    if (t.def.destroy) { try { t.def.destroy(t); } catch (err) { /* already going */ } }
+    t.ac.abort(); // every listener the runner or the exhibit added through t.on
+    for (const id of t.timers) clearTimeout(id);
+    t.timers.clear();
+  },
+
+  // An exhibit that throws stops on its own (the rest of the hall keeps going)
+  // and offers to start again.
+  broke(t, err) {
+    if (t.broken) return;
+    t.broken = true;
+    console.error(`Hall of Art: "${t.def.name}" stopped`, err);
+    const el = t.el;
+    el.classList.add('broken');
+    const b = document.createElement('button');
+    b.className = 'ex-restart';
+    b.textContent = 'Tap to restart this piece';
+    b.addEventListener('click', e => {
+      e.stopPropagation();
+      if (t.big) { this.stop(t); this.bigEx = this.start(t.def, el, true); return; }
+      this.stop(t);
+      const nt = this.start(t.def, el, false);
+      el._ex = nt;
+      nt.visible = t.visible;
+    }, { signal: t.ac.signal });
+    el.appendChild(b);
   },
 
   size(t) {
@@ -104,27 +144,32 @@ const Exhibits = {
   },
 
   pointer(t) {
-    const el = t.el, p = t.p;
+    const el = t.el, p = t.p, on = (type, fn) => t.on(el, type, fn);
     const at = e => { const r = el.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
-    el.addEventListener('pointerdown', e => {
+    const safe = fn => e => { if (t.broken || t.dead) return; try { fn(e); } catch (err) { this.broke(t, err); } };
+    on('pointerdown', safe(e => {
       [p.x, p.y] = at(e); p.lx = p.x; p.ly = p.y;
       p.down = true; p.inside = true;
       t.awakeT = 3;
-      try { el.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+      // Hold on to the pointer for dragging, but not when the press is on a button
+      // or link: capturing would steal its click (and its pointerup) from it.
+      if (!e.target.closest('button, a, input, select, textarea, [data-free]')) {
+        try { el.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+      }
       Exhibits.tried(t.def.id);
       if (t.def.down) t.def.down(t, e);
-    });
-    el.addEventListener('pointermove', e => {
+    }));
+    on('pointermove', safe(e => {
       const [x, y] = at(e);
       p.vx = x - p.x; p.vy = y - p.y;
       p.x = x; p.y = y; p.inside = true;
       t.awakeT = 3;
       if (t.def.move) t.def.move(t, e);
-    });
-    const up = e => { if (!p.down) return; p.down = false; if (t.def.up) t.def.up(t, e); };
-    el.addEventListener('pointerup', up);
-    el.addEventListener('pointercancel', up);
-    el.addEventListener('pointerleave', () => { p.inside = false; if (!p.down) { p.x = -1e4; p.y = -1e4; } });
+    }));
+    const up = safe(e => { if (!p.down) return; p.down = false; if (t.def.up) t.def.up(t, e); });
+    on('pointerup', up);
+    on('pointercancel', up);
+    on('pointerleave', () => { p.inside = false; if (!p.down) { p.x = -1e4; p.y = -1e4; } });
   },
 
   // ---- The loop ----------------------------------------------------------------
@@ -149,20 +194,20 @@ const Exhibits = {
         const note = document.getElementById('auto-low');
         if (note) { note.classList.remove('hidden'); setTimeout(() => note.classList.add('hidden'), 6000); }
       }
+      requestAnimationFrame(step); // first, so one bad frame can never stop the loop
       let n = 0;
-      for (const t of this.live) {
+      for (const t of this.live.slice()) {
         n++;
         if (turns && !t.big && (n + frameNo) % 2 && t.drawnOnce) continue;
-        if (!t.def.frame || t.dead) continue;
+        if (!t.def.frame || t.dead || t.broken) continue;
         if (!t.visible && t.drawnOnce) continue; // off screen: rest (but draw once, so nothing starts blank)
         if (this.bigEx && !t.big) continue; // the grid rests while one exhibit is full screen
         if (this.still && !t.big && t.awakeT <= 0 && t.drawnOnce) continue; // reduced motion: only while you play
         t.awakeT -= dt;
-        t.def.frame(t, turns && !t.big ? Math.min(0.05, dt * 2) : dt, time);
+        try { t.def.frame(t, turns && !t.big ? Math.min(0.05, dt * 2) : dt, time); } catch (err) { this.broke(t, err); }
         t.drawnOnce = true;
         t.p.vx *= 0.8; t.p.vy *= 0.8;
       }
-      requestAnimationFrame(step);
     };
     requestAnimationFrame(step);
   },
@@ -225,7 +270,12 @@ const Exhibits = {
     let rt = 0;
     addEventListener('resize', () => {
       clearTimeout(rt);
-      rt = setTimeout(() => { for (const t of this.live) { this.size(t); if (t.def.resize) t.def.resize(t); } }, 120);
+      rt = setTimeout(() => {
+        for (const t of this.live) {
+          this.size(t);
+          if (t.def.resize && !t.broken) { try { t.def.resize(t); } catch (err) { this.broke(t, err); } }
+        }
+      }, 120);
     });
 
     // full screen view

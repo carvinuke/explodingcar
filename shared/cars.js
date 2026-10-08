@@ -103,17 +103,21 @@ const Cars = (() => {
         c.fillStyle = pal.dark;
         c.fillRect(-HW + 3, P(bb, zb), HW * 2 - 6, (bb - ba) * GY);
       }
-      box(c, -HW + 3, HW - 3, ca, cb, zb, zb + ch, pal.roof, pal.roofFront);
-      // the cabin's near face: windscreen (toward us) or rear window (away)
-      c.fillStyle = pal.glass;
-      c.fillRect(-HW + 5, P(ca, zb + ch - 2), HW * 2 - 10, (ch - 4) * GZ);
-      if (pal.lit) {
-        c.fillStyle = pal.glassHi;
-        c.fillRect(-HW + 7, P(ca, zb + ch - 2), 3, (ch - 4) * GZ);
+      // the glasshouse: sloped windscreen and rear window, side windows along the roof edges
+      const cu = CarShape.cabinU(t);
+      const [ra, rb] = span(cu.ur, cu.uf); // the roof, near end first
+      CarShape.cabinNS(c, pal, {
+        ya: ca, yb: cb, yRa: ra, yRb: rb, zb, zr: zb + ch, wb: HW - 3, wr: HW - 5.5,
+        nearIsBack: !toward, glassRoof: t === 'forklift',
+        paintNear: !toward && (t === 'tractor' || t === 'logtruck'),
+      });
+      if (t === 'sports') { // wing on two struts
+        const wy = yAt(0.03);
+        for (const x of [-HW + 5, HW - 7]) box(c, x, x + 2, wy - 1, wy + 1, zb, zb + 5, pal.dark, pal.dark);
+        box(c, -HW + 1, HW - 1, wy - 2.5, wy + 2.5, zb + 5, zb + 7, pal.top, pal.front);
       }
-      if (t === 'sports') box(c, -HW + 1, HW - 1, yAt(0.02) - 2, yAt(0.02) + 2, zb + 5, zb + 7, pal.top, pal.front); // wing
       if (t === 'taxi') {
-        const my = (ca + cb) / 2;
+        const my = (ra + rb) / 2;
         box(c, -6, 6, my - 4, my + 4, zb + ch, zb + ch + 5, '#fff7d1', '#e8d890');
         for (let x = -HW + 2, k = 0; x < HW - 2; x += 4, k++) {
           c.fillStyle = k % 2 ? '#16181c' : '#f7f7f2';
@@ -167,7 +171,8 @@ const Cars = (() => {
     }
     if ((v.police || v.responder) && (!v.wreck || v.wreckT < 5)) {
       const cab = T.cab, ch = cab ? cab[2] * TILE : 0;
-      const mid = cab ? (toward ? L / 2 - (cab[0] + cab[1]) / 2 * L : -L / 2 + (cab[0] + cab[1]) / 2 * L) : (toward ? -L / 2 + 10 : L / 2 - 10);
+      const um = cab ? (CarShape.cabinU(v.type).ur + CarShape.cabinU(v.type).uf) / 2 : 0; // the middle of the roof
+      const mid = cab ? (toward ? L / 2 - um * L : -L / 2 + um * L) : (toward ? -L / 2 + 10 : L / 2 - 10);
       const z = zt + ch;
       const on = Math.sin(time * 18) > 0;
       box(c, -8, 8, mid - 3, mid + 3, z, z + 3, '#333', '#222');
