@@ -12,8 +12,8 @@ const TC_MAPS = {
 
 // Car mixes
 const MIX_EASY = [['sedan', 5], ['small', 4], ['van', 1.5], ['pickup', 1.5]];
-const MIX_BIG = [['sedan', 4], ['small', 3], ['van', 2], ['pickup', 2], ['bus', 1.2], ['tanker', 0.6]];
-const MIX_CITY = [['sedan', 4], ['small', 3], ['taxi', 3], ['van', 1.5], ['bus', 1], ['sports', 1], ['police', 0.4]];
+const MIX_BIG = [['sedan', 4], ['small', 3], ['van', 2], ['pickup', 2], ['bus', 1.2], ['tanker', 0.6], ...luxMix(0.05)];
+const MIX_CITY = [['sedan', 4], ['small', 3], ['taxi', 3], ['van', 1.5], ['bus', 1], ['sports', 1], ['police', 0.4], ...luxMix(0.14)];
 const MIX_FARM = [['pickup', 3], ['sedan', 3], ['small', 2], ['van', 1.5], ['tanker', 0.8], ['bus', 0.6]];
 
 // rate: cars per second across all roads. turn: chance a car turns.

@@ -123,6 +123,7 @@ const Draw = (() => {
   // Everything about a car that doesn't move: drawn once per look and cached.
   function vehicleBody(c, v) {
     const T = VEHICLE_TYPES[v.type];
+    if (T.lux) { Lux.side(c, v); return; } // the luxury cars have their own shapes
     const L = v.len, hy = LANE_D / 2, pal = v.pal;
     const z0 = 4, zt = z0 + T.h * TILE;
     const fx = L / 2, bx = -L / 2;
@@ -359,7 +360,8 @@ const Draw = (() => {
 
     // wheels
     const big = t === 'sports' || t === 'bus' || t === 'tanker' || t === 'tractor' || t === 'logtruck';
-    for (const w of T.wheels) wheel(c, pal, w * L, hy, spin, big);
+    if (T.lux) Lux.wheelsSide(c, v, spin);
+    else for (const w of T.wheels) wheel(c, pal, w * L, hy, spin, big);
 
     // graphic mode: the car that ran the chick over keeps the evidence
     if (v.bloody) {
@@ -373,8 +375,9 @@ const Draw = (() => {
       c.fillRect(fx - 20, P(2, zt), 3, 2 * GY);
     }
 
-    // lights: headlights and indicators up front, tail lights behind
+    // lights: headlights and indicators up front, tail lights behind (the luxury cars draw their own)
     const hl = pal.lit && !v.dark ? '#fff7d1' : v.dark && pal.lit ? '#7d7a6c' : '#3a3a3a';
+    if (!T.lux) {
     c.fillStyle = hl;
     c.fillRect(fx - 4, P(-hy, zt - 2), 4, 4 * GZ);
     c.fillRect(fx - 3.5, P(hy - 2.5, zt), 3.5, 4.5 * GY);
@@ -385,6 +388,7 @@ const Draw = (() => {
     c.fillRect(bx, P(-hy, zt - 2), 3, 4 * GZ);
     c.fillRect(bx, P(hy - 2.5, zt), 3, 4.5 * GY);
     c.fillRect(bx, P(-hy + 7, zt), 3, 4.5 * GY);
+    }
     if (v.stalled && Math.sin(time * 8) > 0) { // hazard lights on a car stalled on the tracks
       c.fillStyle = '#ffae00';
       c.fillRect(fx - 4, P(-hy, zt - 2), 4, 5 * GZ);

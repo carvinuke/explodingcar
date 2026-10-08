@@ -35,6 +35,7 @@ const Cars = (() => {
   // `u` runs along the car from the back (0) to the front (1).
   function bodyNS(c, v) {
     const T = VEHICLE_TYPES[v.type], pal = v.pal, L = v.len, t = v.type;
+    if (T.lux) { Lux.ns(c, v); return; } // the luxury cars have their own shapes
     const toward = v.heading === 'S';
     const yAt = u => (toward ? L / 2 - u * L : -L / 2 + u * L); // world y of a point along the car
     const span = (u0, u1) => { const a = yAt(u0), b = yAt(u1); return a < b ? [a, b] : [b, a]; };
@@ -157,6 +158,7 @@ const Cars = (() => {
   // Things that change from frame to frame, drawn over the cached body.
   function liveNS(c, v, time) {
     const T = VEHICLE_TYPES[v.type], L = v.len;
+    if (T.lux) { luxLiveNS(c, v, time); return; }
     const z0 = 4, zt = z0 + T.h * TILE, toward = v.heading === 'S', yf = -L / 2;
     const zl = v.type === 'tanker' || !T.cab ? z0 + 10 : zt - 3;
     if (v.brake && !toward && v.pal.lit) { // brake lights
@@ -187,6 +189,22 @@ const Cars = (() => {
     }
   }
 
+  // Brake lights and blinkers on a luxury car, where its own lamps are.
+  function luxLiveNS(c, v, time) {
+    const D = LUX[v.type], toward = v.heading === 'S', yf = -v.len / 2;
+    if (!v.pal.lit) return;
+    const zt = Lux.at(Lux.prep(D).body, toward ? 1 : 0);
+    if (v.brake && !toward) {
+      c.fillStyle = 'rgba(255,70,70,0.85)';
+      for (const [x0, x1, dz] of D.brakeNS || [[-HW + 1, -HW + 6, 1.5], [HW - 6, HW - 1, 1.5]]) c.fillRect(x0, P(yf, zt - dz), x1 - x0, 2.6 * GZ);
+    }
+    if (v.blink && Math.sin(time * 12) > 0) {
+      const side = (toward ? -v.blink : v.blink) * (HW - 2.5);
+      c.fillStyle = '#ffae00';
+      c.fillRect(side - 2, P(yf, zt - 1.5), 4, 2.4 * GZ);
+    }
+  }
+
   // ---- Any heading -----------------------------------------------------------
   // Drawn at the current origin (the car's ground centre).
   function draw(c, v, time = 0) {
@@ -196,7 +214,7 @@ const Cars = (() => {
       if (v.dir < 0) c.scale(-1, 1);
       Draw.vehicle(c, v, 0, time);
       if (v.brake && v.pal.lit) { // brake lights at the back
-        const T = VEHICLE_TYPES[v.type], zt = 4 + T.h * TILE;
+        const T = VEHICLE_TYPES[v.type], zt = T.lux ? Lux.at(Lux.prep(LUX[v.type]).body, 0.01) + 0.5 : 4 + T.h * TILE;
         c.fillStyle = '#ff4d4d';
         c.fillRect(-v.len / 2 - 0.5, P(-HW, zt - 1.5), 3.5, 5 * GZ);
       }

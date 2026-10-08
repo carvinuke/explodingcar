@@ -231,7 +231,7 @@ const Powers = {
 
   // Decoy: a fake you, left where you're standing. Big trouble goes after it.
   placeDecoy(p, dur) {
-    this.decoy = { kind: 'decoy', x: p.x, y: p.y, row: p.row, maxRow: p.maxRow, alive: true, z: 0, t: dur, max: dur, facing: p.facing };
+    this.decoy = { kind: 'decoy', x: p.x, y: p.y, col: p.col, row: p.row, maxRow: p.maxRow, alive: true, z: 0, t: dur, max: dur, facing: p.facing }; // col: lightning and events aim by column
     FX.text(p.x, p.y + 30, 'DECOY!', '#ff9f1c', 18);
     FX.dust(p.x, p.y, 8);
   },
