@@ -49,14 +49,15 @@
 .timer b { font-size: 28px; font-weight: 900; font-variant-numeric: tabular-nums; }
 .timer.low { background: var(--sign-red); color: var(--sign-white); box-shadow: inset 0 0 0 2px var(--sign-red), inset 0 0 0 3.5px var(--sign-white), 0 3px 0 rgba(0, 0, 0, 0.3); animation: bump 0.5s ease infinite; }
 
-/* Brake and boost: touch screens only */
+/* Boost (and BOOM): touch screens only */
 .pedals {
   position: absolute;
   left: max(14px, env(safe-area-inset-left));
   right: max(14px, env(safe-area-inset-right));
   bottom: max(14px, env(safe-area-inset-bottom));
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
+  gap: 12px;
   pointer-events: none;
 }
 .pedal {
@@ -80,7 +81,9 @@
 
 /* ---- Title ---------------------------------------------------------------------- */
 .sign-arrow { flex: none; width: clamp(36px, 10vw, 64px); height: auto; color: var(--sign-white); }
-.modes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.modes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 520px) { .modes { grid-template-columns: 1fr 1fr; } .modes .m-hy { grid-column: span 2; } }
+.mode-btn.m-hy { background: linear-gradient(120deg, #3b2468, #1d4f91 55%, #00a6c8); box-shadow: inset 0 0 0 3px #3b2468, inset 0 0 0 5px var(--sign-white), 0 5px 0 #22163f; }
 .mode-btn.m-cp { background: var(--sign-green); box-shadow: inset 0 0 0 3px var(--sign-green), inset 0 0 0 5px var(--sign-white), 0 5px 0 var(--sign-green-deep); }
 .mode-btn.m-ww { background: var(--sign-red); box-shadow: inset 0 0 0 3px var(--sign-red), inset 0 0 0 5px var(--sign-white), 0 5px 0 var(--sign-red-deep); }
 .mode-btn { flex-direction: column; align-items: flex-start; gap: 4px; }

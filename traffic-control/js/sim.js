@@ -2,7 +2,7 @@
 // Traffic Control: the crossings, their lights, the cars and the trains.
 // World units match Road Rush: x runs right, y runs up the screen (north),
 // z is height. The levels have one crossing, centred on (0, 0); a custom level
-// can have up to four, on east-west avenues (rows) and north-south streets (cols).
+// can have up to nine, on east-west avenues (rows) and north-south streets (cols).
 
 const RW = 40;           // road half-width: two lanes, 40 each
 const LANE = 20;         // lane centre, from the road's middle
@@ -110,6 +110,9 @@ const TCSim = {
     this.patienceMul = opts.patienceMul || 1;
     this.rain = !!level.rain;
     this.night = !!level.night;
+    this.snow = !!level.snow; // (custom shifts: snow, fog and dusk too)
+    this.fog = !!level.fog;
+    this.dusk = !!level.dusk;
     this.rush = { t: level.rush ? 35 : Infinity, on: 0 };
     this.lastCrash = null;
     this.nextId = 1;
@@ -119,7 +122,7 @@ const TCSim = {
   // The crossings and where traffic enters. A level's own `ways` (one crossing)
   // or a custom level's layout, shapes and automatic lights.
   buildNetwork(level) {
-    const L = TC_LAYOUTS[level.layout || 1];
+    const L = level.grid || TC_LAYOUTS[level.layout || 1]; // (a custom grid comes spaced out already)
     this.nodes = [];
     L.rows.forEach((y, r) => L.cols.forEach((x, k) => {
       const sides = { N: true, E: true, S: true, W: true };
@@ -233,27 +236,37 @@ const TCSim = {
   },
   // Room in the lane past this light? Counts the cars already in it, and the ones
   // queued ahead at the same light (they'll get there first). An empty lane always has room.
+  // At an automatic crossing, a car that's waited much longer for the same lane at
+  // another light has first call on it (or a bus could wait forever behind small cars
+  // slipping into every gap).
   roomAfter(car, st) {
     let used = 0;
-    const me = st.s - (car.s + car.half);
+    const me = st.s - (car.s + car.half), fair = this.nodes[st.n].auto, mine = car.stuckT || 0;
     for (const o of this.cars) {
       if (o === car || o.gone) continue;
       const os = o.stops && o.stops[o.si];
       if (o.link === st.link || (os && !o.wreck && os.n === st.n && os.h === st.h && os.link === st.link && os.s - (o.s + o.half) < me)) used += o.len + 6;
+      else if (fair && os && !o.wreck && os.link === st.link && o.stuckT > 10 && o.stuckT > mine + 5 && os.s - (o.s + o.half) < 40) used += o.len + 6;
     }
     return used === 0 || used + car.len + 6 <= st.cap;
   },
-  // A turning driver stuck waiting for room gives up and goes straight on, if that's possible.
+  // A turning driver stuck waiting for room gives up and goes straight on, or
+  // round the other corner (where the road ends in a T, say), if there's room that way.
   reroute(car) {
     const N = this.nodes[car.turnNode];
     car.fullT = 0;
-    if (!this.clearTo(N.i, car.h0)) return;
-    const path = pathAt('straight', car.h0, N.x, N.y);
-    const stops = this.makeStops(path, [N, ...this.ahead(N.i, car.h0)].map(n => [n, car.h0]));
-    if (!stops.length || !this.roomAfter(car, stops[0])) return;
-    Object.assign(car, { path, stops, si: 0, first: stops[0].s, turn: 0, blink: 0, turnNode: -1, turnS: -1 });
-    car.s = sOnPath(path, car.x, car.y);
-    this.place(car);
+    const other = car.turn < 0 ? 'right' : 'left';
+    for (const [kind, h2] of [['straight', car.h0], [other, TURN_TO[other][car.h0]]]) {
+      if (!this.clearTo(N.i, h2)) continue;
+      const path = pathAt(kind, car.h0, N.x, N.y);
+      const stops = this.makeStops(path, [[N, car.h0], ...this.ahead(N.i, h2).map(n => [n, h2])]);
+      if (!stops.length || stops[0].n !== N.i || !this.roomAfter(car, stops[0])) continue;
+      const turn = kind === 'straight' ? 0 : kind === 'left' ? -1 : 1;
+      Object.assign(car, { path, stops, si: 0, first: stops[0].s, turn, blink: turn, turnNode: turn ? N.i : -1, turnS: turn ? stops[0].s : -1 });
+      car.s = sOnPath(path, car.x, car.y);
+      this.place(car);
+      return;
+    }
   },
 
   // Swap in the next Endless difficulty without disturbing anything on the road.
@@ -296,7 +309,8 @@ const TCSim = {
   // one road at a time, so nothing can cross anything; the road that's waited
   // longest with cars on it goes next, and a green stays on while cars keep coming.
 
-  // Cars coming up to a light (none, if the one at the front is waiting for room past the crossing).
+  // Cars coming up to a light (none, if the one at the front has no room past the
+  // crossing: its green comes once there's room, so other roads can't starve it).
   queueAt(N, h, near = 240, moving = 0) {
     let n = 0, head = null, headD = Infinity;
     for (const c of this.cars) {
@@ -306,7 +320,9 @@ const TCSim = {
       if (d < headD) { headD = d; head = c; }
       if (d < near && (c.v > moving || d < 40)) n++;
     }
-    return head && head.held ? 0 : n;
+    if (!head) return n;
+    const st = head.stops[head.si];
+    return head.held || (st.cap < Infinity && headD < 160 && !this.roomAfter(head, st)) ? 0 : n;
   },
   setPhase(N, h) {
     const othersGo = N.ways.some(k => k !== h && N.lights[k].state !== 'red');
@@ -325,12 +341,20 @@ const TCSim = {
   autoStep(N, dt) {
     N.greenT = (N.greenT || 0) + dt;
     if (N.phase) N.lastGo[N.phase] = this.time;
+    // a custom shift's timer lights: every road gets the same green in turn, cars or not
+    const timer = N.auto && this.level.timer;
+    if (timer) {
+      if (N.greenT < timer + this.yellow + CLEAR) return;
+      const ways = N.ways;
+      this.setPhase(N, ways[(ways.indexOf(N.phase) + 1) % ways.length]);
+      return;
+    }
     N.autoT -= dt;
     if (N.autoT > 0) return;
     N.autoT = 0.4;
     const cur = N.phase;
     // keep the green while cars are still coming (up to a limit)
-    if (cur && N.greenT < 10 && this.queueAt(N, cur, 120, 15) > 0) return;
+    if (cur && N.greenT < (this.level.autoMax || 10) && this.queueAt(N, cur, 120, 15) > 0) return;
     let best = null, score = 0;
     for (const h of N.ways) {
       if (h === cur) continue;
@@ -405,9 +429,17 @@ const TCSim = {
     const edge = (h === 'E' || h === 'W' ? this.viewX : this.viewY) + car.len / 2 + 30;
     car.s = FAR - edge - (N.x * u[0] + N.y * u[1]);
     // room behind the last car on this road?
-    for (const o of this.cars) {
-      if (o.stream !== e.id || o.s + o.half > o.first + 0.5) continue;
-      if (o.s - o.half - (car.s + car.len / 2) < 14) return false;
+    if (!lv.custom) {
+      for (const o of this.cars) {
+        if (o.stream !== e.id || o.s + o.half > o.first + 0.5) continue;
+        if (o.s - o.half - (car.s + car.len / 2) < 14) return false;
+      }
+    } else { // (a network's paths are built at different crossings, so measure on the map)
+      const at = posAt(path, car.s);
+      for (const o of this.cars) {
+        if (o.stream !== e.id || o.si > 0) continue;
+        if ((o.x - at.x) * u[0] + (o.y - at.y) * u[1] - o.half - car.len / 2 < 14) return false;
+      }
     }
     const T = VEHICLE_TYPES[type];
     Object.assign(car, {
@@ -444,7 +476,7 @@ const TCSim = {
         car.link = st.link;
         car.si++;
         car.committed = car.si >= car.stops.length;
-        if (car.si === 1 && this.hooks.commit) this.hooks.commit(car);
+        if (car.si === 1 && !car.didCommit) { car.didCommit = true; if (this.hooks.commit) this.hooks.commit(car); }
         if (car.si < car.stops.length) { car.wait = 0; car.honked = 0; car.rage = false; } // a fresh light, a fresh temper
         st = null;
       } else if (!car.rage && !car.reckless) {
@@ -471,13 +503,18 @@ const TCSim = {
     }
     // the car in front (and any wreck in the lane)
     let leadGap = Infinity;
+    const net = this.level.custom, myNext = car.stops[car.si], myLast = car.stops[car.si - 1];
     for (const o of this.cars) {
       if (o === car || o.gone) continue;
       const rx = o.x - car.x, ry = o.y - car.y;
       const along = rx * car.ax + ry * car.ay;
       if (along <= 0 || along > 300) continue;
       const same = o.ax === car.ax && o.ay === car.ay;
-      if (!(o.wreck || same || o.stream === car.stream)) continue; // cross traffic: drivers trust their green light
+      // in a network, cars from other roads share lanes: one that came through the
+      // same side of the crossing as us is just ahead in our lane, even mid-turn
+      const oLast = net && o.stops[o.si - 1];
+      const ours = oLast && ((myNext && myNext.n === oLast.n && myNext.h === oLast.h) || (myLast && myLast.n === oLast.n && myLast.h === oLast.h));
+      if (!(o.wreck || same || o.stream === car.stream || ours)) continue; // cross traffic: drivers trust their green light
       const [ohx, ohy] = Cars.halfSize(o);
       const oAlong = car.ax !== 0 ? ohx : ohy, oAcross = car.ax !== 0 ? ohy : ohx;
       const lat = Math.abs(rx * car.ay - ry * car.ax);
@@ -495,7 +532,7 @@ const TCSim = {
     return gap;
   },
 
-  decel() { return this.rain ? 140 : 250; },
+  decel() { return this.rain ? 140 : this.snow ? 115 : 250; },
 
   updateCar(car, dt) {
     const gap = this.gapAhead(car);
@@ -507,8 +544,14 @@ const TCSim = {
     else car.v = Math.max(want, car.v - dec * 1.9 * dt);
     car.brake = want < car.vmax - 5 && car.v > 2 ? true : car.v < 3 && !car.committed;
     car.s += car.v * dt;
-    car.fullT = car.held && car.v < 6 ? (car.fullT || 0) + dt : 0;
-    if (car.fullT > 8 && car.turn && car.stops[car.si] && car.stops[car.si].n === car.turnNode) this.reroute(car);
+    car.stuckT = car.v < 6 && car.si < car.stops.length ? (car.stuckT || 0) + dt : 0; // (how long it's been waiting at a light)
+    if (car.held && car.v < 6) car.fullT = (car.fullT || 0) + dt; // waiting for room past a green...
+    else if (car.v > 6) car.fullT = 0; // (...and a red in between doesn't reset it)
+    // a turning driver stuck for room gives up: after 8 s held at a green, or (at a crossing
+    // that runs itself, which won't waste a green on it) after a long wait for room
+    const ts = car.turn && car.stops[car.si];
+    if (ts && ts.n === car.turnNode && (car.fullT > 8
+      || (car.stuckT > 12 && this.nodes[ts.n].auto && car.stuckT % 2 < dt && !this.roomAfter(car, ts)))) this.reroute(car);
     if (car.blink && car.heading !== car.h0) { // finished turning?
       const T = this.nodes[Math.max(0, car.turnNode)];
       if (Math.abs(car.x - T.x) > RW || Math.abs(car.y - T.y) > RW) car.blink = 0;

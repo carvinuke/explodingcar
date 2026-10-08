@@ -70,14 +70,13 @@ window.makeDioramas = function (LAYER) {
       for (let x = x0 + 4; x < x1 - 10; x += 26) c.fillRect(x, P(26.5, 0), 13, 3 * GY);
       c.fillStyle = 'rgba(247,247,242,0.9)'; c.fillRect(x0, P(63, 0), x1 - x0, 1.8 * GY); c.fillRect(x0, P(-13, 0), x1 - x0, 1.8 * GY);
     }
-    const red = car('sedan', '#e63946', 'E'), bus = car('bus', '#ffb703', 'W');
+    const red = car('elfer', '#d1202e', 'W'), bus = car('bus', '#ffb703', 'E'), toro = car('toroV12', '#9bd427', 'W');
     const items = [
       { x: -70, y: 92, draw: () => Draw.tree(c, tree(TOWN_TREE, 15, 3)), shadow: () => Draw.shadow(c, -70, 92, 42, 37, 0.8) },
       { x: 10, y: 88, draw: () => Draw.tree(c, tree(TOWN_TREE, 14, 2)), shadow: () => Draw.shadow(c, 10, 88, 40, 35, 0.8) },
       { x: 95, y: 92, draw: () => Draw.tree(c, tree(TOWN_TREE, 16, 3)), shadow: () => Draw.shadow(c, 95, 92, 44, 38, 0.8) },
       { x: -115, y: 80, draw: () => Draw.bush(c, { pal: { top: '#62b44e', front: '#4b953d', top2: '#77c75f', front2: '#5aa648' }, flower: '#ffe066' }) },
-      { x: -55, y: 46, draw: () => Cars.draw(c, red, 0.3), shadow: () => { c.save(); c.translate(-55, P(46, 0)); Cars.shadow(c, red, 0.9); c.restore(); } },
-      { x: 70, y: 5, draw: () => Cars.draw(c, bus, 0.3), shadow: () => { c.save(); c.translate(70, P(5, 0)); Cars.shadow(c, bus, 0.9); c.restore(); } },
+      ...[[red, -72, 5], [bus, 58, 46], [toro, 52, 5]].map(([v, x, y]) => ({ x, y, draw: () => Cars.draw(c, v, 0.3), shadow: () => { c.save(); c.translate(x, P(y, 0)); Cars.shadow(c, v, 0.9); c.restore(); } })),
       { x: -105, y: -35, draw: () => Draw.lamp(c, { dir: 1 }) },
       { x: 70, y: -38, draw: () => Draw.hydrant(c) },
       ...[-30, -8, 14].map((x, i) => ({ x, y: -36, draw: () => Draw.coin(c, { phase: i * 1.2 }, 0.4) })),
@@ -115,7 +114,7 @@ window.makeDioramas = function (LAYER) {
         if (on) { c.globalCompositeOperation = 'lighter'; glow(c, 0, y, 20, col.replace('#', '') && (s === 'green' ? 'rgba(60,240,120,0.55)' : 'rgba(255,60,60,0.55)')); c.globalCompositeOperation = 'source-over'; }
       });
     };
-    const taxi = car('taxi', null, 'S'), blue = car('sedan', '#3a86ff', 'E'), van = car('van', '#e07a5f', 'N'), amb = car('ambulance', null, 'W');
+    const taxi = car('taxi', null, 'S'), blue = car('rossoF8', '#d40000', 'E'), van = car('gelande', '#b5a37a', 'N'), amb = car('ambulance', null, 'W');
     const cs = (v, x, y) => ({ x, y, draw: () => Cars.draw(c, v, 0.2), shadow: () => { c.save(); c.translate(x, P(y, 0)); Cars.shadow(c, v, 0.9); c.restore(); } });
     const items = [
       { x: -95, y: 85, draw: () => Draw.tree(c, tree(TOWN_TREE, 15, 3)), shadow: () => Draw.shadow(c, -95, 85, 42, 37, 0.8) },
@@ -144,7 +143,7 @@ window.makeDioramas = function (LAYER) {
     // ramp
     for (let i = 0; i < 6; i++) B(c, -36, -4, -118 + i * 5, -113 + i * 5, 0, (i + 1) * 2.2, i % 2 ? '#ffd23f' : '#2b2f36', i % 2 ? '#c99a10' : '#1b1e23');
     }
-    const me = car('sports', '#ffb020', 'N'), van = car('van', '#81b29a', 'N'), taxi = car('taxi', null, 'N'), wreck = car('pickup', '#e76f51', 'N');
+    const me = car('toroV12', '#ff7a1a', 'N'), van = car('van', '#81b29a', 'N'), taxi = car('taxi', null, 'N'), wreck = car('pickup', '#e76f51', 'N');
     Cars.wreck(wreck);
     const cs = (v, x, y) => ({ x, y, draw: () => Cars.draw(c, v, 0.2), shadow: () => { c.save(); c.translate(x, P(y, 0)); Cars.shadow(c, v, 0.9); c.restore(); } });
     const fire = () => { // the wreck going up in flames
@@ -222,7 +221,15 @@ window.makeDioramas = function (LAYER) {
       for (const x of [-60, 60]) { B(c, x - 1.5, x + 1.5, -1.5, 1.5, 0, 26, '#ffd84a', '#c9a020'); c.fillStyle = '#ffd84a'; c.beginPath(); c.arc(x, P(0, 28), 3.2, 0, 6.2832); c.fill(); }
       c.strokeStyle = '#b3122e'; c.lineWidth = 2.6; c.beginPath(); c.moveTo(-60, P(0, 24)); c.quadraticCurveTo(0, P(0, 6), 60, P(0, 24)); c.stroke();
     };
+    const classic = car('elferClassic', '#e3b505', 'E');
+    const turntable = () => {
+      const disc = (z, r, col) => { c.fillStyle = col; c.beginPath(); c.ellipse(0, P(0, z), r, r * GY, 0, 0, 6.2832); c.fill(); };
+      disc(0, 46, '#b9b0cc'); c.fillStyle = '#b9b0cc'; c.fillRect(-46, P(0, 4), 92, 4 * GZ);
+      disc(4, 46, '#f7f4fb'); disc(4, 38, '#ece6f5');
+      c.save(); c.translate(0, P(0, 4)); Cars.shadow(c, classic, 0.5); Cars.draw(c, classic, 0.2); c.restore();
+    };
     const items = [
+      { x: 0, y: -26, draw: turntable, shadow: () => Draw.shadow(c, 0, -26, 100, 80, 0.35) },
       { x: -70, y: 30, draw: pedestal(orb), shadow: () => Draw.shadow(c, -70, 30, 34, 30, 0.6) },
       { x: 70, y: 30, draw: pedestal(cube), shadow: () => Draw.shadow(c, 70, 30, 34, 30, 0.6) },
       { x: 0, y: 46, draw: () => { B(c, -16, 16, -2, 2, 0, 58, '#5b3a9e', '#3b2468'); c.fillStyle = 'rgba(255,255,255,0.85)'; c.font = `900 9px ${UI_FONT}`; c.textAlign = 'center'; c.fillText('HALL', 0, P(-2, 46)); c.fillText('OF ART', 0, P(-2, 34)); } },

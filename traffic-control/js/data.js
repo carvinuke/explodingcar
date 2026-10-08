@@ -65,72 +65,196 @@ function tcEndlessLevel(cars) {
 }
 
 // ---- Custom shifts ----------------------------------------------------------------
-// Where the crossings go (world units). Avenues are rows (east-west), streets are columns.
+// Where the crossings go (world units, before the block size). Avenues are rows
+// (east-west), streets are columns; crossings are numbered along the bottom row
+// first, left to right.
 const TC_LAYOUTS = {
-  1: { rows: [0], cols: [0] },
-  2: { rows: [0], cols: [-160, 160] },
-  3: { rows: [0], cols: [-320, 0, 320] },
-  4: { rows: [-150, 150], cols: [-170, 170] },
+  1:    { name: '1 crossing', short: '1', rows: [0], cols: [0] },
+  2:    { name: '2 crossings', short: '2', rows: [0], cols: [-160, 160] },
+  3:    { name: '3 in a row', short: '3', rows: [0], cols: [-320, 0, 320] },
+  row4: { name: '4 in a row', short: '4', rows: [0], cols: [-480, -160, 160, 480] },
+  col2: { name: '2 stacked', short: '2 up', rows: [-150, 150], cols: [0] },
+  4:    { name: '2×2 grid', short: '2×2', rows: [-150, 150], cols: [-170, 170] },
+  g23:  { name: '2×3 grid', short: '2×3', rows: [-150, 150], cols: [-320, 0, 320] },
+  g33:  { name: '3×3 grid', short: '3×3', rows: [-300, 0, 300], cols: [-320, 0, 320] },
 };
-// Crossing shapes, one per crossing ('TN': no road to the north, 'TS': none to the south).
-// Crossings are numbered along the bottom row first, left to right.
-const TC_SHAPES = {
-  '4':   { 1: ['4'], 2: ['4', '4'], 3: ['4', '4', '4'], 4: ['4', '4', '4', '4'] },
-  T:     { 1: ['TN'], 2: ['TN', 'TS'], 3: ['TN', 'TS', 'TN'], 4: ['4', 'TS', 'TN', '4'] },
-  mixed: { 1: ['TS'], 2: ['4', 'TN'], 3: ['TS', '4', 'TN'], 4: ['4', 'TS', '4', '4'] },
+const TC_LAYOUT_ORDER = ['1', '2', '3', 'row4', 'col2', '4', 'g23', 'g33'];
+const tcLayoutSize = id => TC_LAYOUTS[id].rows.length * TC_LAYOUTS[id].cols.length;
+// Crossing shapes: '4' has four roads; 'TN' has none to the north, 'TS' none to
+// the south (a T only fits where the street would run off the edge of the grid).
+const TC_SHAPE_NAMES = { 4: '4-way', TN: 'T: no north', TS: 'T: no south' };
+function tcShapesAllowed(layout, i) {
+  const L = TC_LAYOUTS[layout], r = Math.floor(i / L.cols.length), out = ['4'];
+  if (r === L.rows.length - 1) out.push('TN');
+  if (r === 0) out.push('TS');
+  return out;
+}
+
+// The vehicle groups you can dial up and down (0 none, 1 a few, 2 some, 3 lots).
+const TC_MIX_GROUPS = {
+  cars:   { name: 'Everyday cars', w: [0, 2, 5, 9], types: [['sedan', 0.55], ['small', 0.45]] },
+  vans:   { name: 'Vans and pickups', w: [0, 1, 2.5, 5], types: [['van', 0.5], ['pickup', 0.5]] },
+  taxis:  { name: 'Taxis', w: [0, 1, 3, 6], types: [['taxi', 1]] },
+  big:    { name: 'Buses and tankers', sub: 'Slow to clear a crossing', w: [0, 0.6, 1.8, 4], types: [['bus', 0.65], ['tanker', 0.35]] },
+  sports: { name: 'Sports cars', w: [0, 0.5, 1.5, 4], types: [['sports', 1]] },
+  lux:    { name: 'Supercars', sub: 'Elfers, Toros, Rossos and more', w: [0, 0.6, 2, 5], types: null },
+  police: { name: 'Police cars', w: [0, 0.3, 1, 2.5], types: [['police', 1]] },
+  farm:   { name: 'Tractors and log trucks', w: [0, 0.4, 1.2, 3], types: [['tractor', 0.5], ['logtruck', 0.5]] },
+  medic:  { name: 'Ambulances and fire trucks', sub: 'In a hurry: quick greens pay a bonus', w: [0, 0.04, 0.08, 0.15] },
 };
-// Which crossings go automatic first (so you keep the middle ones).
-const TC_AUTO_ORDER = { 1: [0], 2: [1, 0], 3: [2, 0, 1], 4: [3, 0, 1, 2] };
+const TC_MIX_LEVELS = [[0, 'None'], [1, 'Few'], [2, 'Some'], [3, 'Lots']];
 
 const TC_CUSTOM_DEFAULT = {
-  goal: 0, crossings: 2, shape: '4', auto: 0, rate: 24, speed: 1, reckless: 0, turn: 1, patience: 1,
-  big: true, medic: false, lux: false, train: false, rain: false, night: false, rush: false, strikes: 3, look: 'main',
+  v: 2,
+  layout: '2', spacing: 1, look: 'main', shapes: [], autos: [], autoMode: 'smart', autoGreen: 10,
+  rate: 24, speed: 1, turn: 25, reckless: 0, patience: 12, rush: false,
+  mix: { cars: 2, vans: 1, taxis: 0, big: 1, sports: 0, lux: 0, police: 0, farm: 0, medic: 0 },
+  weather: 'clear', time: 'day', train: false, trainEvery: 28,
+  goal: 0, strikes: 3, limit: 0, amber: 1.1, powers: 1,
 };
 const TC_CUSTOM_OPTS = {
-  goal: [[10, '10'], [25, '25'], [50, '50'], [100, '100'], [0, 'Endless']],
-  crossings: [[1, '1'], [2, '2'], [3, '3'], [4, '2×2']],
-  shape: [['4', '4-way'], ['T', 'T-junction'], ['mixed', 'Mixed']],
-  turn: [[0, 'None'], [1, 'Some'], [2, 'Lots']],
-  reckless: [[0, 'None'], [1, 'A few'], [2, 'Lots']],
-  patience: [[0, 'Relaxed'], [1, 'Normal'], [2, 'Short']],
-  strikes: [[3, '3'], [5, '5'], [0, 'Unlimited']],
+  layout: TC_LAYOUT_ORDER.map(k => [k, TC_LAYOUTS[k].short]),
+  spacing: [[0.8, 'Short'], [1, 'Normal'], [1.25, 'Long']],
   look: [['main', 'Main Street'], ['downtown', 'Downtown'], ['rail', 'Countryside']],
+  autoMode: [['smart', 'Smart'], ['timer', 'Timer']],
+  weather: [['clear', 'Clear'], ['rain', 'Rain'], ['snow', 'Snow'], ['fog', 'Fog']],
+  time: [['day', 'Day'], ['dusk', 'Dusk'], ['night', 'Night']],
+  limit: [[0, 'Off'], [60, '1 min'], [120, '2 min'], [180, '3 min'], [300, '5 min'], [600, '10 min']],
+  powers: [[0, 'Off'], [1, 'Normal'], [2, 'Lots']],
+};
+// Sliders: [min, max, step]
+const TC_CUSTOM_RANGES = {
+  autoGreen: [4, 20, 1], rate: [10, 120, 2], speed: [0.5, 1.8, 0.1], turn: [0, 60, 5], reckless: [0, 30, 1],
+  patience: [5, 40, 1], trainEvery: [15, 60, 1], goal: [0, 300, 5], strikes: [0, 10, 1], amber: [0.6, 2.5, 0.1],
 };
 
+// Anything odd (old saves, hand-edited storage) falls back to the defaults, and
+// the per-crossing lists always match the layout.
+function tcCustomClean(src) {
+  const D = TC_CUSTOM_DEFAULT, o = Object.assign({}, D, src || {}, { v: 2 });
+  for (const k in TC_CUSTOM_OPTS) if (!TC_CUSTOM_OPTS[k].some(([v]) => v === o[k])) o[k] = D[k];
+  for (const k in TC_CUSTOM_RANGES) {
+    const [lo, hi, step] = TC_CUSTOM_RANGES[k], n = Number(o[k]);
+    o[k] = Number.isFinite(n) ? clamp(Math.round((n - lo) / step) * step + lo, lo, hi) : D[k];
+    o[k] = Math.round(o[k] * 100) / 100;
+  }
+  const mix = {};
+  for (const g in TC_MIX_GROUPS) { const n = o.mix && o.mix[g]; mix[g] = [0, 1, 2, 3].includes(n) ? n : D.mix[g]; }
+  o.mix = mix;
+  const n = tcLayoutSize(o.layout), shapes = [], autos = [];
+  for (let i = 0; i < n; i++) {
+    const sh = Array.isArray(o.shapes) ? o.shapes[i] : '4';
+    shapes.push(tcShapesAllowed(o.layout, i).includes(sh) ? sh : '4');
+    autos.push(Array.isArray(o.autos) && o.autos[i] ? 1 : 0);
+  }
+  o.shapes = shapes;
+  o.autos = autos;
+  o.train = !!o.train;
+  o.rush = !!o.rush;
+  return o;
+}
+
+// Settings saved before the crossing editor (crossings + a shape preset + how many automatic).
+function tcCustomMigrate(old) {
+  const n = [1, 2, 3, 4].includes(old.crossings) ? old.crossings : 2;
+  const SHAPES = {
+    4:     { 1: ['4'], 2: ['4', '4'], 3: ['4', '4', '4'], 4: ['4', '4', '4', '4'] },
+    T:     { 1: ['TN'], 2: ['TN', 'TS'], 3: ['TN', 'TS', 'TN'], 4: ['4', 'TS', 'TN', '4'] },
+    mixed: { 1: ['TS'], 2: ['4', 'TN'], 3: ['TS', '4', 'TN'], 4: ['4', 'TS', '4', '4'] },
+  };
+  const ORDER = { 1: [0], 2: [1, 0], 3: [2, 0, 1], 4: [3, 0, 1, 2] }, autos = [];
+  for (let i = 0; i < Math.min(old.auto | 0, n); i++) autos[ORDER[n][i]] = 1;
+  return tcCustomClean({
+    layout: String(n), shapes: (SHAPES[old.shape] || SHAPES[4])[n], autos, look: old.look,
+    rate: old.rate, speed: old.speed, turn: [0, 25, 50][old.turn], reckless: [0, 5, 14][old.reckless], patience: [18, 12, 8][old.patience],
+    mix: { cars: 2, vans: 1, taxis: old.look === 'downtown' ? 2 : 0, big: old.big === false ? 0 : 1, sports: old.look === 'downtown' ? 1 : 0, lux: old.lux ? 2 : 0, police: 0, farm: 0, medic: old.medic ? 2 : 0 },
+    weather: old.rain ? 'rain' : 'clear', time: old.night ? 'night' : 'day', train: old.train, rush: old.rush,
+    goal: old.goal, strikes: old.strikes,
+  });
+}
+
 function tcCustomLevel(o) {
-  const n = o.crossings, mix = [['sedan', 5], ['small', 4], ['van', 1.5], ['pickup', 1.5]];
-  if (o.look === 'downtown') mix.push(['taxi', 3], ['sports', 1], ['police', 0.4]);
-  if (o.look === 'rail') mix.push(['pickup', 2]);
-  if (o.big) mix.push(['bus', 1.2], ['tanker', 0.6]);
-  if (o.lux) mix.push(...luxMix(0.4));
-  const auto = [];
-  for (let i = 0; i < Math.min(o.auto, n); i++) auto[TC_AUTO_ORDER[n][i]] = true;
-  const rail = !!o.train && n === 1;
+  const L = TC_LAYOUTS[o.layout], n = tcLayoutSize(o.layout), sp = o.spacing, mix = [];
+  for (const g in TC_MIX_GROUPS) {
+    const G = TC_MIX_GROUPS[g], w = G.w[o.mix[g]];
+    if (!w || g === 'medic') continue;
+    const types = G.types || Object.keys(LUX_TYPES).map(k => [k, 1 / Object.keys(LUX_TYPES).length]);
+    for (const [t, k] of types) mix.push([t, w * k]);
+  }
+  if (!mix.length) mix.push(['sedan', 5], ['small', 4]);
+  const rail = !!o.train && n === 1, snow = o.weather === 'snow', fog = o.weather === 'fog';
   return {
     custom: true, map: o.look, name: 'Custom Shift', goal: o.goal || Infinity, endless: !o.goal,
-    layout: n, shapes: TC_SHAPES[o.shape][n], auto,
-    rate: o.rate / 60, speed: o.speed, turn: [0, 0.25, 0.5][o.turn], reckless: [0, 0.05, 0.14][o.reckless],
-    ambulance: o.medic ? 0.07 : 0, rail, train: rail ? 28 : 0,
-    rain: !!o.rain, night: !!o.night, rush: !!o.rush, mix, patience: [18, 12, 8][o.patience],
+    layout: o.layout, grid: { rows: L.rows.map(y => y * sp), cols: L.cols.map(x => x * sp) },
+    shapes: o.shapes.slice(0, n), auto: o.autos.slice(0, n).map(Boolean),
+    timer: o.autoMode === 'timer' ? o.autoGreen : 0, autoMax: o.autoGreen,
+    rate: o.rate / 60, speed: o.speed * (snow ? 0.85 : fog ? 0.9 : 1), turn: o.turn / 100, reckless: o.reckless / 100,
+    ambulance: TC_MIX_GROUPS.medic.w[o.mix.medic], rail, train: rail ? o.trainEvery : 0,
+    rain: o.weather === 'rain', snow, fog, dusk: o.time === 'dusk', night: o.time === 'night',
+    rush: o.rush, mix, patience: o.patience,
   };
 }
 
 // Coins per car for a custom shift: the harder the settings, the more it pays
 // (a crossing that runs itself pays nothing).
 function tcCustomPay(o) {
-  const manual = o.crossings - Math.min(o.auto, o.crossings);
+  const n = tcLayoutSize(o.layout), manual = n - o.autos.slice(0, n).filter(Boolean).length;
   if (!manual) return 0;
-  let k = 0.8 * clamp(o.rate / 28, 0.4, 2.2) * (0.6 + 0.4 * o.speed);
-  k *= [1, 1.25, 1.45, 1.6][manual - 1];
-  k *= [1, 1.12, 1.25][o.turn] * [1, 1.15, 1.35][o.reckless] * [0.85, 1, 1.2][o.patience];
-  if (o.rain) k *= 1.1;
-  if (o.night) k *= 1.08;
-  if (o.train && o.crossings === 1) k *= 1.15;
-  if (o.medic) k *= 1.05;
+  let k = 0.8 * clamp(o.rate / 28, 0.4, 2.6) * (0.6 + 0.4 * o.speed);
+  k *= [1, 1.25, 1.45, 1.6, 1.72, 1.82, 1.9, 1.96, 2][manual - 1];
+  k *= (1 + o.turn / 200) * (1 + o.reckless / 40) * clamp(1.2 - (o.patience - 8) / 50, 0.8, 1.2);
+  k *= { clear: 1, rain: 1.1, snow: 1.18, fog: 1.12 }[o.weather] * { day: 1, dusk: 1.04, night: 1.08 }[o.time];
+  if (o.amber < 1.1) k *= 1 + (1.1 - o.amber) * 0.25;
+  if (o.spacing < 1) k *= 1.08;
+  if (o.train && n === 1) k *= 1.1 + (60 - o.trainEvery) / 300;
   if (o.rush) k *= 1.1;
-  if (o.big) k *= 1.05;
-  k *= o.strikes === 3 ? 1 : o.strikes === 5 ? 0.8 : 0.3;
-  return Math.round(clamp(k, 0, 2.5) * 100) / 100;
+  k *= 1 + 0.03 * o.mix.big + 0.03 * o.mix.medic + 0.02 * o.mix.farm;
+  k *= [1, 1, 0.85][o.powers] * (o.powers === 0 ? 1.15 : 1);
+  k *= o.strikes === 0 ? 0.3 : [1.3, 1.3, 1.15, 1, 0.92, 0.8, 0.72, 0.66, 0.6, 0.55, 0.5][o.strikes];
+  return Math.round(clamp(k, 0, 3) * 100) / 100;
+}
+
+// Ready-made ideas for the Presets tab.
+const TC_CUSTOM_IDEAS = {
+  sunday:  { name: 'Sunday Drive', desc: 'One quiet crossing in the sun', o: { layout: '1', rate: 14, turn: 10, patience: 20, mix: { cars: 3, vans: 1 }, goal: 30 } },
+  blizzard: { name: 'Blizzard', desc: 'Two crossings, snow and dusk', o: { layout: '2', weather: 'snow', time: 'dusk', rate: 26, turn: 20, look: 'rail', mix: { cars: 2, vans: 2, farm: 1 }, goal: 50 } },
+  bigcity: { name: 'Big City Nights', desc: 'A 2×3 grid, half of it automatic', o: { layout: 'g23', autos: [1, 0, 1, 0, 1, 0], look: 'downtown', time: 'night', rate: 50, turn: 30, mix: { cars: 2, taxis: 3, sports: 1, police: 1, lux: 1, medic: 1 }, goal: 100 } },
+  gridlock: { name: 'Total Gridlock', desc: 'Nine crossings, all yours', o: { layout: 'g33', spacing: 0.8, rate: 70, turn: 30, reckless: 5, patience: 10, mix: { cars: 3, vans: 2, taxis: 1, big: 2, lux: 1, medic: 1 }, strikes: 5 } },
+  railway: { name: 'Express Line', desc: 'A train every 15 seconds', o: { layout: '1', look: 'rail', train: true, trainEvery: 15, rate: 30, mix: { cars: 2, vans: 2, farm: 2 }, goal: 60 } },
+  foggy:   { name: 'Pea Souper', desc: 'Thick fog on 4 in a row', o: { layout: 'row4', weather: 'fog', rate: 34, turn: 20, mix: { cars: 3, vans: 1, big: 1 }, goal: 80 } },
+};
+
+// An idea as a full setup (vehicle groups it doesn't name are off).
+function tcCustomIdea(id) {
+  const I = TC_CUSTOM_IDEAS[id], mix = {};
+  for (const g in TC_MIX_GROUPS) mix[g] = 0;
+  return tcCustomClean(Object.assign({}, I.o, { mix: Object.assign(mix, I.o.mix) }));
+}
+
+// One line about a setup (for the save slots).
+function tcCustomSummary(o) {
+  const bits = [TC_LAYOUTS[o.layout].name, `${o.rate} cars/min`];
+  if (o.weather !== 'clear') bits.push(o.weather[0].toUpperCase() + o.weather.slice(1));
+  if (o.time !== 'day') bits.push(o.time[0].toUpperCase() + o.time.slice(1));
+  bits.push(o.goal ? `Goal ${o.goal}` : 'Endless');
+  return bits.join(' · ');
+}
+
+// A random setup that's still playable.
+function tcCustomRandom() {
+  const r = (a, b, step = 1) => Math.round(rand(a, b) / step) * step;
+  const layout = pick(TC_LAYOUT_ORDER), n = tcLayoutSize(layout);
+  const o = {
+    layout, spacing: pick([0.8, 1, 1, 1.25]), look: pick(['main', 'downtown', 'rail']),
+    shapes: [], autos: [], autoMode: chance(0.7) ? 'smart' : 'timer', autoGreen: r(6, 14),
+    rate: r(16, 18 + n * 8, 2), speed: r(0.8, 1.3, 0.1), turn: r(0, 45, 5), reckless: chance(0.4) ? r(2, 12) : 0, patience: r(8, 20),
+    rush: chance(0.3), mix: {}, weather: pick(['clear', 'clear', 'rain', 'snow', 'fog']), time: pick(['day', 'day', 'dusk', 'night']),
+    train: n === 1 && chance(0.4), trainEvery: r(20, 45), goal: chance(0.3) ? 0 : r(20, 120, 5), strikes: pick([3, 3, 5, 0]),
+    limit: chance(0.25) ? pick([120, 180, 300]) : 0, amber: 1.1, powers: pick([1, 1, 2, 0]),
+  };
+  for (let i = 0; i < n; i++) { o.shapes.push(pick(tcShapesAllowed(layout, i))); o.autos.push(n > 2 && chance(0.3) ? 1 : 0); }
+  for (const g in TC_MIX_GROUPS) o.mix[g] = g === 'cars' ? r(1, 3) : chance(0.45) ? r(1, 3) : 0;
+  return tcCustomClean(o);
 }
 const TC_CUSTOM_UNLOCK = 5; // levels to clear first
 
@@ -151,7 +275,7 @@ const TC_TROPHIES = {
   quiet:     { name: 'Nobody Honked', desc: 'Clear a level without a single honk', coins: 75 },
   train:     { name: 'Close Call', desc: 'A car clears the tracks just before the train', coins: 75 },
   custom:    { name: 'Town Planner', desc: 'Finish a custom shift with a goal', coins: 50 },
-  grid:      { name: 'Gridmaster', desc: 'Get 50 cars through four crossings with no automatic lights', coins: 200 },
+  grid:      { name: 'Gridmaster', desc: 'Get 50 cars through four or more crossings with no automatic lights', coins: 200 },
   wave:      { name: 'Ride the Wave', desc: 'Use a Green Wave', coins: 25 },
 };
 

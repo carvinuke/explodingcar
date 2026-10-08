@@ -8,6 +8,9 @@ const BRView = {
   shake: 0,
   kick: 0,    // a jolt of camera pull-back (close calls, BOOM)
   pull: 0,    // how far the camera has dropped back to show more road
+  zoom: 1,    // Hyperdrive pulls the whole view back as the speed climbs
+  zoomS: 1,   // (the smooth zoom; on slow computers the camera moves in small steps of it)
+  stepped: false, slowT: 0, // frames ran slow in Hyperdrive: zoom in steps from then on
 
   init(canvas) {
     this.v = Kit.view(canvas, { low: BRGame.settings.low, onResize: () => this.fit() });
@@ -23,19 +26,50 @@ const BRView = {
     const { W, H } = this.v;
     const ahead = 660;
     this.oy = H * 0.76;
-    const s = clamp(Math.min(W / 310, this.oy / (ahead * GY)), 0.55, 1.6);
-    this.scale = s;
+    this.base = clamp(Math.min(W / 310, this.oy / (ahead * GY)), 0.55, 1.6);
     this.ox = W / 2;
+    Renderer.dpr = this.v.dpr;
+    this.applyScale();
+    this.chunks = new Map(); // pre-drawn road and scenery, redrawn at the new size
+  },
+
+  // The drawing scale: the fitted one, pulled back by the Hyperdrive zoom.
+  applyScale() {
+    if (!this.v) return;
+    const { W, H } = this.v, s = this.scale = this.base * this.zoom;
     BRRoad.viewAhead = this.oy / (s * GY);
     BRRoad.viewBehind = (H - this.oy) / (s * GY) + 40;
     BRRoad.viewX = W / 2 / s;
     Renderer.base = s;
-    Renderer.dpr = this.v.dpr;
-    this.chunks = new Map(); // pre-drawn road and scenery, redrawn at the new size
+  },
+  resetZoom() { this.zoomS = 1; if (this.zoom !== 1) { this.zoom = 1; this.applyScale(); } },
+  // Chunks are drawn at zoom steps (each about a fifth further out, a little
+  // larger than needed so they shrink to fit and stay sharp) rather than at
+  // every zoom on the way, so a zoom that never stops isn't redrawing all the time.
+  chunkScale() {
+    if (this.zoom >= 1) return this.base;
+    if (this.v.low || this.stepped) return this.scale; // the camera itself moves in steps, so chunks match it exactly
+    return this.base * Math.min(1, Math.pow(2, Math.ceil(Math.log2(this.zoom) * 4) / 4));
   },
 
   draw(time, dt) {
-    const { c, W, H, dpr } = this.v, s = this.scale, R = BRRoad, p = R.player;
+    const R = BRRoad, p = R.player;
+    // Hyperdrive: the camera pulls back as the speed climbs, so there's always
+    // about a second of road ahead to read
+    if (R.hyper || this.zoom !== 1) {
+      const zt = !R.hyper ? 1 : p.dead ? this.zoom : clamp(660 / Math.max(660, p.v * 0.9 + 120), 0.48, 1);
+      const z = damp(this.zoomS, zt, 1.2, dt);
+      this.zoomS = Math.abs(z - zt) < 0.002 ? zt : z;
+      // slow computers (low graphics, or frames running slow): steps of about 9%,
+      // so the road pictures are copied, never stretched
+      if (!this.stepped && R.hyper && this.zoomS < 1) {
+        this.slowT = dt > 1 / 40 ? this.slowT + dt : Math.max(0, this.slowT - dt);
+        if (this.slowT > 1.5) this.stepped = true;
+      }
+      const zoom = (this.v.low || this.stepped) && this.zoomS < 1 ? Math.min(1, Math.pow(2, Math.ceil(Math.log2(this.zoomS) * 8) / 8)) : this.zoomS;
+      if (zoom !== this.zoom) { this.zoom = zoom; this.applyScale(); }
+    }
+    const { c, W, H, dpr } = this.v, s = this.scale;
     // the camera follows your car, and drops back to show more road when you're
     // fast, boosting, or just scraped past something
     const want = (p.burning || p.boomT > 0 || p.nitroT > 0 ? 0.8 : 0) + this.kick;
@@ -56,14 +90,19 @@ const BRView = {
     // world transform: screen = (ox + (x - camX) s, oy + P(y - camY) s)
     c.setTransform(dpr * s, 0, 0, dpr * s, dpr * (this.ox - camX * s + sx), dpr * (this.oy + this.camY * GY * s + sy));
 
-    // the road and roadside, pre-drawn in chunks, far to near
+    // the road and roadside, pre-drawn in chunks, far to near. While Hyperdrive
+    // zooms, a chunk drawn at another scale is stretched to fit until it's
+    // redrawn (one a frame, so the zoom never stalls)
     c.setTransform(1, 0, 0, 1, 0, 0);
     const i0 = Math.floor((bot - 40) / CHUNK), i1 = Math.floor((top + 260) / CHUNK);
+    let redraws = 1;
+    const cs = this.chunkScale();
     for (let i = i1; i >= i0; i--) {
-      const ch = this.chunk(i);
-      const dx = (this.ox - camX * s + sx) - (W / 2 + this.margin);
-      const dy = (this.oy + sy) + P((i + 1) * CHUNK - this.camY, 0) * s - this.head;
-      c.drawImage(ch, Math.round(dx * dpr), Math.round(dy * dpr));
+      let ch = this.chunks.get(i);
+      if (!ch || (ch.s !== cs && redraws > 0)) { if (ch) redraws--; ch = this.chunk(i, true); }
+      const f = s / ch.s, ax = this.ox - camX * s + sx, ay = this.oy + sy + P((i + 1) * CHUNK - this.camY, 0) * s;
+      if (f === 1) c.drawImage(ch, Math.round((ax - ch.cx) * dpr), Math.round((ay - ch.head) * dpr));
+      else c.drawImage(ch, Math.round((ax - ch.cx * f) * dpr), Math.round((ay - ch.head * f) * dpr), ch.width * f, ch.height * f);
     }
     for (const k of this.chunks.keys()) if (k < i0 - 1 || k > i1 + 2) this.chunks.delete(k);
     c.setTransform(dpr * s, 0, 0, dpr * s, dpr * (this.ox - camX * s + sx), dpr * (this.oy + this.camY * GY * s + sy));
@@ -94,7 +133,7 @@ const BRView = {
 
     c.setTransform(dpr, 0, 0, dpr, 0, 0);
     // speed lines at the edges when you're flying (thicker when boosting, red in BOOM)
-    const fast = clamp((p.v - 430) / 380, 0, 1) + (p.nitroT > 0 || p.burning ? 0.5 : 0) + (p.boomT > 0 ? 0.8 : 0);
+    const fast = clamp((p.v - 430) / 380, 0, R.hyper ? 2 : 1) + (p.nitroT > 0 || p.burning ? 0.5 : 0) + (p.boomT > 0 ? 0.8 : 0);
     if (fast > 0.05 && !this.v.low && !p.dead) this.speedLines(c, W, H, fast, time, p.boomT > 0);
     if (p.boomT > 0 && !p.dead) { // a hot rim round the screen while BOOM lasts
       c.strokeStyle = `rgba(255,${80 + 40 * Math.sin(time * 12)},40,${0.35 + 0.15 * Math.sin(time * 9)})`;
@@ -141,20 +180,21 @@ const BRView = {
   // A stretch of road with its roadside, drawn once into a picture. Scenery never
   // reaches the road (it stands well clear of the shoulders), so cars can simply
   // be drawn on top.
-  chunk(i) {
+  chunk(i, force) {
     let cv = this.chunks.get(i);
-    if (cv) return cv;
-    const { W, dpr } = this.v, s = this.scale;
-    this.margin = 40;
-    this.head = Math.round(210 * s * dpr) / dpr; // room above for tall trees and buildings (whole pixels: no seams)
+    if (cv && !force) return cv;
+    const { W, dpr } = this.v, s = this.chunkScale();
+    // (a wider margin while zoomed: the chunk is shrunk to fit and must still cover the screen)
+    const margin = 40 + (s < this.base ? W * 0.12 : 0), head = Math.round(210 * s * dpr) / dpr; // room above for tall trees and buildings (whole pixels: no seams)
     const y0 = i * CHUNK, y1 = y0 + CHUNK;
     cv = document.createElement('canvas');
-    cv.width = Math.ceil((W + 2 * this.margin) * dpr);
-    cv.height = Math.ceil(((CHUNK + 8) * GY * s + this.head) * dpr);
+    cv.width = Math.ceil((W + 2 * margin) * dpr);
+    cv.height = Math.ceil(((CHUNK + 8) * GY * s + head) * dpr);
+    cv.s = s; cv.cx = W / 2 + margin; cv.head = head; // its scale, and where its anchor (x 0, the far edge) sits
     const c = cv.getContext('2d');
     // world (x, y) -> chunk pixel: x centred, the chunk's far edge at `head`
-    c.setTransform(dpr * s, 0, 0, dpr * s, dpr * (W / 2 + this.margin), dpr * this.head - P(y1, 0) * s * dpr);
-    const xr = (W / 2 + this.margin) / s;
+    c.setTransform(dpr * s, 0, 0, dpr * s, dpr * (W / 2 + margin), dpr * head - P(y1, 0) * s * dpr);
+    const xr = (W / 2 + margin) / s;
     this.ground(c, -xr, xr, y0 - 6, y1); // overlaps the next chunk a little: no seams
     const objs = this.sceneryFor(i, xr);
     objs.sort((a, b) => b.y - a.y);
@@ -299,7 +339,7 @@ const BRView = {
   drawPlayer(c, p, time) {
     if (p.z > 0) c.translate(0, P(0, p.z));
     const car = p.car;
-    car.brake = BRGame.input.brake && !p.dead;
+    car.brake = false; // Boom Run never brakes
     if (!p.dead) c.rotate(p.steer * 0.05);
     // BOOM: a hot glow under the car
     if (p.boomT > 0 && !p.dead) {

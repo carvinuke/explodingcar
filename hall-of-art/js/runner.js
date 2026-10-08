@@ -34,7 +34,11 @@ const Exhibits = {
   low: false,
   still: matchMedia('(prefers-reduced-motion: reduce)').matches,
 
-  add(def) { this.list.push(def); },
+  add(def) {
+    // (a method called `name` on an exhibit would replace its title)
+    if (typeof def.name !== 'string') console.error(`Hall of Art: exhibit "${def.id}" has no name`);
+    this.list.push(def);
+  },
 
   // ---- Sound: tiny synth blips (shared mute with the other games) ----------------
   audio: null,
@@ -149,7 +153,7 @@ const Exhibits = {
     const at = e => { const r = el.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
     const safe = fn => e => { if (t.broken || t.dead) return; try { fn(e); } catch (err) { this.broke(t, err); } };
     on('pointerdown', safe(e => {
-      [p.x, p.y] = at(e); p.lx = p.x; p.ly = p.y;
+      [p.x, p.y] = at(e); p.lx = p.x; p.ly = p.y; p.vx = p.vy = 0;
       p.down = true; p.inside = true;
       t.awakeT = 3;
       // Hold on to the pointer for dragging, but not when the press is on a button
@@ -161,8 +165,8 @@ const Exhibits = {
       if (t.def.down) t.def.down(t, e);
     }));
     on('pointermove', safe(e => {
-      const [x, y] = at(e);
-      p.vx = x - p.x; p.vy = y - p.y;
+      const [x, y] = at(e), fresh = p.x < -5000; // just came in: no speed yet (not from the far-away resting spot)
+      p.vx = fresh ? 0 : x - p.x; p.vy = fresh ? 0 : y - p.y;
       p.x = x; p.y = y; p.inside = true;
       t.awakeT = 3;
       if (t.def.move) t.def.move(t, e);

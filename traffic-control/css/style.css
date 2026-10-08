@@ -173,6 +173,59 @@
 .opt-range output { min-width: 58px; font-weight: 900; font-variant-numeric: tabular-nums; text-align: right; }
 .opt-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px 18px; }
 .opt-grid .toggle-row { min-height: 34px; }
+/* the tabs (three to a row on a phone) */
+.opt-tabs { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 4px; padding: 4px; border-radius: 9px; background: #e3e6ea; }
+@media (max-width: 560px) { .opt-tabs { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.opt-tabs button {
+  min-width: 0;
+  padding: 8px 10px 6px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink-soft);
+  font: 900 13px var(--font-sign);
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+.opt-tabs button[aria-selected="true"] { background: var(--ink); color: var(--sign-white); }
+.opt-panel { display: flex; flex-direction: column; gap: 16px; }
+/* the crossing editor: a little map you tap, and the chosen crossing's settings */
+.xed { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 14px 18px; }
+.xmap { display: grid; grid-template-columns: repeat(var(--cols), 56px); padding: 6px; border-radius: 8px; background: #7fbf63; box-shadow: inset 0 0 0 2px #5f9e47; }
+.xcell { position: relative; width: 56px; height: 56px; padding: 0; border: 0; background: none; cursor: pointer; }
+.xcell svg { display: block; width: 100%; height: 100%; }
+.xcell .rd { fill: #3a3d44; }
+.xcell .ln { fill: rgba(247, 247, 242, 0.55); }
+.xcell .lt { fill: #2ee66b; stroke: #16181c; stroke-width: 2; }
+.xcell.auto .lt { fill: #47a6ff; }
+.xcell span { position: absolute; left: 3px; top: 2px; font: 900 11px var(--font-sign); color: #16381a; }
+.xcell em { position: absolute; left: 50%; bottom: 2px; transform: translateX(-50%); padding: 1px 4px 0; border-radius: 3px; background: #47a6ff; color: #fff; font: 900 8px var(--font-sign); font-style: normal; letter-spacing: 0.06em; }
+.xcell[aria-pressed="true"] { z-index: 1; border-radius: 6px; box-shadow: 0 0 0 3px var(--sign-yellow, #ffc619), 0 0 0 5px var(--ink); }
+.xside { flex: 1 1 240px; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.xtitle { font-size: 15px; font-weight: 900; }
+/* ideas */
+.idea-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; }
+.idea {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 9px 11px 7px;
+  border: 0;
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1.5px #d4d8df;
+  font-family: var(--font-sign);
+}
+.idea b { font-size: 14px; font-weight: 900; }
+.idea em { font-style: normal; font-size: 12px; font-weight: 700; color: var(--ink-soft); }
+.idea:hover { box-shadow: inset 0 0 0 2.5px var(--sign-green); }
+/* the time limit in the HUD */
+.hud-time.low { background: var(--sign-red); color: var(--sign-white); animation: bump 0.5s ease infinite; }
+#hud.no-powers .powers { display: none; }
 .pay-line { margin: 0; padding: 10px 12px 8px; border-radius: 7px; background: #e5f4ea; font-weight: 800; box-shadow: inset 0 0 0 1.5px #9fd3b0; }
 .pay-line.none { background: #fde8e8; box-shadow: inset 0 0 0 1.5px #f0aaaa; }
 .strike-count { display: grid; place-items: center; height: 26px; padding: 0 10px; border-radius: 13px; background: var(--asphalt-2); color: var(--sign-white); font-weight: 900; box-shadow: inset 0 0 0 2px #5b616b; }

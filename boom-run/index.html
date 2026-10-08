@@ -36,7 +36,6 @@
     </div>
     <div id="toasts" class="toasts" aria-live="polite"></div>
     <div class="pedals">
-      <button id="btn-brake" class="pedal" aria-label="Brake">BRAKE</button>
       <button id="btn-boom" class="pedal boom hidden" aria-label="Boom">BOOM!</button>
       <button id="btn-boost" class="pedal go" aria-label="Boost">BOOST</button>
     </div>
@@ -60,16 +59,17 @@
       <div class="modes">
         <button id="btn-checkpoint" class="mode-btn m-cp"><b>Checkpoint</b><em id="best-checkpoint"></em></button>
         <button id="btn-wrongway" class="mode-btn m-ww"><b>Wrong Way</b><em id="best-wrongway"></em></button>
+        <button id="btn-hyper" class="mode-btn m-hy"><b>Hyperdrive</b><em id="best-hyper"></em></button>
       </div>
       <div class="menu-row">
         <button id="btn-garage" class="btn-plate small">Garage</button>
         <button id="btn-trophies" class="btn-plate small">Trophies <span id="trophy-count" class="count"></span></button>
         <button id="btn-settings" class="btn-plate small">Settings</button>
       </div>
-      <p class="meta"><span id="best-endless"></span> &middot; Driving the <b id="title-car">Hatchback</b> &middot; <span class="coin-ico"></span> <b id="title-coins">0</b></p>
-      <p class="controls kb"><kbd>&larr;</kbd><kbd>&rarr;</kbd> steer &middot; <kbd>&uarr;</kbd> boost &middot; <kbd>&darr;</kbd> brake &middot; <kbd>Space</kbd> BOOM when the bar is full</p>
+      <p class="meta"><span id="best-endless"></span>Driving the <b id="title-car">Hatchback</b> &middot; <span class="coin-ico"></span> <b id="title-coins">0</b></p>
+      <p class="controls kb"><kbd>&larr;</kbd><kbd>&rarr;</kbd> steer &middot; <kbd>&uarr;</kbd> boost &middot; <kbd>Space</kbd> BOOM when the bar is full &middot; no brakes!</p>
       <p class="controls tip">Scrape past cars to fill the boost bar. Fill it all the way, then set off BOOM and wreck everything you touch.</p>
-      <p class="controls touch">Drag to steer. Brake and boost buttons at the bottom, BOOM when it lights up</p>
+      <p class="controls touch">Drag to steer. Hold BOOST to go faster, tap BOOM when it lights up. No brakes!</p>
     </div>
   </div>
 
@@ -99,6 +99,7 @@
           <div><dt>Score</dt><dd id="res-score">0</dd></div>
           <div><dt>Distance</dt><dd id="res-dist">0</dd></div>
           <div><dt>Close calls</dt><dd id="res-near">0</dd></div>
+          <div><dt>Top speed</dt><dd id="res-top">0 km/h</dd></div>
           <div id="res-cp-row"><dt>Checkpoints</dt><dd id="res-cp">0</dd></div>
           <div><dt>Best</dt><dd id="res-best">0</dd></div>
           <div><dt>Coins</dt><dd><span class="coin-ico"></span> +<span id="res-coins">0</span></dd></div>

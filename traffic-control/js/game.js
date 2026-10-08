@@ -31,12 +31,11 @@ const TCGame = {
     this.best = S.get('best', 0) || 0;
     this.stats = Object.assign({ cars: 0, crashes: 0, medic: 0, runs: 0 }, S.get('stats', {}) || {});
     this.up = Object.assign({ patience: 0, strike: 0, start: 0, amber: 0, towing: 0, fares: 0 }, S.get('up', {}) || {});
-    this.custom = Object.assign({}, TC_CUSTOM_DEFAULT, S.get('custom', {}) || {});
-    const C = this.custom; // (anything odd in storage falls back to the defaults)
-    for (const k in TC_CUSTOM_OPTS) if (!TC_CUSTOM_OPTS[k].some(([v]) => v === C[k])) C[k] = TC_CUSTOM_DEFAULT[k];
-    C.rate = clamp(Math.round(Number(C.rate)) || TC_CUSTOM_DEFAULT.rate, 10, 80);
-    C.speed = clamp(Number(C.speed) || 1, 0.7, 1.5);
-    C.auto = clamp(Math.round(Number(C.auto)) || 0, 0, C.crossings);
+    // custom shift settings (saves from before the crossing editor are converted)
+    const cur = S.get('custom2', null), old = S.get('custom', null);
+    this.custom = cur && typeof cur === 'object' ? tcCustomClean(cur) : old && typeof old === 'object' ? tcCustomMigrate(old) : tcCustomClean({});
+    const slots = S.get('slots', []);
+    this.slots = [0, 1, 2].map(i => (Array.isArray(slots) && slots[i] && typeof slots[i] === 'object' ? tcCustomClean(slots[i]) : null));
     this.owned = Object.assign({ lights: ['classic'], themes: ['auto'] }, S.get('owned', {}) || {});
     this.lightStyle = S.get('light', 'classic');
     if (!TC_LIGHTS[this.lightStyle]) this.lightStyle = 'classic';
@@ -68,17 +67,24 @@ const TCGame = {
     this.pay = this.isCustom ? tcCustomPay(this.custom) : 1;
     TCSim.reset(this.level, {
       patienceMul: 1 + 0.15 * this.up.patience,
-      yellow: this.up.amber ? YELLOW - 0.3 : YELLOW,
+      yellow: this.isCustom ? this.custom.amber : this.up.amber ? YELLOW - 0.3 : YELLOW, // (a custom shift sets its own amber)
       towTime: [5, 3.6, 2.4][this.up.towing] || 5,
     });
-    TCView.build(this.level.map, this.theme);
+    // snow on a custom shift brings snowy ground with it (unless you've picked a theme)
+    TCView.build(this.level.map, this.isCustom && this.level.snow && this.theme === 'auto' ? 'snow' : this.theme);
     TCView.fit();
     FX.reset();
     const extra = this.up.strike ? 1 : 0;
     this.maxStrikes = this.isCustom ? (this.custom.strikes ? this.custom.strikes + extra : Infinity) : 3 + extra;
+    // power-ups: one every 12 cars (a custom shift can have none, or one every 6)
+    this.powerEvery = this.isCustom ? [0, 12, 6][this.custom.powers] : 12;
     this.powers = { freeze: 0, tow: 0, calm: 0, wave: 0 };
-    if (this.up.start) this.powers[pick(Object.keys(TC_POWERS))]++;
-    this.nextPower = 12;
+    if (this.up.start && this.powerEvery) this.powers[pick(Object.keys(TC_POWERS))]++;
+    this.nextPower = this.powerEvery || Infinity;
+    Kit.$('hud').classList.toggle('no-powers', !this.powerEvery);
+    this.timeLeft = this.isCustom ? this.custom.limit : 0;
+    this.shownTime = -1;
+    Kit.$('hud-time').classList.toggle('hidden', !this.timeLeft);
     this.runCoins = 0;
     this.runMedic = 0;
     this.runTrophies = [];
@@ -98,10 +104,7 @@ const TCGame = {
     }
   },
 
-  crossingsLabel() {
-    const n = this.level.layout || 1;
-    return n === 1 ? '1 CROSSING' : n === 4 ? '2×2 GRID' : `${n} CROSSINGS`;
-  },
+  crossingsLabel() { return TC_LAYOUTS[this.level.layout || 1].name.toUpperCase(); },
   cleared() { return TC_LEVELS.filter(L => this.stars[L.n]).length; },
 
   intro(n) {
@@ -125,7 +128,8 @@ const TCGame = {
     Kit.show('screen-intro');
   },
 
-  end(won) {
+  // why: 'time' when a custom shift's time limit runs out
+  end(won, why) {
     if (this.state !== 'playing') return;
     this.state = 'over';
     const S = TCSim, n = this.levelNo, custom = this.isCustom;
@@ -134,7 +138,9 @@ const TCGame = {
     let coins = S.through;
     if (custom) {
       coins = Math.round(S.through * this.pay);
-      if (won) { coins += Math.round(this.level.goal * 0.5 * this.pay); Sound.levelUp(); } else Sound.gameOver();
+      if (won) { coins += Math.round(this.level.goal * 0.5 * this.pay); Sound.levelUp(); }
+      else if (why === 'time' && this.level.endless) Sound.levelUp(); // a timed shift with no goal just ends
+      else Sound.gameOver();
     } else if (n > 0 && won) {
       stars = Math.max(1, 3 - crashes);
       coins += 10 * stars;
@@ -159,7 +165,7 @@ const TCGame = {
     // the report
     const goal = this.level.goal < Infinity ? this.level.goal : 0;
     Kit.$('res-no').textContent = custom ? 'CUSTOM' : n > 0 ? `LEVEL ${n}` : 'ENDLESS';
-    Kit.$('res-title').textContent = custom ? (won ? 'Shift complete!' : crashes >= this.maxStrikes ? 'Gridlock!' : 'Shift over')
+    Kit.$('res-title').textContent = custom ? (won ? 'Shift complete!' : why === 'time' ? (this.level.endless ? 'Time\'s up!' : 'Out of time!') : crashes >= this.maxStrikes ? 'Gridlock!' : 'Shift over')
       : n > 0 ? (won ? (stars === 3 ? 'Perfect shift!' : 'Level clear!') : 'Gridlock!') : 'Shift over';
     Kit.$('res-stars').innerHTML = n > 0 ? [1, 2, 3].map(i => `<span class="${i <= stars ? 'on' : ''}">★</span>`).join('') : '';
     Kit.$('res-stars').classList.toggle('hidden', !(n > 0));
@@ -202,7 +208,7 @@ const TCGame = {
       through: car => {
         if (!this.playing()) return;
         if (TCSim.through >= this.nextPower) {
-          this.nextPower += 12;
+          this.nextPower += this.powerEvery;
           const k = pick(Object.keys(TC_POWERS));
           if (this.powers[k] < 3) { this.powers[k]++; Kit.toast(`+1 ${TC_POWERS[k].name.toUpperCase()}`, 'power'); Sound.powerup(); }
         }
@@ -212,7 +218,7 @@ const TCGame = {
           if (TCSim.through === 150) this.trophies.earn('end150');
         }
         if (this.stats.cars + TCSim.through >= 1000) this.trophies.earn('total1000');
-        if (this.isCustom && TCSim.through >= 50 && TCSim.nodes.length === 4 && !TCSim.nodes.some(N => N.auto)) this.trophies.earn('grid');
+        if (this.isCustom && TCSim.through >= 50 && TCSim.nodes.length >= 4 && !TCSim.nodes.some(N => N.auto)) this.trophies.earn('grid');
         this.updateHud();
         if ((this.levelNo > 0 || this.isCustom) && TCSim.through >= this.level.goal) this.end(true);
       },
@@ -295,6 +301,11 @@ const TCGame = {
     if (this.state === 'playing') {
       TCSim.update(dt);
       FX.update(dt);
+      if (this.timeLeft > 0) { // a custom shift's time limit
+        this.timeLeft = Math.max(0, this.timeLeft - dt);
+        this.hudTime();
+        if (this.timeLeft <= 0) this.end(false, 'time');
+      }
     } else if (this.state !== 'paused') {
       // the demo behind the menus switches its own lights
       this.demoT -= dt;
@@ -323,10 +334,10 @@ const TCGame = {
     Kit.$('hud-cars').textContent = this.level.goal < Infinity ? `${TCSim.through}/${this.level.goal}` : TCSim.through;
     const st = Kit.$('hud-strikes');
     st.innerHTML = '';
-    if (this.maxStrikes === Infinity) { // unlimited: just count them
+    if (this.maxStrikes === Infinity || this.maxStrikes > 6) { // unlimited (or lots): just count them
       const s = document.createElement('span');
       s.className = 'strike-count';
-      s.textContent = `✕ ${TCSim.crashes}`;
+      s.textContent = this.maxStrikes === Infinity ? `✕ ${TCSim.crashes}` : `✕ ${TCSim.crashes} / ${this.maxStrikes}`;
       st.appendChild(s);
     } else for (let i = 0; i < this.maxStrikes; i++) {
       const s = document.createElement('span');
@@ -341,6 +352,15 @@ const TCGame = {
       b.disabled = !n;
     }
     this.refreshCoins();
+  },
+
+  hudTime() {
+    const sec = Math.ceil(this.timeLeft);
+    if (sec === this.shownTime) return;
+    this.shownTime = sec;
+    const el = Kit.$('hud-time');
+    el.querySelector('b').textContent = `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
+    el.classList.toggle('low', sec <= 10);
   },
 
   refreshCoins() {
@@ -387,105 +407,219 @@ const TCGame = {
   },
 
   // ---- Custom shift ------------------------------------------------------------------
-  showCustom() {
+  // Six tabs of settings. Every change is saved straight away.
+  showCustom(tab) {
     if (this.cleared() < TC_CUSTOM_UNLOCK) { Kit.toast(`Clear ${TC_CUSTOM_UNLOCK} levels to unlock custom shifts`); return; }
-    const o = this.custom, body = Kit.$('custom-body');
+    if (tab) this.customTab = tab;
+    const T = this.customTab || (this.customTab = 'map');
+    const o = this.custom, body = Kit.$('custom-body'), scr = Kit.$('screen-custom');
+    // redrawing keeps your place: the scroll position and the focused control
+    const top = scr.scrollTop, fk = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.fk : null;
     body.innerHTML = '';
-    const save = () => { TC_STORE.set('custom', o); this.showCustom(); };
-    const sec = title => {
-      const el = document.createElement('section');
-      el.className = 'opt-sec';
-      el.innerHTML = `<h3>${title}</h3>`;
-      body.appendChild(el);
-      return el;
+    const n = tcLayoutSize(o.layout);
+    const save = () => { Object.assign(o, tcCustomClean(o)); TC_STORE.set('custom2', o); this.showCustom(); };
+    const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+    const button = (text, fk, onClick, cls) => {
+      const b = el('button', cls, text);
+      b.type = 'button';
+      if (fk) b.dataset.fk = fk;
+      b.addEventListener('click', () => { Sound.click(); onClick(); });
+      return b;
     };
+
+    const tabs = el('div', 'opt-tabs');
+    tabs.setAttribute('role', 'tablist');
+    tabs.setAttribute('aria-label', 'Custom shift settings');
+    for (const [id, name] of [['map', 'Map'], ['traffic', 'Traffic'], ['cars', 'Vehicles'], ['weather', 'Weather'], ['rules', 'Rules'], ['presets', 'Presets']]) {
+      const b = button(name, 'tab-' + id, () => this.showCustom(id));
+      b.setAttribute('role', 'tab');
+      b.setAttribute('aria-selected', id === T ? 'true' : 'false');
+      tabs.appendChild(b);
+    }
+    body.appendChild(tabs);
+    const panel = el('div', 'opt-panel');
+    panel.setAttribute('role', 'tabpanel');
+    body.appendChild(panel);
+
+    const sec = title => { const e = el('section', 'opt-sec'); e.appendChild(el('h3', null, title)); panel.appendChild(e); return e; };
     const row = (parent, label, sub) => {
-      const r = document.createElement('div');
-      r.className = 'opt-row';
-      r.innerHTML = '<span class="opt-lbl"></span>';
-      r.firstChild.textContent = label;
-      if (sub) { const em = document.createElement('em'); em.textContent = sub; r.firstChild.appendChild(em); }
+      const r = el('div', 'opt-row'), l = el('span', 'opt-lbl', label);
+      if (sub) l.appendChild(el('em', null, sub));
+      r.appendChild(l);
       parent.appendChild(r);
       return r;
     };
-    const seg = (parent, label, key, opts, sub, disabled) => {
-      const r = row(parent, label, sub), g = document.createElement('div');
-      g.className = 'seg';
+    // a row of choices: opts are [value, text, disabled?]
+    const choice = (parent, label, opts, cur, onPick, sub, fkBase) => {
+      const r = row(parent, label, sub), g = el('div', 'seg');
       g.setAttribute('role', 'group');
       g.setAttribute('aria-label', label);
-      for (const [v, text] of opts) {
-        const b = document.createElement('button');
-        b.type = 'button';
-        b.textContent = text;
-        b.setAttribute('aria-pressed', o[key] === v ? 'true' : 'false');
-        b.disabled = !!disabled;
-        b.addEventListener('click', () => { Sound.click(); o[key] = v; save(); });
+      for (const [v, text, off] of opts) {
+        const b = button(text, `${fkBase}=${v}`, () => onPick(v));
+        b.setAttribute('aria-pressed', cur === v ? 'true' : 'false');
+        b.disabled = !!off;
         g.appendChild(b);
       }
       r.appendChild(g);
+      return r;
     };
-    const slider = (parent, label, key, min, max, step, fmt) => {
-      const r = row(parent, label), w = document.createElement('label');
-      w.className = 'opt-range';
-      w.innerHTML = `<input type="range" min="${min}" max="${max}" step="${step}"><output></output>`;
+    const seg = (parent, label, key, opts, sub) => choice(parent, label, opts, o[key], v => { o[key] = v; save(); }, sub, key);
+    // a slider; `ends` maps a value past the top of the range to 0 (for "Endless", "No limit")
+    const slider = (parent, label, key, fmt, sub, ends) => {
+      const [min, max, step] = TC_CUSTOM_RANGES[key], lo = ends ? min + step : min, hi = ends ? max + step : max;
+      const r = row(parent, label, sub), w = el('label', 'opt-range');
+      w.innerHTML = `<input type="range" min="${lo}" max="${hi}" step="${step}"><output></output>`;
       const inp = w.querySelector('input'), out = w.querySelector('output');
-      inp.value = o[key];
+      inp.value = ends && !o[key] ? hi : o[key];
+      inp.dataset.fk = key;
       inp.setAttribute('aria-label', label);
-      out.textContent = fmt(o[key]);
-      inp.addEventListener('input', () => { o[key] = Number(inp.value); out.textContent = fmt(o[key]); TC_STORE.set('custom', o); this.customPay(); });
+      const show = () => { out.textContent = fmt(o[key]); inp.setAttribute('aria-valuetext', out.textContent); };
+      show();
+      inp.addEventListener('input', () => {
+        const v = Math.round(Number(inp.value) * 100) / 100;
+        o[key] = ends && v >= hi ? 0 : v;
+        show();
+        TC_STORE.set('custom2', o);
+        this.customPay();
+      });
       r.appendChild(w);
     };
     const toggles = (parent, items) => {
-      const g = document.createElement('div');
-      g.className = 'opt-grid';
+      const g = el('div', 'opt-grid');
       for (const [key, label, sub, disabled] of items) {
-        const r = document.createElement('div');
-        r.className = 'toggle-row';
-        r.innerHTML = '<span></span><button type="button" class="toggle" role="switch"></button>';
-        r.firstChild.textContent = label;
-        if (sub) { const em = document.createElement('em'); em.className = 'sub'; em.textContent = sub; r.firstChild.appendChild(em); }
-        const t = r.lastChild;
+        const r = el('div', 'toggle-row'), l = el('span', null, label);
+        if (sub) l.appendChild(el('em', 'sub', sub));
+        const t = button('', key, () => { o[key] = !o[key]; save(); }, 'toggle');
+        t.setAttribute('role', 'switch');
         t.setAttribute('aria-label', label);
         t.setAttribute('aria-checked', o[key] && !disabled ? 'true' : 'false');
         t.disabled = !!disabled;
         if (disabled) t.style.opacity = 0.4;
-        t.addEventListener('click', () => { Sound.click(); o[key] = !o[key]; save(); });
+        r.append(l, t);
         g.appendChild(r);
       }
       parent.appendChild(g);
     };
 
-    const roads = sec('The roads');
-    seg(roads, 'Crossings', 'crossings', TC_CUSTOM_OPTS.crossings);
-    seg(roads, 'Shape', 'shape', TC_CUSTOM_OPTS.shape, o.shape === '4' ? 'Every crossing has four roads' : o.shape === 'T' ? 'Roads that end in a T' : 'Some of each');
-    const autoOpts = [];
-    for (let i = 0; i <= o.crossings; i++) autoOpts.push([i, i === 0 ? 'None' : i === o.crossings ? (i === 1 ? 'On' : 'All') : String(i)]);
-    if (o.auto > o.crossings) o.auto = o.crossings;
-    seg(roads, 'Automatic lights', 'auto', autoOpts, 'Crossings that switch themselves');
-    seg(roads, 'Look', 'look', TC_CUSTOM_OPTS.look);
+    if (T === 'map') {
+      const lay = sec('Layout');
+      const cramped = n > 4 || o.layout === 'row4' ? (innerWidth < 700 ? ': best on a big screen' : '') : '';
+      choice(lay, 'Crossings', TC_CUSTOM_OPTS.layout, o.layout, v => { o.layout = v; this.customSel = 0; save(); }, TC_LAYOUTS[o.layout].name + cramped, 'layout');
+      seg(lay, 'Block size', 'spacing', TC_CUSTOM_OPTS.spacing, n === 1 ? 'Only matters with more than one crossing' : o.spacing < 1 ? 'Less room to queue between crossings' : o.spacing > 1 ? 'More room to queue, smaller cars' : 'Room to queue between crossings');
+      seg(lay, 'Look', 'look', TC_CUSTOM_OPTS.look);
+      this.crossingEditor(sec('Each crossing'), o, save, { el, button, choice });
+      const au = sec('Automatic lights');
+      seg(au, 'How they work', 'autoMode', TC_CUSTOM_OPTS.autoMode, o.autoMode === 'smart' ? 'Sensors: the road with cars waiting goes next' : 'Every road gets a turn, cars or not');
+      slider(au, o.autoMode === 'smart' ? 'Longest green' : 'Green time', 'autoGreen', v => `${v} s`);
+    } else if (T === 'traffic') {
+      const tr = sec('Traffic');
+      slider(tr, 'Cars per minute', 'rate', v => `${v}`);
+      slider(tr, 'Car speed', 'speed', v => `${v.toFixed(1)}×`);
+      slider(tr, 'Turning', 'turn', v => `${v}%`, 'Cars that turn at a crossing');
+      slider(tr, 'Reckless drivers', 'reckless', v => `${v}%`, 'They run red lights');
+      slider(tr, 'Patience', 'patience', v => `${v} s`, 'How long drivers wait before they honk');
+      toggles(tr, [['rush', 'Rush hour waves', 'Bursts of extra traffic']]);
+    } else if (T === 'cars') {
+      const mx = sec('Vehicle mix');
+      for (const g in TC_MIX_GROUPS) {
+        const G = TC_MIX_GROUPS[g];
+        choice(mx, G.name, TC_MIX_LEVELS, o.mix[g], v => { o.mix[g] = v; save(); }, G.sub, 'mix-' + g);
+      }
+      const none = Object.keys(TC_MIX_GROUPS).every(g => g === 'medic' || !o.mix[g]);
+      if (none) panel.appendChild(el('p', 'hint', 'Everything is at None, so you get everyday cars.'));
+    } else if (T === 'weather') {
+      const we = sec('Weather');
+      seg(we, 'Weather', 'weather', TC_CUSTOM_OPTS.weather, { clear: 'Dry roads', rain: 'Wet roads: cars need longer to stop', snow: 'Ice: slower cars that take ages to stop', fog: 'You only see cars once they get close' }[o.weather]);
+      seg(we, 'Time of day', 'time', TC_CUSTOM_OPTS.time, { day: 'Bright and clear', dusk: 'Sunset light', night: 'Dark: watch for headlights' }[o.time]);
+      const tr = sec('Trains');
+      toggles(tr, [['train', 'Railway crossing', n > 1 ? 'One crossing only' : 'Trains cross the east road', n > 1]]);
+      if (n === 1 && o.train) slider(tr, 'A train every', 'trainEvery', v => `${v} s`);
+    } else if (T === 'rules') {
+      const go = sec('Goal');
+      slider(go, 'Cars to get through', 'goal', v => (v ? `${v}` : 'Endless'), null, true);
+      seg(go, 'Time limit', 'limit', TC_CUSTOM_OPTS.limit, o.limit ? (o.goal ? 'Reach the goal before time runs out' : 'Get as many through as you can') : 'Play as long as you like');
+      slider(go, 'Crashes allowed', 'strikes', v => (v ? `${v}` : 'No limit'), 'The shift ends when you reach it', true);
+      const li = sec('Lights and power-ups');
+      slider(li, 'Amber light', 'amber', v => `${v.toFixed(1)} s`, 'Shorter is harder: cars caught by it keep going');
+      seg(li, 'Power-ups', 'powers', TC_CUSTOM_OPTS.powers, ['None at all', 'One every 12 cars', 'One every 6 cars'][o.powers]);
+    } else if (T === 'presets') {
+      const sl = sec('Your saved shifts');
+      this.slots.forEach((slot, i) => {
+        const r = row(sl, `Slot ${i + 1}`, slot ? tcCustomSummary(slot) : 'Empty'), g = el('div', 'seg');
+        const load = button('Load', `load${i}`, () => { Object.assign(o, tcCustomClean(slot)); this.customSel = 0; save(); Kit.toast(`Loaded slot ${i + 1}`); });
+        load.disabled = !slot;
+        g.append(load, button('Save here', `save${i}`, () => {
+          this.slots[i] = tcCustomClean(o);
+          TC_STORE.set('slots', this.slots);
+          this.showCustom();
+          Kit.toast(`Saved to slot ${i + 1}`);
+        }));
+        r.appendChild(g);
+      });
+      const id = sec('Ideas'), grid = el('div', 'idea-grid');
+      for (const k in TC_CUSTOM_IDEAS) {
+        const I = TC_CUSTOM_IDEAS[k], b = button('', 'idea-' + k, () => { Object.assign(o, tcCustomIdea(k)); this.customSel = 0; save(); Kit.toast(I.name); }, 'idea');
+        b.append(el('b', null, I.name), el('em', null, I.desc));
+        grid.appendChild(b);
+      }
+      id.appendChild(grid);
+      const sh = sec('Shake it up'), acts = el('div', 'seg');
+      acts.append(
+        button('🎲 Random shift', 'random', () => { Object.assign(o, tcCustomRandom()); this.customSel = 0; save(); }),
+        button('Back to normal', 'reset', () => { Object.assign(o, tcCustomClean({})); this.customSel = 0; save(); }),
+      );
+      sh.appendChild(acts);
+    }
 
-    const traffic = sec('The traffic');
-    slider(traffic, 'Cars per minute', 'rate', 10, 80, 2, v => `${v}`);
-    slider(traffic, 'Car speed', 'speed', 0.7, 1.5, 0.1, v => `${v.toFixed(1)}×`);
-    seg(traffic, 'Turning', 'turn', TC_CUSTOM_OPTS.turn);
-    seg(traffic, 'Reckless drivers', 'reckless', TC_CUSTOM_OPTS.reckless, 'They run red lights');
-    seg(traffic, 'Patience', 'patience', TC_CUSTOM_OPTS.patience, 'How long drivers wait before they honk');
-    toggles(traffic, [['big', 'Buses and tankers'], ['medic', 'Ambulances'], ['lux', 'Supercars']]);
-
-    const shift = sec('The shift');
-    seg(shift, 'Goal', 'goal', TC_CUSTOM_OPTS.goal, 'Cars to get through');
-    seg(shift, 'Crashes allowed', 'strikes', TC_CUSTOM_OPTS.strikes);
-    toggles(shift, [
-      ['train', 'Trains', o.crossings > 1 ? 'One crossing only' : '', o.crossings > 1],
-      ['rush', 'Rush hour waves'], ['rain', 'Rain'], ['night', 'Night'],
-    ]);
-    const pay = document.createElement('p');
+    const pay = el('p', 'pay-line');
     pay.id = 'custom-payline';
-    pay.className = 'pay-line';
-    body.appendChild(pay);
+    panel.appendChild(pay);
     this.customPay();
     this.refreshCoins();
     if (this.state !== 'custom') { this.state = 'custom'; Kit.show('screen-custom'); }
+    scr.scrollTop = top;
+    if (fk) { const f = body.querySelector(`[data-fk="${CSS.escape(fk)}"]`); if (f && !f.disabled) f.focus(); }
+  },
+
+  // The map of the crossings: tap one, then pick its shape and who runs its lights.
+  crossingEditor(parent, o, save, { el, button, choice }) {
+    const L = TC_LAYOUTS[o.layout], n = tcLayoutSize(o.layout);
+    if (!(this.customSel >= 0 && this.customSel < n)) this.customSel = 0;
+    const sel = this.customSel, wrap = el('div', 'xed'), map = el('div', 'xmap');
+    map.style.setProperty('--cols', L.cols.length);
+    map.setAttribute('role', 'group');
+    map.setAttribute('aria-label', 'Crossings (north at the top)');
+    for (let r = L.rows.length - 1; r >= 0; r--) for (let k = 0; k < L.cols.length; k++) { // north row first
+      const i = r * L.cols.length + k, sh = o.shapes[i], auto = !!o.autos[i];
+      const b = button('', 'x' + i, () => { this.customSel = i; this.showCustom(); }, 'xcell' + (auto ? ' auto' : ''));
+      b.setAttribute('aria-pressed', i === sel ? 'true' : 'false');
+      b.setAttribute('aria-label', `Crossing ${i + 1}: ${TC_SHAPE_NAMES[sh]}, ${auto ? 'automatic' : 'yours'}`);
+      b.innerHTML = '<svg viewBox="0 0 40 40" aria-hidden="true"><rect class="rd" x="0" y="14" width="40" height="12"/>'
+        + (sh !== 'TN' ? '<rect class="rd" x="14" y="0" width="12" height="20"/>' : '')
+        + (sh !== 'TS' ? '<rect class="rd" x="14" y="20" width="12" height="20"/>' : '')
+        + '<rect class="ln" x="0" y="19.4" width="40" height="1.2"/><circle class="lt" cx="31" cy="8" r="4"/></svg>'
+        + `<span>${i + 1}</span>` + (auto ? '<em>AUTO</em>' : '');
+      map.appendChild(b);
+    }
+    wrap.appendChild(map);
+    const side = el('div', 'xside');
+    side.appendChild(el('b', 'xtitle', `Crossing ${sel + 1}`));
+    const allowed = tcShapesAllowed(o.layout, sel);
+    choice(side, 'Shape', ['4', 'TN', 'TS'].map(v => [v, TC_SHAPE_NAMES[v], !allowed.includes(v)]), o.shapes[sel], v => { o.shapes[sel] = v; save(); },
+      allowed.length < 3 ? 'A T only fits on the edge of the map' : null, 'shape');
+    choice(side, 'Lights', [[0, 'You'], [1, 'Automatic']], o.autos[sel] ? 1 : 0, v => { o.autos[sel] = v; save(); }, null, 'auto');
+    if (n > 1) {
+      const all = el('div', 'seg');
+      all.append(
+        button('All yours', 'allmine', () => { o.autos = o.autos.map(() => 0); save(); }),
+        button('All automatic', 'allauto', () => { o.autos = o.autos.map(() => 1); save(); }),
+        button('All 4-way', 'all4', () => { o.shapes = o.shapes.map(() => '4'); save(); }),
+      );
+      side.appendChild(all);
+    }
+    wrap.appendChild(side);
+    parent.appendChild(wrap);
+    parent.appendChild(el('p', 'hint', n > 1 ? 'Tap a crossing on the map to change it. Automatic crossings never crash, but pay nothing.' : 'Automatic crossings never crash, but pay nothing.'));
   },
 
   customPay() {
@@ -494,7 +628,7 @@ const TCGame = {
     Kit.$('custom-pay').textContent = k ? `${(k * fares).toFixed(1)} COINS / CAR` : 'NO COINS';
     if (!el) return;
     el.classList.toggle('none', !k);
-    el.textContent = !k ? 'Every crossing runs itself, so this shift pays no coins. Turn off an automatic light to earn.'
+    el.textContent = !k ? 'Every crossing runs itself, so this shift pays no coins. Make a crossing yours to earn.'
       : `Pays about ${(k * fares).toFixed(1)} coins per car` + (this.custom.goal ? `, plus ${Math.round(this.custom.goal * 0.5 * k * fares)} for reaching the goal.` : '.') + ' Harder settings pay more.';
   },
 

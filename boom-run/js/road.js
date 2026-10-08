@@ -5,6 +5,7 @@
 // The loop: weave close past traffic to fill the boost bar, burn it to go
 // faster, and when it's full set off BOOM: a few seconds where every car you
 // touch goes up, and the wrecks you send flying set off the cars they hit.
+// You never slow down: the speed you build up stays with you.
 
 const BR_LANES = [-60, -20, 20, 60];
 const BR_ROAD = 80;       // road half-width
@@ -28,6 +29,7 @@ const BRRoad = {
   reset(mode, garage, paint, up = {}) {
     this.mode = mode;
     this.wrong = mode === 'wrongway';
+    this.hyper = mode === 'hyper'; // Hyperdrive: no speed limit at all
     const G = BR_CARS[garage] || BR_CARS.hatch;
     this.G = G;
     this.up = up;
@@ -67,6 +69,7 @@ const BRRoad = {
     this.bestBoom = 0;
     this.timeLeft = mode === 'checkpoint' ? 35 : Infinity;
     this.welcomed = 0;
+    this.topV = 0;
   },
 
   get dist() { return Math.max(0, this.player.y); },
@@ -77,12 +80,13 @@ const BRRoad = {
   // the lane is coned off here
   closed(lane, y, pad = 0) { return this.zones.some(z => z.lane === lane && y > z.y0 - pad && y < z.y1 + pad); },
 
-  // How fast the road wants you to go right now.
+  // How fast the road wants you to go right now. Hyperdrive just keeps climbing.
   cruise() {
     const d = this.dist, G = this.G;
-    const base = this.wrong ? Math.min(560, 250 + d * 0.01) : Math.min(820, 330 + d * 0.014);
+    const base = this.hyper ? 560 + this.time * 12 : this.wrong ? Math.min(560, 250 + d * 0.01) : Math.min(820, 330 + d * 0.014);
     return base * G.speed;
   },
+  get kmh() { return Math.round(this.player.v * 0.036) * 10; },
 
   // Boost fills from close calls, air, takedowns and the gravel.
   fill(amount) {
@@ -112,25 +116,29 @@ const BRRoad = {
     if (p.dead) { this.updateTraffic(dt); return; }
     if (input.boom) this.boom();
 
-    // speed: cruise, plus boost or brake, plus nitro and BOOM
+    // speed: cruise, plus boost, nitro and BOOM. In Hyperdrive they push your
+    // speed up for good instead of lifting it a set amount over the cruise.
     let want = this.cruise();
     p.burning = false;
     if (input.boost && p.boomT <= 0) {
       if (p.boost > 0) { // burning the bar
-        want *= 1.35;
+        want = this.hyper ? Math.max(want, p.v) + 200 * dt : want * 1.3;
         p.burning = true;
         p.boost = Math.max(0, p.boost - dt * 0.3 * (this.G.burnMul || 1));
-      } else want *= 1.08;
+      }
     }
-    if (input.brake) want = Math.min(want * 0.6, 150); // hard enough to sit behind traffic
-    if (p.nitroT > 0) want *= 1.45;
-    if (p.boomT > 0) want *= 1.3;
-    const gravel = Math.abs(p.x) > BR_ROAD - 2;
-    if (gravel) want *= 0.9;
+    // (you keep the speed these give you, so they're gentler than a one-off burst would be)
+    if (p.nitroT > 0) want = this.hyper ? Math.max(want, p.v) + 150 * dt : want * 1.35;
+    if (p.boomT > 0) want = this.hyper ? Math.max(want, p.v) + 100 * dt : want * 1.25;
+    if (input.brake) want = Math.min(want * 0.6, 150); // only the demo car behind the menus brakes
+    // you never slow down (the demo car aside, and when the clock runs out)
+    else if (!input.auto && this.timeLeft > 0) want = Math.max(want, p.v);
     if (this.timeLeft <= 0) want = 0; // out of time: roll to a stop
-    const acc = want > p.v ? (p.burning || p.boomT > 0 ? 520 : 260) * this.G.speed : 520;
+    const acc = want > p.v ? (p.burning || p.boomT > 0 ? 520 : 260) * this.G.speed * (this.hyper ? 1.6 : 1) : 520;
     p.v = want > p.v ? Math.min(want, p.v + acc * dt) : Math.max(want, p.v - acc * dt);
     p.y += p.v * dt;
+    this.topV = Math.max(this.topV, p.v);
+    const gravel = Math.abs(p.x) > BR_ROAD - 2;
 
     // steering: keys push sideways, a finger or mouse pulls toward a point. On oil you slide.
     const steer = 320 * this.G.grip;
@@ -171,6 +179,7 @@ const BRRoad = {
     this.spawn();
     this.updateTraffic(dt);
     this.breakWalls();
+    this.makeWay();
     this.collide();
     this.pickups(dt);
     this.checkpoints();
@@ -188,7 +197,8 @@ const BRRoad = {
     const p = this.player, top = p.y + this.viewAhead + 900;
     while (this.featY < top) {
       const y = this.featY;
-      this.featY += rand(900, 1500) * Math.max(0.6, 1.2 - this.dist / 20000);
+      // (in Hyperdrive they're spaced by time, not distance, or they'd come thick and fast)
+      this.featY += rand(900, 1500) * (this.hyper ? Math.max(1, p.v / 520) : Math.max(0.6, 1.2 - this.dist / 20000));
       if (this.wrong && chance(0.5)) continue;
       const roll = Math.random();
       if (roll < 0.3) { // roadworks: cones down one lane, an arrow board at the start
@@ -214,7 +224,8 @@ const BRRoad = {
   },
 
   // ---- Traffic --------------------------------------------------------------------
-  density() { return Math.min(11, 4 + this.dist / 1800); }, // cars per 1000 units of road
+  // cars per 1000 units of road (Hyperdrive: fewer, spread out by time)
+  density() { return this.hyper ? Math.min(6, 3 + this.time / 45) : Math.min(11, 4 + this.dist / 1800); },
 
   spawn() {
     const p = this.player, top = p.y + this.viewAhead + 160;
@@ -278,10 +289,11 @@ const BRRoad = {
           if (z) v = Math.min(v, Math.max(0, (z.y0 - 40 - t.y - t.car.len / 2) * 2));
         }
       }
-      if (t.easeT > 0) { t.easeT -= dt; v *= 0.55; }
+      if (t.hurryT > 0) { t.hurryT -= dt; v = Math.max(v, t.hurry); } // getting out of your way
+      else if (t.easeT > 0) { t.easeT -= dt; v *= 0.55; }
       t.y += v * dt;
       // the odd lane change, with a blinker first (later in the run)
-      if (!this.wrong && !p.dead && this.dist > 1200 && !t.carrier) {
+      if (!this.wrong && !this.hyper && !p.dead && this.dist > 1200 && !t.carrier) {
         t.changeT -= dt;
         if (t.changeT <= 0 && t.blinkT <= 0 && t.targetX === t.x) {
           t.changeT = rand(3, 8) * Math.max(0.5, 1.6 - this.dist / 8000);
@@ -343,6 +355,27 @@ const BRRoad = {
       if (lanes.size < BR_LANES.length) continue;
       const back = band.reduce((a, o) => (this.wrong ? (o.y > a.y ? o : a) : (o.y < a.y ? o : a)));
       back.easeT = Math.max(back.easeT || 0, 1.2);
+    }
+  },
+
+  // There are no brakes, so a car could box you in: one alongside on each side
+  // (or the edge of the road) and a slow one dead ahead. When that happens, the
+  // car ahead gets out of the way: it moves over if it can, or puts its foot down.
+  makeWay() {
+    const p = this.player;
+    if (p.dead || this.wrong) return;
+    let lane = 0;
+    BR_LANES.forEach((x, i) => { if (Math.abs(x - p.x) < Math.abs(BR_LANES[lane] - p.x)) lane = i; });
+    const way = d => lane + d >= 0 && lane + d < BR_LANES.length && this.laneFree(BR_LANES[lane + d], p.y, 46);
+    if (way(-1) || way(1)) return;
+    for (const t of this.traffic) {
+      if (t.flung || t.dead || t.carrier || t.targetX !== BR_LANES[lane]) continue; // only the car in your lane
+      const gap = t.y - p.y;
+      if (gap <= 0 || gap > Math.max(150, (p.v - t.v) * 1.3)) continue;
+      // (never into a lane you're in or swerving across)
+      const opts = [t.lane - 1, t.lane + 1].filter(i => i >= 0 && i < BR_LANES.length && Math.abs(BR_LANES[i] - p.x) > 34 && this.laneFree(BR_LANES[i], t.y, 60));
+      if (opts.length && t.x === t.targetX) { t.lane = pick(opts); t.targetX = BR_LANES[t.lane]; t.car.blink = BR_LANES[t.lane] > t.x ? 1 : -1; }
+      t.hurry = p.v + 30; t.hurryT = 0.6; // and keeps ahead of you while it does (for as long as you're boxed in)
     }
   },
 
@@ -440,7 +473,7 @@ const BRRoad = {
     const p = this.player, top = p.y + this.viewAhead + 120;
     // coins: short lines, trails that weave between the lanes, now and then a fuel can
     while (this.itemY < top) {
-      this.itemY += rand(320, 620);
+      this.itemY += rand(320, 620) * (this.hyper ? Math.max(1, p.v / 600) : 1);
       const roll = Math.random();
       if (roll < 0.12) this.items.push({ kind: 'fuel', x: pick(BR_LANES), y: this.itemY, phase: rand(6) });
       else if (roll < 0.4 && this.dist > 600) { // a weave across two lanes
@@ -453,7 +486,7 @@ const BRRoad = {
       }
     }
     while (this.powerY < top) {
-      this.powerY += rand(1500, 2300);
+      this.powerY += rand(1500, 2300) * (this.hyper ? Math.max(1, p.v / 600) : 1);
       this.items.push({ kind: 'power', type: pick(['speed', 'shield', 'magnet']), x: pick(BR_LANES), y: this.powerY, phase: rand(6) });
     }
     while (this.rampY < top) {
@@ -494,7 +527,6 @@ const BRRoad = {
           this.bonus += pts;
           this.cones++;
           this.fill(0.02);
-          if (it.kind === 'barrel' || it.kind === 'board') p.v *= 0.93;
           if (this.hooks.cone) this.hooks.cone(it, pts);
         }
         continue;
