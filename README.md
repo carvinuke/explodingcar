@@ -11,8 +11,11 @@ The front page is the **Solarian Arcade**. Pick one of four:
   power-ups, reckless drivers and exploding car crashes that knock you back.
 - **[Traffic Control](traffic-control/)**: run a busy crossroads by switching
   the traffic lights. Let two streams of traffic meet and they go boom.
-- **[Boom Run](boom-run/)**: floor it down an endless highway, weaving through
-  traffic for close calls, power-ups and coins.
+- **[Boom Run](boom-run/)**: floor it down an endless highway. Scrape past
+  traffic to fill your boost bar, burn it to go faster, and when it's full set
+  off BOOM: a few seconds where every car you touch goes up, and the wrecks you
+  send flying set off the cars they land on. Roadworks, oil slicks, car
+  carriers to launch off, tunnels, and a garage with the luxury lot.
 - **[Hall of Art](hall-of-art/)**: a gallery of 31 interactive exhibits:
   living buttons, moving pictures, lettering that won't sit still, and
   sculpture and physics pieces you can drag, swing and throw.
