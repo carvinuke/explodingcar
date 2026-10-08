@@ -64,6 +64,76 @@ function tcEndlessLevel(cars) {
   };
 }
 
+// ---- Custom shifts ----------------------------------------------------------------
+// Where the crossings go (world units). Avenues are rows (east-west), streets are columns.
+const TC_LAYOUTS = {
+  1: { rows: [0], cols: [0] },
+  2: { rows: [0], cols: [-160, 160] },
+  3: { rows: [0], cols: [-320, 0, 320] },
+  4: { rows: [-150, 150], cols: [-170, 170] },
+};
+// Crossing shapes, one per crossing ('TN': no road to the north, 'TS': none to the south).
+// Crossings are numbered along the bottom row first, left to right.
+const TC_SHAPES = {
+  '4':   { 1: ['4'], 2: ['4', '4'], 3: ['4', '4', '4'], 4: ['4', '4', '4', '4'] },
+  T:     { 1: ['TN'], 2: ['TN', 'TS'], 3: ['TN', 'TS', 'TN'], 4: ['4', 'TS', 'TN', '4'] },
+  mixed: { 1: ['TS'], 2: ['4', 'TN'], 3: ['TS', '4', 'TN'], 4: ['4', 'TS', '4', '4'] },
+};
+// Which crossings go automatic first (so you keep the middle ones).
+const TC_AUTO_ORDER = { 1: [0], 2: [1, 0], 3: [2, 0, 1], 4: [3, 0, 1, 2] };
+
+const TC_CUSTOM_DEFAULT = {
+  goal: 0, crossings: 2, shape: '4', auto: 0, rate: 24, speed: 1, reckless: 0, turn: 1, patience: 1,
+  big: true, medic: false, lux: false, train: false, rain: false, night: false, rush: false, strikes: 3, look: 'main',
+};
+const TC_CUSTOM_OPTS = {
+  goal: [[10, '10'], [25, '25'], [50, '50'], [100, '100'], [0, 'Endless']],
+  crossings: [[1, '1'], [2, '2'], [3, '3'], [4, '2×2']],
+  shape: [['4', '4-way'], ['T', 'T-junction'], ['mixed', 'Mixed']],
+  turn: [[0, 'None'], [1, 'Some'], [2, 'Lots']],
+  reckless: [[0, 'None'], [1, 'A few'], [2, 'Lots']],
+  patience: [[0, 'Relaxed'], [1, 'Normal'], [2, 'Short']],
+  strikes: [[3, '3'], [5, '5'], [0, 'Unlimited']],
+  look: [['main', 'Main Street'], ['downtown', 'Downtown'], ['rail', 'Countryside']],
+};
+
+function tcCustomLevel(o) {
+  const n = o.crossings, mix = [['sedan', 5], ['small', 4], ['van', 1.5], ['pickup', 1.5]];
+  if (o.look === 'downtown') mix.push(['taxi', 3], ['sports', 1], ['police', 0.4]);
+  if (o.look === 'rail') mix.push(['pickup', 2]);
+  if (o.big) mix.push(['bus', 1.2], ['tanker', 0.6]);
+  if (o.lux) mix.push(...luxMix(0.4));
+  const auto = [];
+  for (let i = 0; i < Math.min(o.auto, n); i++) auto[TC_AUTO_ORDER[n][i]] = true;
+  const rail = !!o.train && n === 1;
+  return {
+    custom: true, map: o.look, name: 'Custom Shift', goal: o.goal || Infinity, endless: !o.goal,
+    layout: n, shapes: TC_SHAPES[o.shape][n], auto,
+    rate: o.rate / 60, speed: o.speed, turn: [0, 0.25, 0.5][o.turn], reckless: [0, 0.05, 0.14][o.reckless],
+    ambulance: o.medic ? 0.07 : 0, rail, train: rail ? 28 : 0,
+    rain: !!o.rain, night: !!o.night, rush: !!o.rush, mix, patience: [18, 12, 8][o.patience],
+  };
+}
+
+// Coins per car for a custom shift: the harder the settings, the more it pays
+// (a crossing that runs itself pays nothing).
+function tcCustomPay(o) {
+  const manual = o.crossings - Math.min(o.auto, o.crossings);
+  if (!manual) return 0;
+  let k = 0.8 * clamp(o.rate / 28, 0.4, 2.2) * (0.6 + 0.4 * o.speed);
+  k *= [1, 1.25, 1.45, 1.6][manual - 1];
+  k *= [1, 1.12, 1.25][o.turn] * [1, 1.15, 1.35][o.reckless] * [0.85, 1, 1.2][o.patience];
+  if (o.rain) k *= 1.1;
+  if (o.night) k *= 1.08;
+  if (o.train && o.crossings === 1) k *= 1.15;
+  if (o.medic) k *= 1.05;
+  if (o.rush) k *= 1.1;
+  if (o.big) k *= 1.05;
+  k *= o.strikes === 3 ? 1 : o.strikes === 5 ? 0.8 : 0.3;
+  return Math.round(clamp(k, 0, 2.5) * 100) / 100;
+}
+const TC_CUSTOM_UNLOCK = 5; // levels to clear first
+
 // ---- Trophies -------------------------------------------------------------------
 const TC_TROPHIES = {
   first:     { name: 'Green Light', desc: 'Clear your first level', coins: 50 },
@@ -80,6 +150,9 @@ const TC_TROPHIES = {
   powers:    { name: 'Tool Belt', desc: 'Use Freeze, Tow and Calm', coins: 50 },
   quiet:     { name: 'Nobody Honked', desc: 'Clear a level without a single honk', coins: 75 },
   train:     { name: 'Close Call', desc: 'A car clears the tracks just before the train', coins: 75 },
+  custom:    { name: 'Town Planner', desc: 'Finish a custom shift with a goal', coins: 50 },
+  grid:      { name: 'Gridmaster', desc: 'Get 50 cars through four crossings with no automatic lights', coins: 200 },
+  wave:      { name: 'Ride the Wave', desc: 'Use a Green Wave', coins: 25 },
 };
 
 // ---- Shop -------------------------------------------------------------------------
@@ -87,6 +160,9 @@ const TC_UPGRADES = {
   patience: { name: 'Patient Drivers', desc: 'Drivers wait 15% longer before honking (per level)', cost: [300, 700, 1500] },
   strike:   { name: 'Fourth Strike', desc: 'You can survive one more crash in every run', cost: [1500] },
   start:    { name: 'Head Start', desc: 'Start every run holding a random power-up', cost: [800] },
+  amber:    { name: 'Quick Amber', desc: 'Amber lights last 0.3 seconds less, so switching is quicker', cost: [900] },
+  towing:   { name: 'Tow Service', desc: 'Wrecks get towed away sooner on their own (per level)', cost: [500, 1200] },
+  fares:    { name: 'Bonus Fares', desc: '+10% coins from every shift (per level)', cost: [600, 1300, 2500] },
 };
 
 // Traffic light housings
@@ -96,6 +172,9 @@ const TC_LIGHTS = {
   retro:   { name: 'Retro Green', price: 250, top: '#3f7d4a', front: '#2c5a35', body: '#24432a' },
   neon:    { name: 'Neon', price: 600, top: '#ff4fe0', front: '#c22fae', body: '#2a1030', glow: true },
   gold:    { name: 'Solid Gold', price: 1200, top: '#ffd84a', front: '#c9a020', body: '#8a6a10', shine: true },
+  chrome:  { name: 'Chrome', price: 800, top: '#eef1f5', front: '#a9b2bd', body: '#5d6672', pole: '#c9cfd7', shine: true },
+  oldtown: { name: 'Old Town', price: 700, top: '#d6ab52', front: '#a37f30', body: '#5b3b22', pole: '#2f4a3a' },
+  candy:   { name: 'Candy Cane', price: 900, top: '#ffffff', front: '#dcdcdc', body: '#d7263d', pole: '#f7f7f2', stripes: true },
 };
 
 // Themes repaint the ground and scenery on every map
@@ -104,10 +183,18 @@ const TC_THEMES = {
   desert: { name: 'Desert', price: 400 },
   snow:   { name: 'Snow', price: 400 },
   autumn: { name: 'Autumn', price: 400 },
+  beach:  { name: 'Beach', price: 600 },
+  neon:   { name: 'Neon Night', price: 900 },
+};
+// Ground and plant colours for the themes Road Rush's own biome table doesn't have
+const TC_THEME_BIOMES = {
+  beach: { name: 'Beach', ground: '#f0dca2', ground2: '#ead598', edge: '#cdb277', tree: ['#3fa34d', '#2e7f3a', '#52b85e', '#38914a'], bush: ['#6dae55', '#548d42', '#7fc063', '#619f4b'] },
+  neon:  { name: 'Neon', ground: '#221d3a', ground2: '#262043', edge: '#151229', tree: ['#ff4fd8', '#b12f99', '#ff7fe6', '#d23cb8'], bush: ['#3fe0ff', '#1f9bb8', '#7ff0ff', '#2cbad8'] },
 };
 
 const TC_POWERS = {
   freeze: { name: 'Freeze', key: '1', desc: 'Stops every car for 3 seconds' },
   tow:    { name: 'Tow', key: '2', desc: 'Clears every wreck at once' },
   calm:   { name: 'Calm', key: '3', desc: 'Every driver gets their patience back' },
+  wave:   { name: 'Green Wave', key: '4', desc: 'Every light runs itself safely for 10 seconds' },
 };

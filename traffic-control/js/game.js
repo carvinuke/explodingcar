@@ -4,7 +4,7 @@
 const TCGame = {
   state: 'title', // title | intro | playing | paused | over
   level: null,
-  levelNo: 0,     // 1..15, or 0 for Endless
+  levelNo: 0,     // 1..15, 0 for Endless, or 'custom'
   settings: { low: false, shake: true },
 
   init() {
@@ -30,7 +30,13 @@ const TCGame = {
     this.stars = S.get('levels', {}) || {};
     this.best = S.get('best', 0) || 0;
     this.stats = Object.assign({ cars: 0, crashes: 0, medic: 0, runs: 0 }, S.get('stats', {}) || {});
-    this.up = Object.assign({ patience: 0, strike: 0, start: 0 }, S.get('up', {}) || {});
+    this.up = Object.assign({ patience: 0, strike: 0, start: 0, amber: 0, towing: 0, fares: 0 }, S.get('up', {}) || {});
+    this.custom = Object.assign({}, TC_CUSTOM_DEFAULT, S.get('custom', {}) || {});
+    const C = this.custom; // (anything odd in storage falls back to the defaults)
+    for (const k in TC_CUSTOM_OPTS) if (!TC_CUSTOM_OPTS[k].some(([v]) => v === C[k])) C[k] = TC_CUSTOM_DEFAULT[k];
+    C.rate = clamp(Math.round(Number(C.rate)) || TC_CUSTOM_DEFAULT.rate, 10, 80);
+    C.speed = clamp(Number(C.speed) || 1, 0.7, 1.5);
+    C.auto = clamp(Math.round(Number(C.auto)) || 0, 0, C.crossings);
     this.owned = Object.assign({ lights: ['classic'], themes: ['auto'] }, S.get('owned', {}) || {});
     this.lightStyle = S.get('light', 'classic');
     if (!TC_LIGHTS[this.lightStyle]) this.lightStyle = 'classic';
@@ -57,14 +63,21 @@ const TCGame = {
 
   start(n) {
     this.levelNo = n;
-    this.level = n > 0 ? TC_LEVELS[n - 1] : tcEndlessLevel(0);
-    TCSim.reset(this.level, { patienceMul: 1 + 0.15 * this.up.patience });
+    this.isCustom = n === 'custom';
+    this.level = this.isCustom ? tcCustomLevel(this.custom) : n > 0 ? TC_LEVELS[n - 1] : tcEndlessLevel(0);
+    this.pay = this.isCustom ? tcCustomPay(this.custom) : 1;
+    TCSim.reset(this.level, {
+      patienceMul: 1 + 0.15 * this.up.patience,
+      yellow: this.up.amber ? YELLOW - 0.3 : YELLOW,
+      towTime: [5, 3.6, 2.4][this.up.towing] || 5,
+    });
     TCView.build(this.level.map, this.theme);
     TCView.fit();
     FX.reset();
-    this.maxStrikes = 3 + (this.up.strike ? 1 : 0);
-    this.powers = { freeze: 0, tow: 0, calm: 0 };
-    if (this.up.start) this.powers[pick(['freeze', 'tow', 'calm'])]++;
+    const extra = this.up.strike ? 1 : 0;
+    this.maxStrikes = this.isCustom ? (this.custom.strikes ? this.custom.strikes + extra : Infinity) : 3 + extra;
+    this.powers = { freeze: 0, tow: 0, calm: 0, wave: 0 };
+    if (this.up.start) this.powers[pick(Object.keys(TC_POWERS))]++;
     this.nextPower = 12;
     this.runCoins = 0;
     this.runMedic = 0;
@@ -74,9 +87,22 @@ const TCGame = {
     Kit.$('toasts').innerHTML = '';
     Kit.hideScreens();
     Kit.$('hud').classList.remove('hidden');
-    Kit.$('hud-level').textContent = n > 0 ? `${n}. ${this.level.name.toUpperCase()}` : 'ENDLESS RUSH HOUR';
+    Kit.$('hud-level').textContent = this.isCustom ? `CUSTOM · ${this.crossingsLabel()}` : n > 0 ? `${n}. ${this.level.name.toUpperCase()}` : 'ENDLESS RUSH HOUR';
+    const manual = TCSim.nodes.filter(N => !N.auto).length;
+    Kit.$('swap-txt').textContent = TCSim.nodes.length > 1 ? 'SWITCH' : 'SWITCH ALL';
+    Kit.$('btn-nextx').classList.toggle('hidden', manual < 2);
     this.updateHud();
+    if (this.isCustom && TCSim.nodes.length > 1) {
+      if (!manual) Kit.toast('Every crossing runs itself. Sit back!');
+      else if (manual > 1) Kit.toast(matchMedia('(hover: none)').matches ? 'Tap a light to work its crossing' : 'Tab (or tap a light) picks a crossing', '', 3200);
+    }
   },
+
+  crossingsLabel() {
+    const n = this.level.layout || 1;
+    return n === 1 ? '1 CROSSING' : n === 4 ? '2×2 GRID' : `${n} CROSSINGS`;
+  },
+  cleared() { return TC_LEVELS.filter(L => this.stars[L.n]).length; },
 
   intro(n) {
     const L = TC_LEVELS[n - 1];
@@ -102,11 +128,14 @@ const TCGame = {
   end(won) {
     if (this.state !== 'playing') return;
     this.state = 'over';
-    const S = TCSim, n = this.levelNo;
+    const S = TCSim, n = this.levelNo, custom = this.isCustom;
     const crashes = S.crashes;
     let stars = 0;
     let coins = S.through;
-    if (n > 0 && won) {
+    if (custom) {
+      coins = Math.round(S.through * this.pay);
+      if (won) { coins += Math.round(this.level.goal * 0.5 * this.pay); Sound.levelUp(); } else Sound.gameOver();
+    } else if (n > 0 && won) {
       stars = Math.max(1, 3 - crashes);
       coins += 10 * stars;
       const had = this.stars[n] || 0;
@@ -120,6 +149,7 @@ const TCGame = {
       }
       Sound.gameOver();
     }
+    coins = Math.round(coins * (1 + 0.1 * this.up.fares));
     Wallet.add(coins);
     this.runCoins = coins;
     this.stats.cars += S.through;
@@ -127,11 +157,13 @@ const TCGame = {
     this.checkTrophies(won);
 
     // the report
-    Kit.$('res-no').textContent = n > 0 ? `LEVEL ${n}` : 'ENDLESS';
-    Kit.$('res-title').textContent = n > 0 ? (won ? (stars === 3 ? 'Perfect shift!' : 'Level clear!') : 'Gridlock!') : 'Shift over';
+    const goal = this.level.goal < Infinity ? this.level.goal : 0;
+    Kit.$('res-no').textContent = custom ? 'CUSTOM' : n > 0 ? `LEVEL ${n}` : 'ENDLESS';
+    Kit.$('res-title').textContent = custom ? (won ? 'Shift complete!' : crashes >= this.maxStrikes ? 'Gridlock!' : 'Shift over')
+      : n > 0 ? (won ? (stars === 3 ? 'Perfect shift!' : 'Level clear!') : 'Gridlock!') : 'Shift over';
     Kit.$('res-stars').innerHTML = n > 0 ? [1, 2, 3].map(i => `<span class="${i <= stars ? 'on' : ''}">★</span>`).join('') : '';
-    Kit.$('res-stars').classList.toggle('hidden', n === 0);
-    Kit.$('res-cars').textContent = n > 0 ? `${S.through} / ${this.level.goal}` : S.through;
+    Kit.$('res-stars').classList.toggle('hidden', !(n > 0));
+    Kit.$('res-cars').textContent = goal ? `${S.through} / ${goal}` : S.through;
     Kit.$('res-crashes').textContent = crashes;
     Kit.$('res-best-row').classList.toggle('hidden', n !== 0);
     Kit.$('res-best').textContent = this.best;
@@ -146,7 +178,11 @@ const TCGame = {
   },
 
   pause(on) {
-    if (on && this.state === 'playing') { this.state = 'paused'; Kit.show('screen-pause'); }
+    if (on && this.state === 'playing') {
+      this.state = 'paused';
+      Kit.$('btn-endshift').classList.toggle('hidden', !(this.isCustom || this.levelNo === 0));
+      Kit.show('screen-pause');
+    }
     else if (!on && this.state === 'paused') { this.state = 'playing'; Kit.hideScreens(); }
   },
 
@@ -167,7 +203,7 @@ const TCGame = {
         if (!this.playing()) return;
         if (TCSim.through >= this.nextPower) {
           this.nextPower += 12;
-          const k = pick(['freeze', 'tow', 'calm']);
+          const k = pick(Object.keys(TC_POWERS));
           if (this.powers[k] < 3) { this.powers[k]++; Kit.toast(`+1 ${TC_POWERS[k].name.toUpperCase()}`, 'power'); Sound.powerup(); }
         }
         if (this.levelNo === 0) {
@@ -176,11 +212,12 @@ const TCGame = {
           if (TCSim.through === 150) this.trophies.earn('end150');
         }
         if (this.stats.cars + TCSim.through >= 1000) this.trophies.earn('total1000');
+        if (this.isCustom && TCSim.through >= 50 && TCSim.nodes.length === 4 && !TCSim.nodes.some(N => N.auto)) this.trophies.earn('grid');
         this.updateHud();
-        if (this.levelNo > 0 && TCSim.through >= this.level.goal) this.end(true);
+        if ((this.levelNo > 0 || this.isCustom) && TCSim.through >= this.level.goal) this.end(true);
       },
       commit: car => {
-        if (!this.playing() || !car.medic) return;
+        if (!this.playing() || !car.medic || TCSim.nodes[car.stops[0].n].auto) return;
         if (car.wait < 3.2) {
           Wallet.add(5);
           this.runCoins += 5;
@@ -226,6 +263,7 @@ const TCGame = {
 
   checkTrophies(won) {
     const n = this.levelNo, T = this.trophies;
+    if (this.isCustom && won) T.earn('custom');
     if (n > 0 && won) {
       T.earn('first');
       if (this.stars[n] === 3) T.earn('three');
@@ -245,9 +283,10 @@ const TCGame = {
     if (k === 'freeze') { TCSim.freeze(3); Sound.freeze(); }
     if (k === 'tow') { TCSim.tow(); Sound.clang(1, 0); }
     if (k === 'calm') { TCSim.calm(); Sound.calm(); }
+    if (k === 'wave') { TCSim.wave(10); Sound.powerup(); Kit.toast('GREEN WAVE', 'go'); this.trophies.earn('wave'); }
     this.usedPowers.add(k);
     TC_STORE.set('used', [...this.usedPowers]);
-    if (this.usedPowers.size >= 3) this.trophies.earn('powers');
+    if (['freeze', 'tow', 'calm'].every(p => this.usedPowers.has(p))) this.trophies.earn('powers');
     this.updateHud();
   },
 
@@ -281,10 +320,15 @@ const TCGame = {
   // ---- HUD -----------------------------------------------------------------------
   updateHud(hit) {
     if (!this.level) return;
-    Kit.$('hud-cars').textContent = this.levelNo > 0 ? `${TCSim.through}/${this.level.goal}` : TCSim.through;
+    Kit.$('hud-cars').textContent = this.level.goal < Infinity ? `${TCSim.through}/${this.level.goal}` : TCSim.through;
     const st = Kit.$('hud-strikes');
     st.innerHTML = '';
-    for (let i = 0; i < this.maxStrikes; i++) {
+    if (this.maxStrikes === Infinity) { // unlimited: just count them
+      const s = document.createElement('span');
+      s.className = 'strike-count';
+      s.textContent = `✕ ${TCSim.crashes}`;
+      st.appendChild(s);
+    } else for (let i = 0; i < this.maxStrikes; i++) {
       const s = document.createElement('span');
       s.className = 'strike' + (i < TCSim.crashes ? ' on' : '');
       s.textContent = '✕';
@@ -310,6 +354,10 @@ const TCGame = {
     Kit.show('screen-title');
     Kit.$('title-stars').textContent = this.totalStars();
     Kit.$('best-endless').textContent = this.best ? `Best ${this.best} cars` : 'How long can you last?';
+    const open = this.cleared() >= TC_CUSTOM_UNLOCK, cb = Kit.$('btn-custom');
+    cb.classList.toggle('locked', !open);
+    cb.setAttribute('aria-disabled', open ? 'false' : 'true');
+    Kit.$('custom-sub').textContent = open ? 'Build your own crossings' : `🔒 Clear ${TC_CUSTOM_UNLOCK} levels to unlock (${this.cleared()}/${TC_CUSTOM_UNLOCK})`;
     Kit.$('trophy-count').textContent = `${this.trophies.count}/${this.trophies.total}`;
     this.refreshCoins();
   },
@@ -336,6 +384,127 @@ const TCGame = {
     }
     Kit.$('levels-stars').textContent = this.totalStars();
     Kit.show('screen-levels');
+  },
+
+  // ---- Custom shift ------------------------------------------------------------------
+  showCustom() {
+    if (this.cleared() < TC_CUSTOM_UNLOCK) { Kit.toast(`Clear ${TC_CUSTOM_UNLOCK} levels to unlock custom shifts`); return; }
+    const o = this.custom, body = Kit.$('custom-body');
+    body.innerHTML = '';
+    const save = () => { TC_STORE.set('custom', o); this.showCustom(); };
+    const sec = title => {
+      const el = document.createElement('section');
+      el.className = 'opt-sec';
+      el.innerHTML = `<h3>${title}</h3>`;
+      body.appendChild(el);
+      return el;
+    };
+    const row = (parent, label, sub) => {
+      const r = document.createElement('div');
+      r.className = 'opt-row';
+      r.innerHTML = '<span class="opt-lbl"></span>';
+      r.firstChild.textContent = label;
+      if (sub) { const em = document.createElement('em'); em.textContent = sub; r.firstChild.appendChild(em); }
+      parent.appendChild(r);
+      return r;
+    };
+    const seg = (parent, label, key, opts, sub, disabled) => {
+      const r = row(parent, label, sub), g = document.createElement('div');
+      g.className = 'seg';
+      g.setAttribute('role', 'group');
+      g.setAttribute('aria-label', label);
+      for (const [v, text] of opts) {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.textContent = text;
+        b.setAttribute('aria-pressed', o[key] === v ? 'true' : 'false');
+        b.disabled = !!disabled;
+        b.addEventListener('click', () => { Sound.click(); o[key] = v; save(); });
+        g.appendChild(b);
+      }
+      r.appendChild(g);
+    };
+    const slider = (parent, label, key, min, max, step, fmt) => {
+      const r = row(parent, label), w = document.createElement('label');
+      w.className = 'opt-range';
+      w.innerHTML = `<input type="range" min="${min}" max="${max}" step="${step}"><output></output>`;
+      const inp = w.querySelector('input'), out = w.querySelector('output');
+      inp.value = o[key];
+      inp.setAttribute('aria-label', label);
+      out.textContent = fmt(o[key]);
+      inp.addEventListener('input', () => { o[key] = Number(inp.value); out.textContent = fmt(o[key]); TC_STORE.set('custom', o); this.customPay(); });
+      r.appendChild(w);
+    };
+    const toggles = (parent, items) => {
+      const g = document.createElement('div');
+      g.className = 'opt-grid';
+      for (const [key, label, sub, disabled] of items) {
+        const r = document.createElement('div');
+        r.className = 'toggle-row';
+        r.innerHTML = '<span></span><button type="button" class="toggle" role="switch"></button>';
+        r.firstChild.textContent = label;
+        if (sub) { const em = document.createElement('em'); em.className = 'sub'; em.textContent = sub; r.firstChild.appendChild(em); }
+        const t = r.lastChild;
+        t.setAttribute('aria-label', label);
+        t.setAttribute('aria-checked', o[key] && !disabled ? 'true' : 'false');
+        t.disabled = !!disabled;
+        if (disabled) t.style.opacity = 0.4;
+        t.addEventListener('click', () => { Sound.click(); o[key] = !o[key]; save(); });
+        g.appendChild(r);
+      }
+      parent.appendChild(g);
+    };
+
+    const roads = sec('The roads');
+    seg(roads, 'Crossings', 'crossings', TC_CUSTOM_OPTS.crossings);
+    seg(roads, 'Shape', 'shape', TC_CUSTOM_OPTS.shape, o.shape === '4' ? 'Every crossing has four roads' : o.shape === 'T' ? 'Roads that end in a T' : 'Some of each');
+    const autoOpts = [];
+    for (let i = 0; i <= o.crossings; i++) autoOpts.push([i, i === 0 ? 'None' : i === o.crossings ? (i === 1 ? 'On' : 'All') : String(i)]);
+    if (o.auto > o.crossings) o.auto = o.crossings;
+    seg(roads, 'Automatic lights', 'auto', autoOpts, 'Crossings that switch themselves');
+    seg(roads, 'Look', 'look', TC_CUSTOM_OPTS.look);
+
+    const traffic = sec('The traffic');
+    slider(traffic, 'Cars per minute', 'rate', 10, 80, 2, v => `${v}`);
+    slider(traffic, 'Car speed', 'speed', 0.7, 1.5, 0.1, v => `${v.toFixed(1)}×`);
+    seg(traffic, 'Turning', 'turn', TC_CUSTOM_OPTS.turn);
+    seg(traffic, 'Reckless drivers', 'reckless', TC_CUSTOM_OPTS.reckless, 'They run red lights');
+    seg(traffic, 'Patience', 'patience', TC_CUSTOM_OPTS.patience, 'How long drivers wait before they honk');
+    toggles(traffic, [['big', 'Buses and tankers'], ['medic', 'Ambulances'], ['lux', 'Supercars']]);
+
+    const shift = sec('The shift');
+    seg(shift, 'Goal', 'goal', TC_CUSTOM_OPTS.goal, 'Cars to get through');
+    seg(shift, 'Crashes allowed', 'strikes', TC_CUSTOM_OPTS.strikes);
+    toggles(shift, [
+      ['train', 'Trains', o.crossings > 1 ? 'One crossing only' : '', o.crossings > 1],
+      ['rush', 'Rush hour waves'], ['rain', 'Rain'], ['night', 'Night'],
+    ]);
+    const pay = document.createElement('p');
+    pay.id = 'custom-payline';
+    pay.className = 'pay-line';
+    body.appendChild(pay);
+    this.customPay();
+    this.refreshCoins();
+    if (this.state !== 'custom') { this.state = 'custom'; Kit.show('screen-custom'); }
+  },
+
+  customPay() {
+    const k = tcCustomPay(this.custom), el = Kit.$('custom-payline');
+    const fares = 1 + 0.1 * this.up.fares;
+    Kit.$('custom-pay').textContent = k ? `${(k * fares).toFixed(1)} COINS / CAR` : 'NO COINS';
+    if (!el) return;
+    el.classList.toggle('none', !k);
+    el.textContent = !k ? 'Every crossing runs itself, so this shift pays no coins. Turn off an automatic light to earn.'
+      : `Pays about ${(k * fares).toFixed(1)} coins per car` + (this.custom.goal ? `, plus ${Math.round(this.custom.goal * 0.5 * k * fares)} for reaching the goal.` : '.') + ' Harder settings pay more.';
+  },
+
+  // Tab: the next crossing you work by hand.
+  nextCrossing() {
+    const N = TCSim.nodes;
+    for (let i = 1; i <= N.length; i++) {
+      const k = (TCSim.sel + i) % N.length;
+      if (!N[k].auto) { if (k !== TCSim.sel) Sound.click(); TCSim.sel = k; return; }
+    }
   },
 
   showShop() {
@@ -421,6 +590,11 @@ const TCGame = {
     const on = (id, fn) => Kit.$(id).addEventListener('click', () => { Sound.init(); fn(); });
     on('btn-play', () => { Sound.click(); this.showLevels(); });
     on('btn-endless', () => { Sound.click(); this.start(0); });
+    on('btn-custom', () => { Sound.click(); this.showCustom(); });
+    on('btn-custom-go', () => { Sound.click(); this.start('custom'); });
+    on('btn-custom-back', () => this.showTitle());
+    on('btn-endshift', () => { Kit.hideScreens(); this.state = 'playing'; this.end(false); });
+    on('btn-nextx', () => this.nextCrossing());
     on('btn-shop', () => { Sound.click(); this.showShop(); });
     on('btn-trophies', () => { Sound.click(); this.showTrophies(); });
     on('btn-settings', () => { Sound.click(); this.showSettings(); });
@@ -432,12 +606,12 @@ const TCGame = {
     on('btn-quit', () => this.quit());
     on('btn-pause', () => this.pause(true));
     on('btn-next', () => { const n = this.levelNo + 1; if (n <= TC_LEVELS.length) this.intro(n); });
-    on('btn-retry', () => (this.levelNo > 0 ? this.intro(this.levelNo) : this.start(0)));
+    on('btn-retry', () => (this.isCustom ? this.start('custom') : this.levelNo > 0 ? this.intro(this.levelNo) : this.start(0)));
     on('btn-res-menu', () => this.quit());
     on('btn-shop-done', () => this.showTitle());
     on('btn-trophies-done', () => this.showTitle());
     on('btn-settings-done', () => this.showTitle());
-    on('btn-swap', () => { if (this.state === 'playing') { TCSim.swap(); Sound.click(); } });
+    on('btn-swap', () => { if (this.state === 'playing' && TCSim.swap()) Sound.click(); });
     for (const b of document.querySelectorAll('.power-btn')) b.addEventListener('click', () => this.usePower(b.dataset.power));
     this.syncMute = Kit.muteButton(Kit.$('btn-mute'));
     on('set-sound', () => { Sound.setMuted(!Sound.muted); this.syncMute(); this.showSettings(); });
@@ -461,8 +635,11 @@ const TCGame = {
       if (this.state !== 'playing') return;
       Sound.init();
       const r = cv.getBoundingClientRect();
-      const h = TCView.pick(e.clientX - r.left, e.clientY - r.top);
-      if (h && TCSim.toggle(h)) Sound.click();
+      const p = TCView.pick(e.clientX - r.left, e.clientY - r.top);
+      if (!p) return;
+      if (TCSim.nodes[p.n].auto) { if (TCSim.nodes.length > 1) Kit.toast('That crossing runs itself'); return; }
+      TCSim.sel = p.n;
+      if (TCSim.toggle(p.h, p.n)) Sound.click();
     });
     cv.addEventListener('pointermove', e => {
       if (e.pointerType !== 'mouse') return;
@@ -482,10 +659,12 @@ const TCGame = {
       }
       if (this.state !== 'playing') return;
       if (KEYS[e.code]) { e.preventDefault(); if (TCSim.toggle(KEYS[e.code])) Sound.click(); }
-      else if (e.code === 'Space') { e.preventDefault(); TCSim.swap(); Sound.click(); }
+      else if (e.code === 'Space') { e.preventDefault(); if (TCSim.swap()) Sound.click(); }
+      else if (e.code === 'Tab') { e.preventDefault(); this.nextCrossing(); }
       else if (e.code === 'Digit1') this.usePower('freeze');
       else if (e.code === 'Digit2') this.usePower('tow');
       else if (e.code === 'Digit3') this.usePower('calm');
+      else if (e.code === 'Digit4') this.usePower('wave');
       else if (e.code === 'KeyM') { Sound.setMuted(!Sound.muted); this.syncMute(); }
     });
   },
