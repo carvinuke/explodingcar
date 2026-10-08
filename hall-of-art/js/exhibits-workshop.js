@@ -688,6 +688,13 @@ Exhibits.add({
     t.paints = document.createElement('div');
     t.paints.className = 'ex-tools br paints';
     t.el.appendChild(t.paints);
+    // one listener for every paint pot (the pots are remade for each car)
+    t.on(t.paints, 'click', e => {
+      const b = e.target.closest('.swatch');
+      if (!b || t.state !== 'ready') return;
+      this.fresh(t, b.dataset.col);
+      t.noise(0.25, 0.04, 3000, 'highpass');
+    });
   },
   carName(type) { const n = VEHICLE_TYPES[type].name.replace(/^an? /, ''); return n[0].toUpperCase() + n.slice(1); }, // (not `name`: that's the piece's own)
   pick(t, d) {
@@ -707,8 +714,8 @@ Exhibits.add({
     for (const col of cols) {
       const b = document.createElement('button');
       b.type = 'button'; b.className = 'ex-tool swatch' + (col === t.car.base ? ' on' : ''); b.style.background = col;
+      b.dataset.col = col;
       b.setAttribute('aria-label', 'Paint ' + col);
-      t.on(b, 'click', () => { this.fresh(t, col); t.noise(0.25, 0.04, 3000, 'highpass'); });
       t.paints.appendChild(b);
     }
   },
