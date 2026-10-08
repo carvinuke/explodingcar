@@ -132,10 +132,10 @@ const BRRoad = {
       if (!lanes.length || busy >= 3) continue;
       const lane = pick(lanes);
       const type = weighted(this.dist > 4000
-        ? [['sedan', 4], ['small', 3], ['van', 2], ['pickup', 2], ['taxi', 1.5], ['bus', 1.2], ['tanker', 0.6], ['sports', 0.8], ['police', 0.3]]
-        : [['sedan', 4], ['small', 3], ['van', 1.5], ['pickup', 1.5], ['taxi', 1], ['bus', 0.6]]);
+        ? [['sedan', 4], ['small', 3], ['van', 2], ['pickup', 2], ['taxi', 1.5], ['bus', 1.2], ['tanker', 0.6], ['sports', 0.8], ['police', 0.3], ...luxMix(0.12)]
+        : [['sedan', 4], ['small', 3], ['van', 1.5], ['pickup', 1.5], ['taxi', 1], ['bus', 0.6], ...luxMix(0.04)]);
       const car = Cars.make(type, null, this.wrong ? 'S' : 'N');
-      const slow = type === 'bus' || type === 'tanker' ? 0.75 : 1;
+      const slow = type === 'bus' || type === 'tanker' ? 0.75 : VEHICLE_TYPES[type].lux ? 1.25 : 1; // supercars cruise quicker
       this.traffic.push({
         car, x: BR_LANES[lane], y, lane, targetX: BR_LANES[lane],
         v: (this.wrong ? -rand(100, 170) : rand(120, 210)) * slow,

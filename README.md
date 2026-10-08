@@ -19,6 +19,10 @@ The front page is the **Solarian Arcade**. Pick one of four:
 
 Coins are shared: whatever you earn in one game can be spent in any of them.
 
+Keep an eye out on every road for the luxury cars: the Elfer and Elfer
+Classic, the Toro V12 and Toro Furia, the Rosso F8 and Rosso Superfast, the
+Veloce, the Regent and the Gelände (lookalikes, every one).
+
 ## Play on your own computer
 
 Everything works offline, with no install:

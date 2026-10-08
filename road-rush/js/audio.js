@@ -63,6 +63,7 @@ const Sound = (() => {
   }
 
   function envelope(param, t, attack, peak, dur) {
+    if (!isFinite(peak) || !isFinite(t) || !isFinite(attack) || !isFinite(dur)) peak = 0.0002, attack = attack || 0.01, dur = dur || 0.1; // a bad volume is silence, never a crash
     param.setValueAtTime(0.0001, t);
     param.exponentialRampToValueAtTime(Math.max(0.0002, peak), t + attack);
     param.exponentialRampToValueAtTime(0.0001, t + dur);

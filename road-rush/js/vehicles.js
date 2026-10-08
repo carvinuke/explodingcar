@@ -143,8 +143,12 @@ const Vehicles = {
   },
 
   // Spawn weights per lane; faster, bigger and more dangerous vehicles show up
-  // as it gets harder. Each biome has its own mix.
+  // as it gets harder. Each biome has its own mix, plus the odd luxury car.
   weightsFor(d, zone = 'country') {
+    return this.baseWeights(d, zone).concat(luxWeights(d, zone));
+  },
+
+  baseWeights(d, zone) {
     const city = zone === 'city', desert = zone === 'desert', snow = zone === 'snow', beach = zone === 'beach';
     if (zone === 'farm') return [['small', 2], ['sedan', 2], ['pickup', 3], ['tractor', 3], ['van', 1], ['tanker', d > 0.2 ? 0.4 : 0]].filter(e => e[1] > 0);
     if (zone === 'autumn') return [['small', 2], ['sedan', 2.5], ['pickup', 2.5], ['logtruck', 2.2], ['van', 1], ['sports', d > 0.08 ? 0.6 : 0]].filter(e => e[1] > 0);
