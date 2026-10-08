@@ -25,13 +25,15 @@ The front page is the **Solarian Arcade**. Pick one of four:
   fast you stay fast. Roadworks, oil slicks, car carriers to launch off,
   tunnels, and a garage with the luxury lot. Hyperdrive mode has no speed limit
   at all: every boost adds speed for good and the camera pulls back to keep up.
-- **[Hall of Art](hall-of-art/)**: a gallery of 46 interactive exhibits:
-  living buttons (bubble wrap, a switchboard puzzle), moving pictures
-  (fireworks, a koi pond, a kaleidoscope), lettering that won't sit still
-  (fridge magnets, falling letters), sculpture and physics pieces you can drag,
-  swing and throw (falling sand, plinko, planets, dominoes, a jelly blob, a
-  pane of glass), a Music Room with a drum machine, and Crash Test, which
-  sends the arcade's real cars into a concrete barrier.
+- **[Hall of Art](hall-of-art/)**: a gallery of 61 interactive exhibits:
+  living buttons (bubble wrap, a switchboard puzzle, a slot machine, a panel of
+  switches), moving pictures (fireworks, a koi pond, a plasma globe, the Game
+  of Life, a rainy window to wipe, soap bubbles), lettering that won't sit
+  still (fridge magnets, a split-flap departure board, a graffiti wall),
+  sculpture and physics pieces you can drag, swing and throw (falling sand,
+  plinko, pinball, a snow globe, laser mirrors, dominoes, a pane of glass), a
+  Music Room (a drum machine, a theremin, wind chimes), and Road Works, where
+  the arcade's real cars crash test, pose in a showroom and get a car wash.
 
 Coins are shared: whatever you earn in one game can be spent in any of them.
 
