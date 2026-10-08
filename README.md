@@ -20,9 +20,13 @@ The front page is the **Solarian Arcade**. Pick one of four:
   off BOOM: a few seconds where every car you touch goes up, and the wrecks you
   send flying set off the cars they land on. Roadworks, oil slicks, car
   carriers to launch off, tunnels, and a garage with the luxury lot.
-- **[Hall of Art](hall-of-art/)**: a gallery of 31 interactive exhibits:
-  living buttons, moving pictures, lettering that won't sit still, and
-  sculpture and physics pieces you can drag, swing and throw.
+- **[Hall of Art](hall-of-art/)**: a gallery of 46 interactive exhibits:
+  living buttons (bubble wrap, a switchboard puzzle), moving pictures
+  (fireworks, a koi pond, a kaleidoscope), lettering that won't sit still
+  (fridge magnets, falling letters), sculpture and physics pieces you can drag,
+  swing and throw (falling sand, plinko, planets, dominoes, a jelly blob, a
+  pane of glass), a Music Room with a drum machine, and Crash Test, which
+  sends the arcade's real cars into a concrete barrier.
 
 Coins are shared: whatever you earn in one game can be spent in any of them.
 

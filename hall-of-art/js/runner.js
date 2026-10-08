@@ -24,6 +24,7 @@ const HALL_WINGS = {
   motion:  { name: 'Moving Pictures', sub: 'Pieces that move on their own, and move more when you touch them.' },
   text:    { name: 'Lettering', sub: 'Words that refuse to sit still.' },
   physics: { name: 'Sculpture & Physics', sub: 'Drag, drop, swing and throw.' },
+  music:   { name: 'Music Room', sub: 'Make some noise.' },
   cars:    { name: 'Road Works', sub: 'Pieces from the arcade\u2019s own roads.' },
 };
 
@@ -53,14 +54,14 @@ const Exhibits = {
       o.start(now); o.stop(now + dur + 0.02);
     } catch (e) { /* no audio */ }
   },
-  noise(dur = 0.3, vol = 0.2) {
+  noise(dur = 0.3, vol = 0.2, freq = 900, type = 'lowpass') {
     if (this.muted) return;
     try {
       if (!this.audio) this.audio = new (window.AudioContext || window.webkitAudioContext)();
       const a = this.audio, n = Math.floor(a.sampleRate * dur), buf = a.createBuffer(1, n, a.sampleRate), d = buf.getChannelData(0);
       for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n) ** 2;
       const s = a.createBufferSource(), g = a.createGain(), f = a.createBiquadFilter();
-      f.type = 'lowpass'; f.frequency.value = 900;
+      f.type = type; f.frequency.value = freq;
       s.buffer = buf; g.gain.value = vol;
       s.connect(f); f.connect(g); g.connect(a.destination); s.start();
     } catch (e) { /* no audio */ }
@@ -345,5 +346,41 @@ const HA = {
   // a spring for DOM exhibits: call step(target, dt) each frame
   spring(k = 220, damping = 14) {
     return { x: 0, v: 0, step(target, dt) { const f = -k * (this.x - target) - damping * this.v; this.v += f * dt; this.x += this.v * dt; return this.x; } };
+  },
+  // A row of small buttons in a corner of the stage ('tl', 'tr', 'bl', 'br'):
+  // items are [label, onClick(button), pressed?]. Returns the buttons.
+  tools(t, items, where = 'tl') {
+    const bar = document.createElement('div');
+    bar.className = 'ex-tools ' + where;
+    const btns = items.map(([label, fn, on]) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'ex-tool' + (on ? ' on' : '');
+      b.textContent = label;
+      t.on(b, 'click', () => fn(b));
+      bar.appendChild(b);
+      return b;
+    });
+    t.el.appendChild(bar);
+    return btns;
+  },
+  // Road Rush's real car drawings, loaded the first time an exhibit asks for them
+  // (plain script tags, so it works straight from the folder too).
+  carsReady: null,
+  loadCars() {
+    if (!this.carsReady) this.carsReady = new Promise((ok, fail) => {
+      const files = ['../road-rush/js/util.js', '../shared/rr-bridge.js', '../road-rush/js/draw.js', '../road-rush/js/carshape.js',
+        '../road-rush/js/vehicles.js', '../road-rush/js/luxury.js', '../shared/cars.js'];
+      const next = i => {
+        if (i >= files.length) { ok(); return; }
+        const s = document.createElement('script');
+        s.src = files[i];
+        s.onload = () => next(i + 1);
+        s.onerror = () => { this.carsReady = null; fail(new Error('could not load ' + files[i])); };
+        document.head.appendChild(s);
+      };
+      next(0);
+    });
+    return this.carsReady;
   },
 };
