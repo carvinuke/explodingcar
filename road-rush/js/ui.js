@@ -124,6 +124,7 @@ const UI = {
         Sound.bump();
         return;
       }
+      Saves.keepUndo('before the Road Rush reset', ['roadrush.']);
       Store.wipeProgress();
       location.reload();
     });
@@ -194,7 +195,7 @@ const UI = {
   openReset() {
     const col = Shop.collection();
     this.$('reset-body').textContent = `This permanently deletes your ${Game.bank.toLocaleString()} coins (the wallet you share with the other arcade games), your level (${Levels.level}), `
-      + `every cosmetic you own (${col.have} of ${col.total}), your trophies, stats, best scores and missions. Your settings and controls are kept. This can't be undone.`;
+      + `every cosmetic you own (${col.have} of ${col.total}), your trophies, stats, best scores and missions. Your settings and controls are kept. Changed your mind later? Backups on the arcade menu can undo it.`;
     const b = this.$('btn-reset-ok');
     delete b.dataset.armed;
     b.textContent = 'Delete everything';

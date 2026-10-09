@@ -17,7 +17,9 @@ The front page is the **Solarian Arcade**. Pick one of four:
   patience, the mix of nine kinds of vehicle, rain, snow or fog by day, dusk or
   night, trains, the goal, a time limit, crashes allowed, the amber light and
   power-ups. Save your favourite shifts, try a ready-made idea, or roll a random
-  one. Harder settings pay more.
+  one. Harder settings pay more. Share tab: any shift becomes a short code like
+  `TC1-CJFD-8K60-DV5S-DXY2-2T6J-1` that a friend pastes into their own Traffic
+  Control to play exactly the same shift.
 - **[Boom Run](boom-run/)**: floor it down an endless highway. Scrape past
   traffic to fill your boost bar, burn it to go faster, and when it's full set
   off BOOM: a few seconds where every car you touch goes up, and the wrecks you
@@ -36,6 +38,12 @@ The front page is the **Solarian Arcade**. Pick one of four:
   the arcade's real cars crash test, pose in a showroom and get a car wash.
 
 Coins are shared: whatever you earn in one game can be spent in any of them.
+
+Everything you earn is kept in your browser. **Backups** on the arcade menu
+saves every game's progress (coins, unlocks, trophies, settings) as a file or a
+code you can copy, and brings it back in any browser or on another computer. A
+backup shows what's in it next to what you have now before it replaces
+anything, and the last restore or game reset can be undone.
 
 Keep an eye out on every road for the luxury cars: the Elfer and Elfer
 Classic, the Toro V12 and Toro Furia, the Rosso F8 and Rosso Superfast, the
@@ -57,7 +65,8 @@ server with Python and open the arcade in your browser.
 
 - `index.html`: the Solarian Arcade menu.
 - `shared/`: the arcade's fonts, styles, menu art (`art/`, with the script that
-  draws it), the shared coin wallet (`wallet.js`) and helpers the games share.
+  draws it), the shared coin wallet (`wallet.js`), backups (`saves.js`, and
+  `backups.js` for the menu's dialog) and helpers the games share.
 - `road-rush/`, `traffic-control/`, `boom-run/`, `hall-of-art/`: one folder per page.
   Traffic Control and Boom Run reuse Road Rush's drawing, explosion and sound
   code straight from `road-rush/js/`.

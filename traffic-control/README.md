@@ -22,6 +22,10 @@ Open `index.html` (or pick it from the arcade). No build step, works offline.
   and trains with crossing gates.
 - Impatient drivers: wait too long and they honk, then run the red light.
 - Power-ups every 12 cars: Freeze, Tow and Calm.
+- Custom Shift, once you've cleared 5 levels: lay out your own crossings, set
+  the traffic, vehicles, weather and rules, and save it as a preset. The Share
+  tab turns a shift into a short code like `TC1-CJFD-8K60-DV5S-DXY2-2T6J-1`; a
+  friend pastes it into their own Share tab to play exactly the same shift.
 - A shop (upgrades, traffic-light styles, themes) using the arcade's shared
   coins, and 14 trophies.
 
@@ -32,7 +36,9 @@ Drawing, explosions and sound come straight from Road Rush (`../road-rush/js/`):
 `../shared/rr-bridge.js` standing in for the Road Rush globals they expect.
 `../shared/cars.js` adds cars driving toward and away from the camera.
 
-- `js/data.js`: maps, levels, trophies and the shop.
+- `js/data.js`: maps, levels, trophies, the shop and the custom shift's options.
+- `js/share.js`: share codes for custom shifts. Its field list is the code format:
+  never reorder or change it (a new setting needs a new code version).
 - `js/sim.js`: lanes and paths, the lights, car following, patience, crashes and trains.
 - `js/view.js`: drawing. The ground and scenery are drawn once into a picture and reused.
 - `js/game.js`: game flow, HUD, menus and input.

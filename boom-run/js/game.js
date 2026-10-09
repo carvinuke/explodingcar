@@ -485,6 +485,7 @@ const BRGame = {
     set('set-low', this.settings.low);
     const r = Kit.$('btn-reset');
     delete r.dataset.armed;
+    r.disabled = false;
     r.textContent = 'Reset Boom Run progress';
     Kit.show('screen-settings');
   },
@@ -517,12 +518,14 @@ const BRGame = {
       const r = Kit.$('btn-reset');
       if (!r.dataset.armed) { r.dataset.armed = '1'; r.textContent = 'Tap again to delete your cars, bests and trophies'; return; }
       const keep = { low: this.settings.low, shake: this.settings.shake };
+      Saves.keepUndo('before the Boom Run reset', ['boomrun.']);
       BR_STORE.wipe();
       BR_STORE.set('low', keep.low); BR_STORE.set('shake', keep.shake);
       this.load();
       this.demo();
-      Kit.toast('Boom Run progress deleted');
       this.showSettings();
+      r.textContent = 'Deleted. Backups on the arcade menu can undo it.'; // (said here: the toasts are on the hidden HUD)
+      r.disabled = true;
     });
 
     // keyboard
