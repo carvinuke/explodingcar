@@ -437,7 +437,8 @@ report. Your choices are saved in the browser.
 - **Controls:** rebind the four movement keys.
 - **Reset all data:** wipes your coins, levels, cosmetics, trophies, stats,
   best scores and missions (your settings and controls are kept). It shows a
-  warning first, and you have to confirm twice.
+  warning first, and you have to confirm twice. Changed your mind? Backups on
+  the arcade menu can undo it.
 - **Graphic mode:** off by default. Turning it on shows a warning you have to
   confirm first. When it's on:
   - Every death gets cartoon gore. Getting run over flattens the chick in a

@@ -111,6 +111,7 @@ const Admin = {
       setTimeout(() => { delete btn.dataset.armed; btn.textContent = 'Reset all progress'; }, 3000);
       return;
     }
+    Saves.keepUndo('before the Road Rush reset', ['roadrush.']);
     Store.wipeProgress();
     location.reload();
   },

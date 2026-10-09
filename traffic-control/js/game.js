@@ -439,7 +439,7 @@ const TCGame = {
     const tabs = el('div', 'opt-tabs');
     tabs.setAttribute('role', 'tablist');
     tabs.setAttribute('aria-label', 'Custom shift settings');
-    for (const [id, name] of [['map', 'Map'], ['traffic', 'Traffic'], ['cars', 'Vehicles'], ['weather', 'Weather'], ['rules', 'Rules'], ['presets', 'Presets']]) {
+    for (const [id, name] of [['map', 'Map'], ['traffic', 'Traffic'], ['cars', 'Vehicles'], ['weather', 'Weather'], ['rules', 'Rules'], ['presets', 'Presets'], ['share', 'Share']]) {
       const b = button(name, 'tab-' + id, () => this.showCustom(id));
       b.setAttribute('role', 'tab');
       b.setAttribute('aria-selected', id === T ? 'true' : 'false');
@@ -578,6 +578,8 @@ const TCGame = {
         button('Back to normal', 'reset', () => { Object.assign(o, tcCustomClean({})); this.customSel = 0; save(); }),
       );
       sh.appendChild(acts);
+    } else if (T === 'share') {
+      this.sharePanel(o, save, { el, button, sec });
     }
 
     const pay = el('p', 'pay-line');
@@ -588,6 +590,56 @@ const TCGame = {
     if (this.state !== 'custom') { this.state = 'custom'; Kit.show('screen-custom'); }
     scr.scrollTop = top;
     if (fk) { const f = body.querySelector(`[data-fk="${CSS.escape(fk)}"]`); if (f && !f.disabled) f.focus(); }
+  },
+
+  // Share: this setup as a code to send to a friend, and a box to play theirs.
+  sharePanel(o, save, { el, button, sec }) {
+    if (typeof BigInt !== 'function' || typeof tcShareEncode !== 'function') {
+      sec('Share').appendChild(el('p', 'hint', 'This browser is too old for share codes.'));
+      return;
+    }
+    const field = (cls, label) => {
+      const f = el('input', 'share-code' + (cls ? ' ' + cls : ''));
+      f.type = 'text';
+      f.autocomplete = 'off';
+      f.spellcheck = false;
+      f.setAttribute('aria-label', label);
+      return f;
+    };
+    const out = sec('Share this shift'), code = tcShareEncode(o), shown = field('', 'Share code for this shift'), said = el('p', 'share-msg');
+    shown.readOnly = true;
+    shown.value = code;
+    shown.addEventListener('focus', () => shown.select());
+    said.setAttribute('role', 'status');
+    const row1 = el('div', 'share-row');
+    row1.append(shown, button('Copy', 'share-copy', async () => {
+      said.textContent = (await copyText(code, shown)) ? 'Copied. Send it to a friend!' : 'Select the code and copy it.';
+    }, 'btn-yellow small'));
+    out.append(row1, el('p', 'hint', `${tcCustomSummary(o)}. Anyone can play this exact shift: they paste the code into Share in their own Traffic Control.`), said);
+
+    const inp = sec('Play a shared shift'), paste = field('', 'A share code to play'), note = el('p', 'share-msg');
+    paste.placeholder = 'TC1-…';
+    paste.dataset.fk = 'share-in';
+    note.setAttribute('role', 'status');
+    if (this.shareNote) { note.textContent = this.shareNote; this.shareNote = null; }
+    const load = () => {
+      const res = tcShareDecode(paste.value);
+      if (!res.ok) {
+        note.className = 'share-msg bad';
+        note.textContent = !paste.value.trim() ? 'Paste a code into the box first.'
+          : res.error === 'typo' ? 'That code has a typo somewhere. Check it character by character.'
+          : 'That isn\u2019t a Traffic Control share code (they start with TC1).';
+        return;
+      }
+      Object.assign(o, res.setup);
+      this.customSel = 0;
+      this.shareNote = `Loaded: ${tcCustomSummary(o)}. Press START to play it, or save it in Presets.`;
+      save();
+    };
+    paste.addEventListener('keydown', e => { if (e.key === 'Enter') load(); });
+    const row2 = el('div', 'share-row');
+    row2.append(paste, button('Load', 'share-load', load, 'btn-plate small'));
+    inp.append(row2, note);
   },
 
   // The map of the crossings: tap one, then pick its shape and who runs its lights.
@@ -724,6 +776,7 @@ const TCGame = {
     set('set-low', this.settings.low);
     const r = Kit.$('btn-reset');
     delete r.dataset.armed;
+    r.disabled = false;
     r.textContent = 'Reset Traffic Control progress';
     Kit.show('screen-settings');
   },
@@ -764,12 +817,14 @@ const TCGame = {
       const r = Kit.$('btn-reset');
       if (!r.dataset.armed) { r.dataset.armed = '1'; r.textContent = 'Tap again to delete your stars, upgrades and trophies'; return; }
       const keep = { low: this.settings.low, shake: this.settings.shake };
+      Saves.keepUndo('before the Traffic Control reset', ['traffic.']);
       TC_STORE.wipe();
       TC_STORE.set('low', keep.low); TC_STORE.set('shake', keep.shake);
       this.load();
       this.demo();
-      Kit.toast('Traffic Control progress deleted');
       this.showSettings();
+      r.textContent = 'Deleted. Backups on the arcade menu can undo it.'; // (said here: the toasts are on the hidden HUD)
+      r.disabled = true;
     });
 
     // tapping a light

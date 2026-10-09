@@ -30,7 +30,13 @@
     </svg>
     <div class="brand-text"><b>SOLARIAN</b><span>ARCADE</span></div>
   </div>
-  <div class="plate coinplate" title="Your coins work in every game"><span class="coin-ico"></span><b id="wallet">0</b></div>
+  <div class="bar-end">
+    <button id="btn-backups" class="bar-btn" type="button" aria-haspopup="dialog" aria-label="Backups">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v11m0 0-4.5-4.5M12 14l4.5-4.5M4 15v3.5A2.5 2.5 0 0 0 6.5 21h11a2.5 2.5 0 0 0 2.5-2.5V15"/></svg>
+      <span>Backups</span>
+    </button>
+    <div class="plate coinplate" title="Your coins work in every game"><span class="coin-ico"></span><b id="wallet">0</b></div>
+  </div>
 </header>
 
 <main class="lineup" aria-label="Pick a game">
@@ -78,7 +84,60 @@
 
 <footer class="foot"><span>Coins are shared by every game</span><span>Everything works offline</span></footer>
 
+<!-- Backups: save every game's progress to a file or a code, and bring it back -->
+<div id="backups" class="screen modal hidden" role="dialog" aria-modal="true" aria-labelledby="bk-title">
+  <div class="card bk-card">
+    <div class="card-head"><span id="bk-title">BACKUPS</span><span id="bk-last"></span></div>
+    <div class="card-body">
+      <p class="bk-intro">Your coins, unlocks, trophies and settings for every game live in this browser only. Clearing your browsing data deletes them, and they don't follow you to another browser or computer. A backup brings them back anywhere.</p>
+
+      <section class="bk-sec" aria-labelledby="bk-save-h">
+        <h3 id="bk-save-h">Save a backup</h3>
+        <div class="actions">
+          <button id="bk-download" class="btn-yellow small" type="button">Download backup file</button>
+          <button id="bk-copy" class="btn-plate small" type="button">Copy as a code</button>
+        </div>
+        <textarea id="bk-code-out" class="bk-code hidden" rows="3" readonly aria-label="Your backup code" spellcheck="false"></textarea>
+        <p id="bk-save-msg" class="bk-msg" role="status" aria-live="polite"></p>
+      </section>
+
+      <section class="bk-sec" aria-labelledby="bk-load-h">
+        <h3 id="bk-load-h">Restore a backup</h3>
+        <div class="actions">
+          <button id="bk-open" class="btn-plate small" type="button">Open a backup file</button>
+          <input id="bk-file" class="hidden" type="file" accept=".json,application/json,.txt,text/plain">
+        </div>
+        <label class="bk-or" for="bk-code-in">or paste a backup code</label>
+        <textarea id="bk-code-in" class="bk-code" rows="3" placeholder="SOLARIAN-SAVE-1…" spellcheck="false" autocomplete="off"></textarea>
+        <div class="actions"><button id="bk-check" class="btn-plate small" type="button">Check the code</button></div>
+        <div id="bk-preview" class="bk-preview hidden">
+          <p class="bk-from" id="bk-from"></p>
+          <table class="bk-compare">
+            <thead><tr><th scope="col"></th><th scope="col">Now</th><th scope="col">Backup</th></tr></thead>
+            <tbody id="bk-rows"></tbody>
+          </table>
+          <p class="bk-warn">Restoring replaces the progress in this browser for every game. You can undo it straight after.</p>
+          <div class="actions">
+            <button id="bk-restore" class="btn-red small" type="button">Restore this backup</button>
+            <button id="bk-cancel" class="btn-plate small" type="button">Cancel</button>
+          </div>
+        </div>
+        <p id="bk-load-msg" class="bk-msg" role="status" aria-live="polite"></p>
+      </section>
+
+      <section id="bk-undo-sec" class="bk-sec hidden" aria-labelledby="bk-undo-h">
+        <h3 id="bk-undo-h">Undo</h3>
+        <p id="bk-undo-what" class="bk-note"></p>
+        <div class="actions"><button id="bk-undo" class="btn-plate small" type="button">Undo</button></div>
+      </section>
+    </div>
+    <div class="bk-foot"><button id="bk-done" class="btn-yellow small" type="button">Done</button></div>
+  </div>
+</div>
+
 <script src="shared/wallet.js"></script>
+<script src="shared/saves.js"></script>
 <script src="shared/picker.js"></script>
+<script src="shared/backups.js"></script>
 </body>
 </html>

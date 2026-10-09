@@ -3,24 +3,21 @@
 // the hovered panel toward the cursor.
 
 (() => {
-  const read = (key, fallback) => {
-    try { const v = localStorage.getItem(key); return v === null ? fallback : JSON.parse(v); } catch (e) { return fallback; }
-  };
-  const num = v => (typeof v === 'number' && isFinite(v) ? Math.max(0, Math.floor(v)) : 0);
   const $ = id => document.getElementById(id);
 
   // ---- Numbers ------------------------------------------------------------------
   function refresh() {
+    const s = Saves.summary(Saves.collect());
     $('wallet').textContent = Wallet.get().toLocaleString();
-    $('stat-rr').textContent = num(read('roadrush.best', 0)).toLocaleString();
-    $('stat-tc').textContent = num(read('traffic.stars', 0)).toLocaleString();
-    $('stat-br').textContent = num(read('boomrun.best', 0)).toLocaleString();
-    const seen = read('hall.tried', null) || read('toybox.tried', []); // the Hall of Art used to be the Toy Box
-    $('stat-ha').textContent = Array.isArray(seen) ? seen.length : 0;
+    $('stat-rr').textContent = s.rr.toLocaleString();
+    $('stat-tc').textContent = s.tc.toLocaleString();
+    $('stat-br').textContent = s.br.toLocaleString();
+    $('stat-ha').textContent = s.ha.toLocaleString();
   }
   refresh();
   Wallet.onChange(refresh);
   addEventListener('pageshow', refresh); // coming back with the browser's Back button
+  addEventListener('arcade-saves', refresh); // a backup was restored, or undone
 
   // ---- Turn toward the cursor -------------------------------------------------
   const still = matchMedia('(prefers-reduced-motion: reduce)');
